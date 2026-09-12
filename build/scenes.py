@@ -194,18 +194,19 @@ def sc_word(c):
                 fr.alpha_composite(glow_disc(900, (255, 220, 140, int(200 * flash)), 300, 90),
                                    (540 - 450, 720 - 450))
         if ts > 3.9:
-            word = cached("metaword", lambda: gold_text("METACOGNITION", font("en", 800, 72), spacing=2))
-            n = len("METACOGNITION")
-            for i in range(n):
+            wd_txt = "METACOGNITION"
+            fnt = font("en", 800, 64)
+            adv = [fnt.getlength(ch) for ch in wd_txt]
+            total = sum(adv) + 2 * (len(wd_txt) - 1)
+            for i in range(len(wd_txt)):
                 a = ease((ts - 3.9 - i * 0.055) / 0.3)
                 if a <= 0:
                     continue
-                ch_img = cached(f"mw{i}", lambda i=i: gold_text("METACOGNITION"[i], font("en", 800, 72)))
-                xoff = sum(cached(f"mw{j}", lambda j=j: gold_text("METACOGNITION"[j], font("en", 800, 72))).width + 2
-                           for j in range(i))
+                ch_img = cached(f"mw{i}", lambda i=i: gold_text(wd_txt[i], font("en", 800, 64)))
+                xoff = sum(adv[:i]) + 2 * i
                 ii = ch_img.copy()
                 ii.putalpha(ii.getchannel("A").point(lambda v: int(v * a)))
-                fr.alpha_composite(ii, (int(540 - word.width / 2 + xoff), int(660 - (1 - a) * 30)))
+                fr.alpha_composite(ii, (int(540 - total / 2 + xoff) - 12, int(660 - (1 - a) * 30)))
             t = text_img("thinking about thinking", font("en", 500, 40), WARM, spacing=2)
             a = ease((ts - 5.0) / 0.5)
             if a > 0:
@@ -397,7 +398,7 @@ def sc_methods(c):
                            GOLD_HI if hot else (140, 126, 102), spacing=2)
             fr.alpha_composite(tag, (985 - tag.width, y + 8))
         y += 118
-    t = text_img("feels easy  ≠  learns deep", font("en", 600, 34), WARM, spacing=1)
+    t = text_img("NOT WHAT FEELS GOOD — WHAT WORKS", font("en", 700, 34), WARM, spacing=2)
     a = ease(clamp((ts - (sd - 2.2)) / 0.5)) if sd > 2.4 else 1
     ti = t.copy()
     ti.putalpha(ti.getchannel("A").point(lambda v: int(v * a)))
@@ -465,11 +466,7 @@ def sc_hq(c):
         fr.alpha_composite(t, (540 - 320, 1420))
         if int(ts * 3) % 2 == 0 and n < len(handle):
             d.rectangle([540 - 320 + t.width + 8, 1430, 540 - 320 + t.width + 18, 1495], fill=GOLD_HI)
-    t = cached("reel1", lambda: chip(360, 92, "REEL 01", None))
-    a = ease((ts - 0.3) / 0.5)
-    ti = t.copy()
-    ti.putalpha(ti.getchannel("A").point(lambda v: int(v * a)))
-    fr.alpha_composite(ti, (540 - 180, 500))
+
 
 
 def sc_cta(c):
@@ -490,7 +487,7 @@ def sc_cta(c):
     pi = pill.resize((pw, ph), Image.BILINEAR)
     fr.alpha_composite(glow_disc(800, (255, 196, 100, 130), 260, 90), (540 - 400, 1480 - 400))
     fr.alpha_composite(pi, (540 - pw // 2, 1480 - ph // 2))
-    t = text_img("LESSON 01 IS LIVE ↑", font("en", 600, 34), WARM, spacing=3)
+    t = text_img("LESSON 01 IS LIVE", font("en", 600, 34), WARM, spacing=3)
     fr.alpha_composite(t, (540 - t.width // 2, 1600))
     fade = clamp((ts - (sd - 1.0)) / 1.0)
     if fade > 0:
@@ -513,8 +510,8 @@ def _follow_pill():
     d = ImageDraw.Draw(im)
     d.rounded_rectangle([0, 0, w - 1, h - 1], 64, fill=(233, 180, 74, 250))
     d.rounded_rectangle([6, 6, w - 7, h - 7], 58, outline=(255, 240, 190, 210), width=3)
-    t = text_img("FOLLOW  @metacognition.hq", font("en", 800, 40), (22, 16, 8), spacing=1)
-    im.paste(t, ((w - t.width) // 2, (h - t.height) // 2 - 2), t)
+    d.text((w / 2, h / 2 + 2), "FOLLOW  @metacognition.hq", font=font("en", 700, 33),
+           fill=(22, 16, 8), anchor="mm")
     return im
 
 

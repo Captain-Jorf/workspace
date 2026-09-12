@@ -196,11 +196,11 @@ class Res:
                 txt = fa["text"]
                 for size in (56, 50, 44, 38, 32):
                     ff, fe = font("fa", 500, size), font("en", 600, int(size * 0.92))
-                    runs = _re.findall(r"[A-Za-z0-9@./%'+-]+|[^A-Za-z0-9@./%'+-]+", txt)
+                    runs = _re.findall(r"[A-Za-z0-9@./%'+:!;?(),«»—–&-]+|[^A-Za-z0-9@./%'+:!;?(),«»—–&-]+", txt)
                     vis = []
                     for r in runs:
-                        if _re.fullmatch(r"[A-Za-z0-9@./%'+-]+", r):
-                            vis.insert(0, ("en", text_img(r, fe, WARM)))
+                        if _re.fullmatch(r"[A-Za-z0-9@./%'+:!;?(),«»—–&-]+", r):
+                            vis.insert(0, ("en", text_img(r.translate({0xAB: 0xBB, 0xBB: 0xAB}), fe, WARM)))
                         else:
                             vis.insert(0, ("fa", text_img(get_display(reshape(r)), ff, WARM)))
                     vis.reverse()
@@ -244,7 +244,7 @@ class Res:
             monitor=("MONITOR", 540, 1318, "halves"),
             evaluate=("EVALUATE", 760, 1250, "halves"),
             trap=("FLUENCY TRAP", 196, 1180, "trap"),
-            reread=("REREADING ✕", 216, 1400, "methods"),
+            reread=("REREADING ×", 216, 1400, "methods"),
             test=("PRACTICE TESTING", 864, 1180, "methods"),
             spaced=("SPACED PRACTICE", 864, 1400, "methods"),
             hq=("HQ · TRAIN THE WATCHER", 540, 1470, "hq"),

@@ -10,6 +10,12 @@ from scenes import SCENES, BGKIND
 R = res()
 BW, BH = 1296, 2304
 CUT_T = [t for t, _ in R.cuts]
+LABEL_SKIP = {
+    "loop": ("plan", "monitor", "evaluate"),
+    "halves": ("plan", "monitor", "evaluate", "center"),
+    "word": ("center", "meta", "cog", "watcher"),
+    "cta": ("center", "meta", "cog"),
+}
 
 
 def scene_at(t):
@@ -66,7 +72,7 @@ def draw_web(fr, t, cur_scene):
             g = glow_disc(90, (255, 200, 110, 150), 26, 14)
             fr.alpha_composite(g, (int(x) - 45, int(y) - 45))
         d.ellipse([x - r, y - r, x + r, y + r], fill=GOLD if hot else (120, 102, 70))
-        if cur_scene == "loop" and k in ("plan", "monitor", "evaluate"):
+        if k in LABEL_SKIP.get(cur_scene, ()):
             continue
         lab = nd["lab_on"] if hot else nd["lab"]
         li = lab.copy()

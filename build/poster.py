@@ -56,11 +56,11 @@ def build():
     from bidi.algorithm import get_display
     fa = "چرا اسم این پیج metacognition است؟"
     import re as _re
-    runs = _re.findall(r"[A-Za-z0-9@./%'+-]+|[^A-Za-z0-9@./%'+-]+", fa)
+    runs = _re.findall(r"[A-Za-z0-9@./%'+:!;?(),«»—–&-]+|[^A-Za-z0-9@./%'+:!;?(),«»—–&-]+", fa)
     vis = []
     for r in runs:
-        if _re.fullmatch(r"[A-Za-z0-9@./%'+-]+", r):
-            vis.insert(0, text_img(r, font("en", 600, 52), WARM))
+        if _re.fullmatch(r"[A-Za-z0-9@./%'+:!;?(),«»—–&-]+", r):
+            vis.insert(0, text_img(r.translate({0xAB: 0xBB, 0xBB: 0xAB}), font("en", 600, 52), WARM))
         else:
             vis.insert(0, text_img(get_display(reshape(r)), font("fa", 500, 56), WARM))
     tw = sum(im.width for im in vis) - 6 * len(vis)
