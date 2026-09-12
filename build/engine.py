@@ -156,6 +156,14 @@ class Res:
     # ---- english karaoke captions
     def _build_captions(self):
         f = font("en", 600, 50)
+        asc, desc = f.getmetrics()
+        lh = asc + desc + 16
+
+        def word_img(wd, fill):
+            bb = f.getbbox(wd)
+            wimg = Image.new("RGBA", (bb[2] - bb[0] + 24, lh), (0, 0, 0, 0))
+            ImageDraw.Draw(wimg).text((12, 8 + asc), wd, font=f, fill=fill, anchor="ls")
+            return wimg
         self.cap_lines = []     # flat list, timed
         for ch in self.tl["chunks"]:
             for ln in ch["lines"]:
@@ -164,8 +172,8 @@ class Res:
                 rows, cur, cw = [], [], 0
                 imgs = {}
                 for wd in words:
-                    wi = text_img(wd["w"], f, WARM)
-                    gi = text_img(wd["w"], f, GOLD_HI)
+                    wi = word_img(wd["w"], WARM)
+                    gi = word_img(wd["w"], GOLD_HI)
                     imgs[id(wd)] = (wi, gi)
                     ww = wi.width + 14
                     if cw + ww > 950 and cur:

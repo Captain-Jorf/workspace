@@ -96,14 +96,15 @@ def _draw_row(fr, row, y, t, a):
             im = wi
             al = 232 * a
         elif t >= wd["start"]:
-            pop = 1 + 0.22 * (1 - ease(min(1, (t - wd["start"]) / 0.13)))
-            im = gi.resize((int(gi.width * pop), int(gi.height * pop)), Image.BILINEAR)
+            im = gi
             al = 255 * a
+            g = glow_disc(140, (255, 200, 110, 120), 44, 26)
+            fr.alpha_composite(g, (int(wx + wi.width / 2) - 70, int(y + wi.height / 2) - 70))
         else:
             continue
         ii = im.copy()
         ii.putalpha(ii.getchannel("A").point(lambda v: int(v * al / 255)))
-        fr.alpha_composite(ii, (int(wx), int(y + (wi.height - im.height) // 2)))
+        fr.alpha_composite(ii, (int(wx), int(y)))
 
 
 def _draw_caret(fr, ln, y, t, a):
