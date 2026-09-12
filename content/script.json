@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "title": "Why metacognition? — Reel 01",
+    "handle": "@metacognition.hq",
+    "fps": 30,
+    "w": 1080,
+    "h": 1920,
+    "gap": 0.34,
+    "lead": 0.55,
+    "tail": 1.1
+  },
+  "scene_tags": {
+    "hook": "01 · THE QUESTION",
+    "article": "02 · THE PAPER",
+    "word": "03 · THE WORD",
+    "halves": "04 · THE TWO HALVES",
+    "trap": "05 · THE FLUENCY TRAP",
+    "methods": "06 · WHAT ACTUALLY WORKS",
+    "loop": "07 · THE LOOP",
+    "hq": "08 · THE HQ",
+    "cta": "08 · THE HQ"
+  },
+  "chunks": [
+    {
+      "id": "c1",
+      "en": [
+        {"t": "Why is this page called metacognition?", "scene": "hook"}
+      ],
+      "fa": ["چرا اسم این پیج metacognition است؟"]
+    },
+    {
+      "id": "c2",
+      "en": [
+        {"t": "Back in 1979, a psychologist named John Flavell published a paper", "scene": "article"},
+        {"t": "that quietly changed how we learn.", "scene": "article"},
+        {"t": "He gave this skill a name: metacognition.", "scene": "article"}
+      ],
+      "fa": [
+        "سال ۱۹۷۹، روان‌شناسی به نام جان فلاول مقاله‌ای منتشر کرد",
+        "که آرام همه‌چیز را درباره‌ی یادگیری عوض کرد",
+        "و برای این مهارت اسمی گذاشت: metacognition"
+      ]
+    },
+    {
+      "id": "c3",
+      "en": [
+        {"t": "Sounds fancy, right? Let's break it down.", "scene": "word"},
+        {"t": "Meta means above. Cognition means thinking.", "scene": "word"}
+      ],
+      "fa": [
+        "اسم پرطمطراقی است، نه؟ بیایید بشکنیمش",
+        "meta یعنی «بالا» و cognition یعنی «فکر کردن»"
+      ]
+    },
+    {
+      "id": "c4",
+      "en": [
+        {"t": "So metacognition is thinking about your own thinking,", "scene": "word"},
+        {"t": "like a watcher inside your head.", "scene": "word"}
+      ],
+      "fa": [
+        "پس metacognition یعنی فکر کردن درباره‌ی فکر کردن خودت",
+        "مثل ناظری داخل سرت که تماشایت می‌کند"
+      ]
+    },
+    {
+      "id": "c5",
+      "en": [
+        {"t": "Researchers say it has two halves:", "scene": "halves"},
+        {"t": "knowing how your mind works, and controlling it.", "scene": "halves"},
+        {"t": "Plan. Monitor. Evaluate. That's the whole skill.", "scene": "halves"}
+      ],
+      "fa": [
+        "پژوهش‌ها می‌گویند دو نیمه دارد:",
+        "شناختِ ذهن خودت، و کنترل کردن آن",
+        "برنامه‌ریزی، پایش، ارزیابی — کل مهارت همین است"
+      ]
+    },
+    {
+      "id": "c6",
+      "en": [
+        {"t": "Now the classic trap: you reread your notes twice.", "scene": "trap"},
+        {"t": "It feels smooth, so your brain says, I got this.", "scene": "trap"},
+        {"t": "But feeling smooth is not knowing.", "scene": "trap"}
+      ],
+      "fa": [
+        "حالا تله‌ی کلاسیک: جزوه‌ات را دو بار روخوانی می‌کنی",
+        "روان است، پس مغزت می‌گوید: بلدم!",
+        "اما حسِ روان بودن، دانستن نیست"
+      ]
+    },
+    {
+      "id": "c7",
+      "en": [
+        {"t": "Exam day, one slightly different question,", "scene": "trap"},
+        {"t": "and your mind goes blank.", "scene": "trap"},
+        {"t": "Studies rate study methods for you:", "scene": "methods"},
+        {"t": "highlighting and rereading, low value.", "scene": "methods"}
+      ],
+      "fa": [
+        "روز امتحان، یک سوال کمی متفاوت، و مغزت سفید می‌شود",
+        "پژوهش‌ها روش‌های مطالعه را رتبه‌بندی کرده‌اند:",
+        "هایلایت و روخوانی؟ ارزش کم"
+      ]
+    },
+    {
+      "id": "c8",
+      "en": [
+        {"t": "Practice testing and spaced repetition, high value,", "scene": "methods"},
+        {"t": "because they force your brain to check itself.", "scene": "methods"},
+        {"t": "So run the loop: before studying, plan.", "scene": "loop"},
+        {"t": "While studying, monitor. After, evaluate.", "scene": "loop"}
+      ],
+      "fa": [
+        "تست زدن و مرور فاصله‌دار؟ ارزش بالا",
+        "چون مغز را مجبور می‌کنند خودش را بیازماید",
+        "حلقه را بچرخان: قبلش برنامه‌ریزی، حینش پایش، بعدش ارزیابی"
+      ]
+    },
+    {
+      "id": "c9",
+      "en": [
+        {"t": "Do that, and learning stops being luck.", "scene": "loop"},
+        {"t": "That's why this page is metacognition HQ:", "scene": "hq"},
+        {"t": "the headquarters for training the watcher in your head.", "scene": "hq"}
+      ],
+      "fa": [
+        "این کار را بکن و یادگیری دیگر شانسی نیست",
+        "به همین دلیل اسم این پیج metacognition HQ است:",
+        "ستاد فرماندهی برای تربیتِ ناظرِ داخل سرت"
+      ]
+    },
+    {
+      "id": "c10",
+      "en": [
+        {"t": "Follow along. Lesson one is already here.", "scene": "cta"}
+      ],
+      "fa": ["فالو کن؛ درس اول همین‌جا است"]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+output/
+audio/*.wav
+audio/timing.json
+assets/tts/
+assets/fonts/*.ttf
+assets/img/hero_*.png
+assets/img/logo_emblem.png
+assets/img/logo_eye.png
+assets/img/logo_preview.jpg
+__pycache__/
