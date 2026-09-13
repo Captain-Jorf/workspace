@@ -59,26 +59,34 @@ def src_reddit():
 
 
 def src_hn():
+    out = []
     try:
-        ids = json.load(get("https://hacker-news.firebaseio.com/v0/topstories.json"))[:12]
-        out = []
-        for i in ids:
-            try:
-                s = json.load(get(f"https://hacker-news.firebaseio.com/v0/item/{i}.json"))
-                out.append({"source": "hackernews", "title": s.get("title", ""),
-                            "url": s.get("url", f"https://news.ycombinator.com/item?id={i}"),
-                            "traffic": s.get("score", 0)})
-            except Exception:
-                pass
-        return out
+        d = json.load(get("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=15"))
+        for h in d.get("hits", []):
+            out.append({"source": "hackernews", "title": h.get("title") or "",
+                        "url": h.get("url") or f"https://news.ycombinator.com/item?id={h.get('objectID')}",
+                        "traffic": h.get("points") or 0})
     except Exception as e:
-        print(f"[radar] hn skip: {e}")
-        return []
+        print(f"[radar] hn-algolia skip: {e}")
+    if not out:
+        try:
+            ids = json.load(get("https://hacker-news.firebaseio.com/v0/topstories.json"))[:12]
+            for i in ids:
+                try:
+                    s = json.load(get(f"https://hacker-news.firebaseio.com/v0/item/{i}.json"))
+                    out.append({"source": "hackernews", "title": s.get("title", ""),
+                                "url": s.get("url", f"https://news.ycombinator.com/item?id={i}"),
+                                "traffic": s.get("score", 0)})
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"[radar] hn skip: {e}")
+    return out
 
 
 def src_arxiv():
     try:
-        root = ET.fromstring(get("http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:q-bio.NC&sortBy=submittedDate&sortOrder=descending&max_results=8"))
+        root = ET.fromstring(get("https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:q-bio.NC&sortBy=submittedDate&sortOrder=descending&max_results=8"))
         ns = {"a": "http://www.w3.org/2005/Atom"}
         out = []
         for e in root.findall("a:entry", ns):
@@ -90,15 +98,21 @@ def src_arxiv():
         return []
 
 
+NEG = ["nfl", "nba", "mlb", "nhl", "dolphins", "patriots", "cowboys", "bills", "chiefs",
+       "lakers", "celtics", "warriors", "manchester", "madrid", "arsenal", "wrestlemania",
+       "lottery", "powerball", "hurricane", "kardashian", "taylors version", "netflix series"]
+
+
 def score(item):
     t = item["title"].lower()
+    item["neg"] = sum(3 for k in NEG if k in t)
     best, bp = 0, "LIFE"
     for pil, kws in PILLAR_KW.items():
         s = sum(2 for k in kws if k in t)
         if s > best:
             best, bp = s, pil
     traffic = min(6, max(0, (item.get("traffic") or 0) // 500 if item["source"].startswith("google") else (item.get("traffic") or 0) // 800))
-    item.update(score=best + traffic + (1 if best else -3), pillar=bp)
+    item.update(score=best + traffic + (1 if best else -3) - item["neg"], pillar=bp)
     item["hook"] = f"Why is everyone talking about {item['title'].rstrip('.?!').lower()} — and should you?"
     return item
 

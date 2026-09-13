@@ -1,4 +1,6 @@
-output/
+output/*
+!output/drafts/
+!output/auto-*_caption.txt
 audio/*.wav
 audio/timing.json
 assets/tts/

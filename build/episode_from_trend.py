@@ -46,7 +46,18 @@ def main():
         idx = int(a[a.index("--top") + 1]) - 1
     tag = a[a.index("--date") + 1] if "--date" in a else datetime.date.today().isoformat()
     trends = json.load(open(f"{ROOT}/content/trends.json"))["trends"]
-    t = trends[idx]
+    t = trends[idx] if idx < len(trends) else trends[0]
+    fallback = ""
+    MIN_SCORE = 2
+    if t.get("score", 0) < MIN_SCORE:
+        cal = json.load(open(f"{ROOT}/content/calendar.json"))["episodes"]
+        doy = datetime.date.today().timetuple().tm_yday
+        c = cal[doy % len(cal)]
+        fallback = f"today's trends scored below relevance floor ({t.get('score')} < {MIN_SCORE}); using evergreen calendar topic #{c['id']}"
+        t = {"source": "CONTENT CALENDAR (evergreen)", "title": c["title"].split(":")[0],
+             "url": "", "pillar": c["pillar"], "score": 9,
+             "hook": c["hook"], "cal_sources": c.get("sources", [])[:2]}
+        print(f"[ep] FALLBACK: {fallback}")
     topic = t["title"].rstrip(".?!")
     sentences = [s.strip() + "." for s in wiki_summary(topic) if len(s.strip()) > 40][:2]
     s1 = sentences[0] if sentences else f"Today '{topic}' is everywhere online."
@@ -69,7 +80,7 @@ def main():
     epdir = f"{ROOT}/content/episodes/auto-{tag}"
     os.makedirs(epdir, exist_ok=True)
     script = {
-        "meta": {"title": f"Auto draft {tag} — {topic}", "handle": "@metacognition.hq",
+        "meta": {"title": f"Auto draft {tag} — {topic}", "note": fallback, "handle": "@metacognition.hq",
                  "fps": 30, "w": 1080, "h": 1920, "gap": 0.34, "lead": 0.55, "tail": 1.1},
         "scene_tags": {"hook": "01 · THE QUESTION", "article": "02 · THE TREND",
                        "loop": "03 · THE LENS", "hq": "04 · THE HQ", "cta": "04 · THE HQ"},
@@ -84,7 +95,7 @@ def main():
             "intro": s1,
             "sections": [{"icon": "✦", "title": "WATCH IT LIKE A METACOGNITIVIST",
                           "lines": [s2, "Plan your sources → monitor your confidence → evaluate the evidence"]}],
-            "sources": [t["url"]] + ([f"Wikipedia: {topic}"] if sentences else []),
+            "sources": ([t["url"]] if t.get("url") else t.get("cal_sources", [])) + ([f"Wikipedia: {topic}"] if sentences else []),
             "ctas": ["↗ SHARE this before the trend shares misinformation.",
                      "💬 What should we watch next? Comment it.",
                      "Follow @metacognition.hq — the watcher trains here."],
