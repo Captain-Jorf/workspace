@@ -63,7 +63,7 @@ jobs:
           git config user.email "factory@metacognition.hq"
           git add -A
           git commit -q -m "auto draft $TAG" || true
-          git push -q origin "HEAD:refs/heads/drafts/$TAG" || true
+          git push -qf origin "HEAD:refs/heads/drafts/$TAG" || echo "::warning::draft branch push failed"
           {
             echo "## Daily trend reel draft - $TAG"
             echo ""
@@ -74,5 +74,11 @@ jobs:
             echo "Review, then comment **/publish** to render + post to Instagram."
             echo "(Needs repo secrets IG_USER_ID + IG_PAGE_TOKEN; video URL must be public.)"
           } > /tmp/body.md
-          gh label create auto-draft --color 0E8A16 --description "auto trend draft" 2>/dev/null || true
-          gh issue create --title "trend reel draft $TAG" --body-file /tmp/body.md --label auto-draft
+          EXISTING=$(gh issue list --state open --search "in:title trend reel draft $TAG" --json number -q '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file /tmp/body.md
+            echo "updated existing issue #$EXISTING"
+          else
+            gh label create auto-draft --color 0E8A16 --description "auto trend draft" 2>/dev/null || true
+            gh issue create --title "trend reel draft $TAG" --body-file /tmp/body.md --label auto-draft
+          fi
