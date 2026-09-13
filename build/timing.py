@@ -18,13 +18,14 @@ def run(args):
 
 
 def main():
-    sc = json.load(open(f"{ROOT}/content/script.json"))
+    adir = os.environ.get("EP_DIR") or f"{ROOT}/audio"
+    sc = json.load(open(f"{adir}/script.json" if os.environ.get("EP_DIR") else f"{ROOT}/content/script.json"))
     meta = sc["meta"]
     gap, lead, tail = meta["gap"], meta["lead"], meta["tail"]
     parts, t = [], lead
     timeline = {"total": 0.0, "chunks": []}
     for ch in sc["chunks"]:
-        mp3 = f"{ROOT}/audio/c{int(ch['id'][1:]):02d}.mp3"
+        mp3 = f"{adir}/c{int(ch['id'][1:]):02d}.mp3"
         d = dur(mp3)
         wav = f"/tmp/{ch['id']}.wav"
         run(["-i", mp3, "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", wav])
@@ -70,8 +71,8 @@ def main():
     with open(lst, "w") as f:
         for p in seq:
             f.write(f"file '{p}'\n")
-    run(["-f", "concat", "-safe", "0", "-i", lst, "-c:a", "pcm_s16le", f"{ROOT}/audio/full.wav"])
-    json.dump(timeline, open(f"{ROOT}/audio/timing.json", "w"), ensure_ascii=False, indent=1)
+    run(["-f", "concat", "-safe", "0", "-i", lst, "-c:a", "pcm_s16le", f"{adir}/full.wav"])
+    json.dump(timeline, open(f"{adir}/timing.json", "w"), ensure_ascii=False, indent=1)
     print("total seconds:", round(timeline["total"], 2))
     for c in timeline["chunks"]:
         print(c["id"], round(c["start"], 2), round(c["dur"], 2))

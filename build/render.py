@@ -216,7 +216,8 @@ def main():
     a = dict(x.split("=") for x in sys.argv[1:])
     f0 = int(a.get("start", 0))
     f1 = int(a.get("end", int(R.total * FPS)))
-    out = a.get("out", f"{ROOT}/output/reel_metacognition_hq.mp4")
+    epn = os.path.basename(R.ep) if R.ep else "reel_metacognition_hq"
+    out = a.get("out", f"{ROOT}/output/{epn}_reel.mp4")
     still = int(a.get("still", 0))
     if still:
         os.makedirs(f"{ROOT}/output/stills", exist_ok=True)
@@ -227,7 +228,7 @@ def main():
     FF = imageio_ffmpeg.get_ffmpeg_exe()
     cmd = [FF, "-y", "-hide_banner", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-           "-i", f"{ROOT}/audio/full.wav",
+           "-i", R.audio_full,
            "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-shortest", out]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

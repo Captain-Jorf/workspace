@@ -103,8 +103,13 @@ def rounded_card(w, h, r, fill, outline=None, ow=2):
 # ---------------------------------------------------------------- resources
 class Res:
     def __init__(self):
-        self.script = json.load(open(f"{ROOT}/content/script.json"))
-        self.tl = json.load(open(f"{ROOT}/audio/timing.json"))
+        ep = os.environ.get("EP_DIR")
+        self.ep = ep
+        self.audio_dir = ep if ep else f"{ROOT}/audio"
+        self.audio_full = f"{self.audio_dir}/full.wav"
+        self.script = json.load(open(f"{ep}/script.json" if ep else f"{ROOT}/content/script.json"))
+        self.tl = json.load(open(f"{ep}/timing.json" if ep else f"{ROOT}/audio/timing.json"))
+        self.props = self.script.get("props", {})
         self.total = self.tl["total"]
         self.tags = self.script["scene_tags"]
         # scene cut times

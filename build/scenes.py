@@ -80,27 +80,28 @@ def sc_hook(c):
 
 
 def _paper_card():
+    P = res().props.get("paper", {})
     w, h = 780, 1000
     im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     d.rounded_rectangle([0, 0, w - 1, h - 1], 18, fill=(235, 224, 200, 255))
     d.rounded_rectangle([26, 26, w - 27, h - 27], 10, outline=(60, 48, 30, 200), width=3)
     d.rounded_rectangle([40, 40, w - 41, h - 41], 6, outline=(150, 120, 60, 160), width=2)
-    t = text_img("AMERICAN PSYCHOLOGIST · 1979", font("en", 700, 26), (90, 70, 40), spacing=3)
+    t = text_img(P.get("journal", "AMERICAN PSYCHOLOGIST") + " · " + P.get("year", "1979"), font("en", 700, 26), (90, 70, 40), spacing=3)
     im.paste(t, ((w - t.width) // 2, 92), t)
     d.line([90, 150, w - 90, 150], fill=(90, 70, 40, 180), width=2)
-    title = ["Metacognition and", "Cognitive Monitoring"]
+    title = P.get("title", ["Metacognition and", "Cognitive Monitoring"])
     y = 210
     for ln in title:
         t = text_img(ln, font("en", 800, 62), (28, 22, 14))
         im.paste(t, ((w - t.width) // 2, y), t)
         y += 84
-    t = text_img("A New Area of Cognitive-Developmental Inquiry", font("en", 500, 27), (90, 70, 40))
+    t = text_img(P.get("subtitle", "A New Area of Cognitive-Developmental Inquiry"), font("en", 500, 27), (90, 70, 40))
     im.paste(t, ((w - t.width) // 2, y + 16), t)
     d.line([140, y + 90, w - 140, y + 90], fill=(90, 70, 40, 140), width=2)
-    t = text_img("JOHN H. FLAVELL", font("en", 700, 40), (28, 22, 14), spacing=4)
+    t = text_img(P.get("author", "JOHN H. FLAVELL"), font("en", 700, 40), (28, 22, 14), spacing=4)
     im.paste(t, ((w - t.width) // 2, y + 130), t)
-    t = text_img("Stanford University", font("en", 500, 26), (90, 70, 40))
+    t = text_img(P.get("affil", "Stanford University"), font("en", 500, 26), (90, 70, 40))
     im.paste(t, ((w - t.width) // 2, y + 190), t)
     # fake abstract lines
     import random
@@ -113,9 +114,9 @@ def _paper_card():
     # gold seal
     d.ellipse([w - 210, h - 210, w - 70, h - 70], fill=(196, 148, 62, 255))
     d.ellipse([w - 196, h - 196, w - 84, h - 84], outline=(90, 66, 26, 255), width=4)
-    t = text_img("THE PAPER", font("en", 800, 26), (40, 28, 10), spacing=2)
+    t = text_img(P.get("seal1", "THE PAPER"), font("en", 800, 26), (40, 28, 10), spacing=2)
     im.paste(t, (w - 140 - t.width // 2, h - 158), t)
-    t = text_img("VOL 34 · NO 10", font("en", 600, 18), (40, 28, 10), spacing=1)
+    t = text_img(P.get("seal2", "VOL 34 · NO 10"), font("en", 600, 18), (40, 28, 10), spacing=1)
     im.paste(t, (w - 140 - t.width // 2, h - 122), t)
     return im
 
@@ -327,7 +328,7 @@ def sc_trap(c):
     a = math.radians(135 + 270 * clamp(conf))
     d.line([GX1, GY1, GX1 + math.cos(a) * 104, GY1 + math.sin(a) * 104], fill=GOLD_HI, width=6)
     d.ellipse([GX1 - 10, GY1 - 10, GX1 + 10, GY1 + 10], fill=GOLD_HI)
-    lab = text_img(f"FEELS LIKE  {int(conf * 100)}%", font("en", 800, 34), GOLD_HI)
+    lab = text_img(f"{res().props.get('g1', 'FEELS LIKE')}  {int(conf * 100)}%", font("en", 800, 34), GOLD_HI)
     fr.alpha_composite(lab, (GX1 - lab.width // 2, GY1 + 158))
     know = 0.38
     d.arc([GX2 - 140, GY2 - 140, GX2 + 140, GY2 + 140], 135, 405, fill=(70, 60, 45), width=13)
@@ -335,7 +336,7 @@ def sc_trap(c):
     a = math.radians(135 + 270 * know)
     d.line([GX2, GY2, GX2 + math.cos(a) * 104, GY2 + math.sin(a) * 104], fill=(190, 172, 140), width=6)
     d.ellipse([GX2 - 10, GY2 - 10, GX2 + 10, GY2 + 10], fill=(190, 172, 140))
-    lab = text_img(f"ACTUALLY  {int(know * 100)}%", font("en", 800, 34), DIM)
+    lab = text_img(f"{res().props.get('g2', 'ACTUALLY')}  {int(know * 100)}%", font("en", 800, 34), DIM)
     fr.alpha_composite(lab, (GX2 - lab.width // 2, GY2 + 158))
     if ts > bt - 0.2:
         ex = cached("exam", _exam_card)
@@ -371,14 +372,16 @@ def sc_methods(c):
     d = ImageDraw.Draw(fr)
     panel = rounded_card(940, 800, 34, (16, 12, 9, 214), (233, 180, 74, 120), 2)
     fr.alpha_composite(panel, (70, 600))
-    t = gold_text("WHAT ACTUALLY WORKS", font("en", 800, 46), spacing=2)
+    C = res().props.get("chart", {})
+    t = gold_text(C.get("title", "WHAT ACTUALLY WORKS"), font("en", 800, 46), spacing=2)
     fr.alpha_composite(t, (540 - t.width // 2, 646))
-    t = text_img("utility ratings · Dunlosky et al., 2013", font("en", 500, 26), DIM, spacing=1)
+    t = text_img(C.get("source", "utility ratings · Dunlosky et al., 2013"), font("en", 500, 26), DIM, spacing=1)
     fr.alpha_composite(t, (540 - t.width // 2, 726))
-    rows = [("PRACTICE TESTING", 0.92, True, "practice"),
-            ("SPACED PRACTICE", 0.88, True, "spaced"),
-            ("REREADING", 0.25, False, "rereading"),
-            ("HIGHLIGHTING", 0.22, False, "highlighting")]
+    rows = [tuple(r) for r in C.get("rows", [
+            ["PRACTICE TESTING", 0.92, True, "practice"],
+            ["SPACED PRACTICE", 0.88, True, "spaced"],
+            ["REREADING", 0.25, False, "rereading"],
+            ["HIGHLIGHTING", 0.22, False, "highlighting"]])]
     y = 800
     for name, val, hot, tok in rows:
         tt = R.find_token(tok)
@@ -398,7 +401,7 @@ def sc_methods(c):
                            GOLD_HI if hot else (140, 126, 102), spacing=2)
             fr.alpha_composite(tag, (985 - tag.width, y + 8))
         y += 118
-    t = text_img("NOT WHAT FEELS GOOD — WHAT WORKS", font("en", 700, 34), WARM, spacing=2)
+    t = text_img(C.get("footer", "NOT WHAT FEELS GOOD — WHAT WORKS"), font("en", 700, 34), WARM, spacing=2)
     a = ease(clamp((ts - (sd - 2.2)) / 0.5)) if sd > 2.4 else 1
     ti = t.copy()
     ti.putalpha(ti.getchannel("A").point(lambda v: int(v * a)))

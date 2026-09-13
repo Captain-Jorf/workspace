@@ -1,0 +1,73 @@
+{
+  "meta": {"title": "Ep02 — Unskilled & Unaware (Dunning-Kruger)", "handle": "@metacognition.hq",
+           "fps": 30, "w": 1080, "h": 1920, "gap": 0.34, "lead": 0.55, "tail": 1.1},
+  "scene_tags": {
+    "hook": "01 · THE QUESTION", "article": "02 · THE STUDY", "trap": "03 · THE GAP",
+    "methods": "04 · THE CURVE", "loop": "05 · THE FIX", "hq": "06 · THE HQ", "cta": "06 · THE HQ"
+  },
+  "props": {
+    "paper": {"journal": "J. PERSONALITY & SOCIAL PSYCH.", "year": "1999",
+              "title": ["Unskilled and", "Unaware of It"],
+              "subtitle": "How Difficulties in Recognizing One's Own Incompetence Lead to Inflated Self-Assessments",
+              "author": "KRUGER & DUNNING", "affil": "Cornell University",
+              "seal1": "THE STUDY", "seal2": "JPSP · 77(6)"},
+    "g1": "SELF-VIEW", "g2": "ACTUAL",
+    "chart": {"title": "CONFIDENCE VS COMPETENCE",
+              "source": "Kruger & Dunning (1999) · self-view vs actual percentile",
+              "rows": [["ACTUAL · BOTTOM QUARTILE", 0.12, false, "scored"],
+                       ["SELF-VIEW · BOTTOM QUARTILE", 0.68, true, "guess"],
+                       ["ACTUAL · TOP QUARTILE", 0.87, false, "rated"],
+                       ["SELF-VIEW · TOP QUARTILE", 0.88, true, "assumed"]],
+              "footer": "THE LESS SKILL, THE BIGGER THE GAP"}
+  },
+  "chunks": [
+    {"id": "c1", "en": [{"t": "Why do the least skilled people feel the most confident?", "scene": "hook"}],
+     "fa": ["چرا کم‌مهارت‌ترین آدم‌ها مطمئن‌ترین‌ها هستند؟"]},
+    {"id": "c2", "en": [{"t": "In 1999, two psychologists ran a simple experiment.", "scene": "article"},
+                        {"t": "They tested people's skill, then asked them to guess their own score.", "scene": "article"}],
+     "fa": ["سال ۱۹۹۹ دو روان‌شناس یک آزمایش ساده اجرا کردند",
+            "مهارت آدم‌ها را سنجیدند، بعد خواستند نمره‌ی خودشان را حدس بزنند"]},
+    {"id": "c3", "en": [{"t": "The bottom quarter scored around the twelfth percentile.", "scene": "trap"},
+                        {"t": "Their own guess? The sixty-eighth.", "scene": "trap"}],
+     "fa": ["نمره‌ی واقعی چارک پایین: صدک دوازدهم",
+            "حدس خودشان از نمره‌شان؟ صدک شصت‌وهشتم"]},
+    {"id": "c4", "en": [{"t": "Not confidence. Miscalibration.", "scene": "trap"},
+                        {"t": "They lacked the very skill needed to see the skill.", "scene": "trap"}],
+     "fa": ["این اعتمادبه‌نفس نیست؛ خطای خودپنداره است",
+            "آن‌ها همان مهارتی را نداشتند که برای دیدن مهارت لازم است"]},
+    {"id": "c5", "en": [{"t": "Meanwhile the top scorers rated themselves just average,", "scene": "methods"}],
+     "fa": ["اما برترین‌ها خودشان را فقط متوسط ارزیابی کردند"]},
+    {"id": "c6", "en": [{"t": "because they assumed everyone else found it easy too.", "scene": "methods"}],
+     "fa": ["چون فرض کردند بقیه هم همین‌قدر راحت پیدا کرده‌اند"]},
+    {"id": "c7", "en": [{"t": "The cure is the loop: test yourself, compare, update.", "scene": "loop"},
+                        {"t": "Skill grows together with the watcher.", "scene": "loop"}],
+     "fa": ["درمان همان حلقه است: خودآزمایی، مقایسه، به‌روزرسانی",
+            "مهارت همراه با ناظر رشد می‌کند"]},
+    {"id": "c8", "en": [{"t": "This is metacognition HQ: training the watcher in your head.", "scene": "hq"}],
+     "fa": ["اینجا metacognition HQ است: ستاد تربیت ناظرِ داخل سرت"]},
+    {"id": "c9", "en": [{"t": "Follow along, and check your calibration in the next quiz.", "scene": "cta"}],
+     "fa": ["فالو کن و در کوییز بعدی کالیبراسیون خودت را بسنج"]}
+  ],
+  "caption": {
+    "hook": "Why do the least skilled people feel the most confident?",
+    "intro": "In 1999, Kruger & Dunning put it in numbers: people in the bottom quarter of a skill rated themselves around the 68th percentile. Not lies. Not ego. A metacognition gap — the same skill that makes you good is the skill that lets you SEE that you're good.",
+    "sections": [
+      {"icon": "🧠", "title": "WHY IT HAPPENS",
+       "lines": ["Double burden: low skill means poor answers AND poor monitoring",
+                 "The curve bends: experts slightly underestimate themselves",
+                 "Noticing the gap is the first rep of the watcher"]},
+      {"icon": "✦", "title": "THE FIX (SAME LOOP AS ALWAYS)",
+       "lines": ["Test yourself against real benchmarks",
+                 "Compare: evidence over feeling",
+                 "Update: re-estimate after every round"]}
+    ],
+    "sources": ["Kruger & Dunning (1999), Journal of Personality and Social Psychology, 77(6), 1121-1134",
+                "Dunning (2011), Advances in Experimental Social Psychology, 44",
+                "Fleming & Lau (2014), Frontiers in Human Neuroscience, 8"],
+    "ctas": ["↗ SHARE this with someone who is confidently wrong (kindly).",
+             "💬 Tell us: when did you last discover a blind spot? Best story gets pinned.",
+             "Follow @metacognition.hq — the watcher trains here."],
+    "hashtags": ["#dunningkruger", "#metacognition", "#overconfidence", "#cognitivescience",
+                 "#psychologyfacts", "#selfawareness", "#learninghowtolearn", "#biases", "#metacognitionhq"]
+  }
+}
