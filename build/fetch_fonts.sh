@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Downloads Vazirmatn (Persian) + Sora (Latin) woff2 from npm and converts to TTF.
 set -e
+mkdir -p "$(dirname "$0")/../assets/fonts"
 cd "$(dirname "$0")/../assets/fonts"
 curl -sS -o /tmp/vazir.tgz https://registry.npmjs.org/@fontsource/vazirmatn/-/vazirmatn-5.3.0.tgz
 curl -sS -o /tmp/sora.tgz  https://registry.npmjs.org/@fontsource/sora/-/sora-5.3.0.tgz
