@@ -1,0 +1,152 @@
+{
+ "meta": {
+  "title": "Auto draft 2026-09-13 — The pre-mortem",
+  "note": "today's trends scored below relevance floor (-3 < 2); using evergreen calendar topic #18",
+  "handle": "@metacognition.hq",
+  "fps": 30,
+  "w": 1080,
+  "h": 1920,
+  "gap": 0.34,
+  "lead": 0.55,
+  "tail": 1.1
+ },
+ "scene_tags": {
+  "hook": "01 · THE QUESTION",
+  "article": "02 · THE TREND",
+  "loop": "03 · THE LENS",
+  "hq": "04 · THE HQ",
+  "cta": "04 · THE HQ"
+ },
+ "props": {
+  "paper": {
+   "journal": "CONTENT CALENDAR (EVERGREEN)",
+   "year": "2026",
+   "title": [
+    "The",
+    "pre-mortem"
+   ],
+   "subtitle": "Today 'The pre-mortem' is everywhere online.",
+   "author": "TREND RADAR",
+   "affil": "daily free scan",
+   "seal1": "THE TREND",
+   "seal2": "2026-09-13"
+  }
+ },
+ "chunks": [
+  {
+   "id": "c1",
+   "en": [
+    {
+     "t": "What if you planned your project's funeral first?",
+     "scene": "hook"
+    }
+   ],
+   "fa": [
+    "چه می‌شد اگر اول مراسم خاکسپاری پروژه‌تان را برنامه‌ریزی می‌کردید؟"
+   ]
+  },
+  {
+   "id": "c2",
+   "en": [
+    {
+     "t": "Today it is everywhere: The pre-mortem.",
+     "scene": "article"
+    },
+    {
+     "t": "Today 'The pre-mortem' is everywhere online.",
+     "scene": "article"
+    }
+   ],
+   "fa": [
+    "امروز همه جا هست: کالبدشکافی. امروزه «بررسی اولیه» همه جا آنلاین است."
+   ]
+  },
+  {
+   "id": "c3",
+   "en": [
+    {
+     "t": "Most posts repeat it; almost nobody checks it.",
+     "scene": "article"
+    },
+    {
+     "t": "Here is the part most posts skip.",
+     "scene": "article"
+    }
+   ],
+   "fa": [
+    "بیشتر پست‌ها این را تکرار می‌کنند؛ تقریباً هیچ‌کس آن را بررسی نمی‌کند. این بخشی است که اکثر پست‌ها از آن صرف نظر می‌کنند."
+   ]
+  },
+  {
+   "id": "c4",
+   "en": [
+    {
+     "t": "Same questions as always: how do we know it is true?",
+     "scene": "loop"
+    },
+    {
+     "t": "Plan your sources. Monitor your confidence. Evaluate the evidence.",
+     "scene": "loop"
+    }
+   ],
+   "fa": [
+    "همان سوالات همیشگی: از کجا بفهمیم که این درست است؟ منابع خود را برنامه‌ریزی کنید. میزان اطمینان خود را بررسی کنید. شواهد را ارزیابی کنید."
+   ]
+  },
+  {
+   "id": "c5",
+   "en": [
+    {
+     "t": "That is the metacognition way: watch the thinking, not just the topic.",
+     "scene": "hq"
+    }
+   ],
+   "fa": [
+    "این روش فراشناخت است: به تفکر توجه کنید، نه فقط به موضوع."
+   ]
+  },
+  {
+   "id": "c6",
+   "en": [
+    {
+     "t": "Follow @metacognition.hq — we watch the watchers, daily.",
+     "scene": "cta"
+    }
+   ],
+   "fa": [
+    "@metacognition.hq را دنبال کنید - ما روزانه مراقب تماشاگران هستیم."
+   ]
+  }
+ ],
+ "caption": {
+  "hook": "What if you planned your project's funeral first?",
+  "intro": "Today 'The pre-mortem' is everywhere online.",
+  "sections": [
+   {
+    "icon": "✦",
+    "title": "WATCH IT LIKE A METACOGNITIVIST",
+    "lines": [
+     "Most posts repeat it; almost nobody checks it.",
+     "Plan your sources → monitor your confidence → evaluate the evidence"
+    ]
+   }
+  ],
+  "sources": [
+   "Klein (2007), Harvard Business Review",
+   "Kahneman, Lovallo & Sibony (2011), HBR"
+  ],
+  "ctas": [
+   "↗ SHARE this before the trend shares misinformation.",
+   "💬 What should we watch next? Comment it.",
+   "Follow @metacognition.hq — the watcher trains here."
+  ],
+  "hashtags": [
+   "#metacognition",
+   "#trendwatch",
+   "#thepremortem",
+   "#cognitivescience",
+   "#criticalthinking",
+   "#metacognitionhq"
+  ]
+ }
+}

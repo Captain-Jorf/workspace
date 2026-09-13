@@ -1,35 +1,155 @@
 {
- "fetched": "2026-09-13T12:12:42.216756Z",
+ "fetched": "2026-09-13T12:16:26.511267Z",
  "trends": [
   {
    "source": "google-trends-US",
-   "title": "Why spaced repetition is trending among med students",
-   "url": "https://trends.google.com/x",
-   "traffic": 12000,
+   "title": "bears game",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 9,
-   "pillar": "LEARN",
-   "hook": "Why is everyone talking about why spaced repetition is trending among med students — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about bears game — and should you?"
   },
   {
-   "source": "hackernews",
-   "title": "Overconfidence bias in startup forecasting",
-   "url": "https://news.ycombinator.com/x",
-   "traffic": 400,
+   "source": "google-trends-US",
+   "title": "samsung foldable market competition apple",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 7,
-   "pillar": "MIND",
-   "hook": "Why is everyone talking about overconfidence bias in startup forecasting — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about samsung foldable market competition apple — and should you?"
   },
   {
-   "source": "reddit/r/MachineLearning",
-   "title": "LLM agents that verbalize self-reflection beat baseline",
-   "url": "https://reddit.com/x",
-   "traffic": 900,
+   "source": "google-trends-US",
+   "title": "maxx crosby",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 6,
-   "pillar": "AI",
-   "hook": "Why is everyone talking about llm agents that verbalize self-reflection beat baseline — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about maxx crosby — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "chicago bears schedule",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about chicago bears schedule — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "ncaa division i football bowl subdivision",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about ncaa division i football bowl subdivision — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "derek phillips",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about derek phillips — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "flash flood warning",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about flash flood warning — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "f1 race",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about f1 race — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "coventry vs brighton",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about coventry vs brighton — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "customs union",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about customs union — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "rugby player",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about rugby player — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "samsung foldable market competition apple",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about samsung foldable market competition apple — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "formula 1 schedule",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about formula 1 schedule — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "malta weather",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about malta weather — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "sufc",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about sufc — and should you?"
   }
  ]
 }
