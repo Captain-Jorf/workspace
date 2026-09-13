@@ -1,0 +1,8 @@
+output/
+audio/*.wav
+audio/timing.json
+assets/tts/
+assets/fonts/*.ttf
+assets/img/logo_preview.jpg
+__pycache__/
+secrets/
