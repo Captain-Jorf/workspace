@@ -1,54 +1,182 @@
+# /publish approval gate → official Buffer queue.
+#
+# Triggers on issue comments. Publishes ONLY when all of these hold:
+#   * the issue is a daily draft issue of THIS repo (title/label check),
+#   * the comment body is exactly `/publish`,
+#   * the comment author is OWNER / MEMBER / COLLABORATOR (no anonymous users),
+#   * the issue is not already marked as queued (label + idempotency marker file).
+# The post is added to Buffer's queue once (createPost, mode addToQueue);
+# Buffer itself publishes at the channel's schedule (19:30 Asia/Tehran).
+# BUFFER_TOKEN is only exposed to the single publish step and is never printed.
 name: publish-approved-draft
 on:
   issue_comment:
     types: [created]
 
+concurrency:
+  group: publish-draft-${{ github.event.issue.number }}   # no double-queue races
+  cancel-in-progress: false
+
 jobs:
   publish:
-    if: "${{ startsWith(github.event.issue.title, 'trend reel draft') && contains(github.event.comment.body, '/publish') }}"
+    # coarse pre-gate (the authoritative checks run in build/publish_gate.py):
+    # this repo's issue (issue_comment only fires for this repo), not a PR,
+    # draft title, /publish mentioned, authorized author association.
+    if: >
+      github.event.issue.pull_request == null &&
+      startsWith(github.event.issue.title, 'trend reel draft') &&
+      contains(github.event.comment.body, '/publish') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
-      contents: write
-      issues: write
+      contents: write            # push the rendered mp4 / marker to drafts/<date>
+      issues: write              # comment result + add queued-in-buffer label
+    env:
+      ISSUE: "${{ github.event.issue.number }}"
+      GH_TOKEN: "${{ github.token }}"
     steps:
-      - name: resolve draft tag
-        id: tag
-        env:
-          TITLE: "${{ github.event.issue.title }}"
-        run: echo "tag=${TITLE##*draft }" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
-        with:
-          ref: "drafts/${{ steps.tag.outputs.tag }}"
+      - uses: actions/checkout@v4        # default branch = trusted code
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: deps
-        run: |
-          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg
-          ./build/fetch_fonts.sh
-          python3 build/logo_make.py
-      - name: render full reel
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          EP_DIR="content/episodes/auto-$TAG" python3 build/render.py "out=output/auto-$TAG.mp4"
-      - name: push video + publish to Instagram
+
+      - name: authorization + validity gate
+        id: gate
         env:
-          GH_TOKEN: "${{ github.token }}"
-          IG_USER_ID: "${{ secrets.IG_USER_ID }}"
-          PAGE_TOKEN: "${{ secrets.IG_PAGE_TOKEN }}"
-          REPO: "${{ github.repository }}"
-          ISSUE: "${{ github.event.issue.number }}"
+          GATE_AUTHOR_ASSOC: "${{ github.event.comment.author_association }}"
+          GATE_AUTHOR: "${{ github.event.comment.user.login }}"
+          GATE_BODY: "${{ github.event.comment.body }}"
+          GATE_TITLE: "${{ github.event.issue.title }}"
+          GATE_LABELS: "${{ join(github.event.issue.labels.*.name, ',') }}"
+          GATE_IS_PR: "${{ github.event.issue.pull_request && '1' || '' }}"
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          git config user.name "trend-factory"
-          git config user.email "factory@metacognition.hq"
-          git add -f "output/auto-$TAG.mp4"
-          git commit -q -m "reel $TAG"
-          git push -q origin HEAD
-          sleep 5
-          RAW="https://github.com/$REPO/raw/drafts/$TAG/output/auto-$TAG.mp4"
-          curl -sfI "$RAW" | head -1 || { echo "video URL not public - make repo public or host elsewhere"; exit 1; }
-          mkdir -p secrets
-          printf "IG_USER_ID=%s\nPAGE_TOKEN=%s\n" "$IG_USER_ID" "$PAGE_TOKEN" > secrets/insta.env
-          python3 build/insta_publish.py publish --video "$RAW" --caption "output/auto-${TAG}_caption.txt"
-          gh issue comment "$ISSUE" --body "published to Instagram from draft $TAG"
+          set +e
+          python3 build/publish_gate.py
+          code=$?
+          set -e
+          case "$code" in
+            0)  decision=proceed ;;
+            13) decision=already ;;
+            *)  decision=skip ;;
+          esac
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+          echo "gate exit=$code decision=$decision"
+
+      - name: already queued → comment + stop
+        if: steps.gate.outputs.decision == 'already'
+        run: |
+          gh issue comment "$ISSUE" --body "ℹ️ This draft is already queued in Buffer (\`queued-in-buffer\` label present). Nothing was sent again — duplicate publishing is blocked."
+
+      - name: resolve draft tag (strict date format)
+        if: steps.gate.outputs.decision == 'proceed'
+        env:
+          TITLE: "${{ github.event.issue.title }}"
+        run: |
+          TAG="${TITLE##*draft }"
+          if ! echo "$TAG" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+            echo "::error::could not parse a YYYY-MM-DD tag from issue title"
+            exit 1
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "draft tag: $TAG"
+
+      - name: checkout draft branch
+        if: steps.gate.outputs.decision == 'proceed'
+        uses: actions/checkout@v4
+        with:
+          ref: "drafts/${{ env.TAG }}"
+          path: draft
+
+      - name: ensure rendered mp4 exists (fallback render for older drafts)
+        if: steps.gate.outputs.decision == 'proceed'
+        run: |
+          if [ -f "draft/output/auto-${TAG}.mp4" ]; then
+            echo "rendered mp4 already on draft branch"; exit 0
+          fi
+          echo "mp4 missing on draft branch → rendering now (legacy draft)"
+          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg
+          bash build/fetch_fonts.sh
+          python3 build/logo_make.py
+          EP_DIR="draft/content/episodes/auto-${TAG}" python3 build/render.py "out=draft/output/auto-${TAG}.mp4"
+          git -C draft config user.name "trend-factory"
+          git -C draft config user.email "factory@metacognition.hq"
+          git -C draft add -f "output/auto-${TAG}.mp4"
+          git -C draft commit -q -m "render reel $TAG" || true
+          git -C draft push -q origin "HEAD:refs/heads/drafts/${TAG}"
+
+      - name: verify draft inputs (mp4 + caption)
+        if: steps.gate.outputs.decision == 'proceed'
+        run: |
+          test -s "draft/output/auto-${TAG}.mp4" || { echo "::error::draft mp4 missing"; exit 1; }
+          test -s "draft/output/auto-${TAG}_caption.txt" || { echo "::error::draft caption missing"; exit 1; }
+          echo "draft inputs OK"
+
+      - name: verify public video URL (Buffer must be able to fetch it)
+        if: steps.gate.outputs.decision == 'proceed'
+        run: |
+          REPO="${{ github.repository }}"
+          RAW="https://raw.githubusercontent.com/$REPO/drafts/${TAG}/output/auto-${TAG}.mp4"
+          echo "RAW_URL=$RAW" >> "$GITHUB_ENV"
+          ok=0
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -I "$RAW" || true)
+            [ "$code" = "200" ] && { ok=1; echo "video URL public (HTTP 200)"; break; }
+            echo "attempt $i: HTTP $code"; sleep 8
+          done
+          [ "$ok" = "1" ] || { echo "::error::video URL not publicly reachable: $RAW"; exit 1; }
+
+      - name: queue reel in Buffer (official createPost, addToQueue)
+        if: steps.gate.outputs.decision == 'proceed'
+        env:
+          BUFFER_TOKEN: "${{ secrets.BUFFER_TOKEN }}"     # used here and nowhere else
+        run: |
+          python3 build/buffer_publish.py publish \
+            --tag "$TAG" \
+            --video "$RAW_URL" \
+            --caption "draft/output/auto-${TAG}_caption.txt" \
+            --marker "draft/output/auto-${TAG}.buffer.json" \
+            --yes
+
+      - name: record idempotency marker + label + success comment
+        if: steps.gate.outputs.decision == 'proceed'
+        run: |
+          # persist the marker on the draft branch so re-runs can never double-queue
+          git -C draft config user.name "trend-factory"
+          git -C draft config user.email "factory@metacognition.hq"
+          git -C draft add -f "output/auto-${TAG}.buffer.json"
+          git -C draft commit -q -m "buffer marker $TAG" || true
+          git -C draft push -q origin "HEAD:refs/heads/drafts/${TAG}" || echo "::warning::marker push failed"
+
+          gh label create queued-in-buffer --color 1D76DB \
+            --description "reel queued in Buffer (pending 19:30 Asia/Tehran slot)" 2>/dev/null || true
+          gh issue edit "$ISSUE" --add-label queued-in-buffer
+
+          POST_ID=$(python3 -c "import json;print(json.load(open('draft/output/auto-${TAG}.buffer.json'))['buffer_post_id'])")
+          DUE=$(python3 -c "import json;print(json.load(open('draft/output/auto-${TAG}.buffer.json')).get('due_at') or 'next queue slot')")
+          CHAN=$(python3 -c "import json;print(json.load(open('draft/output/auto-${TAG}.buffer.json')).get('channel_name','?'))")
+          {
+            echo "✅ **Queued in Buffer** — post id \`$POST_ID\`"
+            echo ""
+            echo "- Channel: \`$CHAN\` (Instagram, official Buffer API)"
+            echo "- Due: $DUE (schedule: 19:30 Asia/Tehran)"
+            echo "- Video: $RAW_URL"
+            echo ""
+            echo "The \`queued-in-buffer\` label now blocks any duplicate /publish for this draft."
+            echo "You can see/edit the post in the Buffer dashboard queue."
+          } > /tmp/ok.md
+          gh issue comment "$ISSUE" --body-file /tmp/ok.md
+
+      - name: failure comment on the issue
+        if: failure() && steps.gate.outputs.decision == 'proceed'
+        run: |
+          {
+            echo "❌ **/publish failed** — nothing was published to Instagram."
+            echo ""
+            echo "Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "(No tokens or secrets are printed in the logs.)"
+            echo ""
+            echo "If the reel *was* actually queued in Buffer before the failure, do not re-run blindly —"
+            echo "check the Buffer queue first; the idempotency marker prevents double-posting."
+          } > /tmp/err.md
+          gh issue comment "$ISSUE" --body-file /tmp/err.md || true

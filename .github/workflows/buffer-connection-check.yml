@@ -1,0 +1,25 @@
+# Read-only Buffer connection test. NEVER creates a post.
+# Run it from: GitHub → Actions → "buffer-connection-check" → Run workflow
+# (the workflow file must exist on the default branch to be dispatchable).
+name: buffer-connection-check
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: read-only Buffer check (account → organizations → Instagram channel)
+        env:
+          BUFFER_TOKEN: "${{ secrets.BUFFER_TOKEN }}"
+        run: |
+          python3 build/buffer_publish.py check
+          # expected safe output:
+          #   Buffer connection: OK
+          #   Instagram channel found: metacognition.hq
+          # the token itself is never printed.

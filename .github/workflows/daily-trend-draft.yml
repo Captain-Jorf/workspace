@@ -1,7 +1,13 @@
+# Daily reel factory: trend → script → TTS → timing → render → caption → previews
+# → public draft branch → review issue.
+#
+# This workflow NEVER touches Buffer and NEVER publishes anything.
+# Publishing happens only via publish-approved-draft.yml, after the repo owner
+# comments exactly `/publish` on the daily draft issue.
 name: daily-trend-draft
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 6 * * *"          # 09:30 Asia/Tehran — leaves time before the 19:30 slot
   workflow_dispatch:
     inputs:
       selftest:
@@ -9,29 +15,38 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: daily-trend-draft       # one draft run at a time → no duplicate issues
+  cancel-in-progress: false
+
 jobs:
   draft:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     permissions:
-      contents: write
-      issues: write
+      contents: write            # push the drafts/<date> branch
+      issues: write              # open/update the daily review issue
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: deps
         run: |
           pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator
           bash build/fetch_fonts.sh
           python3 build/logo_make.py
+
       - name: trend radar
         run: python3 build/trend_radar.py --out content/trends.json
+
       - name: draft episode
         run: |
           TAG=$(date -u +%F)
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           python3 build/episode_from_trend.py --top 1 --date "$TAG"
+
       - name: voice + timing + caption + previews
         run: |
           EP="content/episodes/auto-$TAG"
@@ -53,30 +68,62 @@ jobs:
           EP_DIR="$EP" python3 build/timing.py
           python3 build/caption.py "$EP"
           EP_DIR="$EP" python3 build/preview_stills.py
-      - name: draft branch + approval issue
-        env:
-          GH_TOKEN: "${{ github.token }}"
+
+      - name: render full reel (9:16 mp4)
+        run: |
+          EP_DIR="content/episodes/auto-$TAG" python3 build/render.py "out=output/auto-${TAG}.mp4"
+          ls -la "output/auto-${TAG}.mp4"
+
+      - name: push draft branch (public video + previews)
         run: |
           git config user.name "trend-factory"
           git config user.email "factory@metacognition.hq"
           git add -A
-          git commit -q -m "auto draft $TAG" || true
+          git add -f "output/auto-${TAG}.mp4"
+          git commit -q -m "auto draft $TAG (rendered reel)" || echo "nothing to commit"
           git push -qf origin "HEAD:refs/heads/drafts/$TAG" || echo "::warning::draft branch push failed"
-          {
-            echo "## Daily trend reel draft - $TAG"
-            echo ""
-            echo "Episode: content/episodes/auto-$TAG/script.json"
-            echo "Caption: output/auto-$TAG_caption.txt"
-            echo "Previews: output/drafts/ on branch drafts/$TAG"
-            echo ""
-            echo "Review, then comment **/publish** to render + post to Instagram."
-            echo "(Needs repo secrets IG_USER_ID + IG_PAGE_TOKEN; video URL must be public.)"
-          } > /tmp/body.md
-          EXISTING=$(gh issue list --state open --search "in:title trend reel draft $TAG" --json number -q '.[0].number // empty')
+
+      - name: verify public video URL
+        run: |
+          REPO="${{ github.repository }}"
+          RAW="https://raw.githubusercontent.com/$REPO/drafts/$TAG/output/auto-${TAG}.mp4"
+          echo "RAW_URL=$RAW" >> "$GITHUB_ENV"
+          VIDEO_OK=no
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -I "$RAW" || true)
+            if [ "$code" = "200" ]; then VIDEO_OK=yes; echo "video URL public (HTTP 200) after $i attempt(s)"; break; fi
+            echo "attempt $i: HTTP $code — waiting for GitHub CDN…"; sleep 10
+          done
+          echo "VIDEO_OK=$VIDEO_OK" >> "$GITHUB_ENV"
+          if [ "$VIDEO_OK" != "yes" ]; then
+            echo "::warning::video URL not reachable yet: $RAW"
+          fi
+
+      - name: daily review issue (exactly one per date)
+        env:
+          GH_TOKEN: "${{ github.token }}"
+        run: |
+          REPO="${{ github.repository }}"
+          TITLE="trend reel draft $TAG"
+          python3 build/make_issue_body.py --tag "$TAG" --repo "$REPO" \
+            --raw-url "$RAW_URL" --video-ok "$VIDEO_OK" > /tmp/body.md
+
+          gh label create auto-draft --color 0E8A16 --description "auto trend draft" 2>/dev/null || true
+          # dedupe: exact title match over ALL issues (search-index free)
+          EXISTING=$(gh issue list --state all --label auto-draft --limit 200 \
+                       --json number,title | jq -r --arg t "$TITLE" \
+                       '.[] | select(.title == $t) | .number' | head -1)
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" --body-file /tmp/body.md
-            echo "updated existing issue #$EXISTING"
+            echo "draft regenerated — updated existing issue #$EXISTING (no duplicate created)"
           else
-            gh label create auto-draft --color 0E8A16 --description "auto trend draft" 2>/dev/null || true
-            gh issue create --title "trend reel draft $TAG" --body-file /tmp/body.md --label auto-draft
+            gh issue create --title "$TITLE" --body-file /tmp/body.md --label auto-draft
           fi
+
+      - name: confirm no Buffer access happened
+        run: |
+          # hard guarantee: this job never even receives the Buffer token
+          if [ -n "${BUFFER_TOKEN:-}" ]; then
+            echo "::error::BUFFER_TOKEN unexpectedly present in daily draft job"; exit 1
+          fi
+          echo "daily draft finished with zero Buffer credentials and zero Buffer API calls."

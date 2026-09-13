@@ -73,24 +73,31 @@ def main():
              "hook": c["hook"], "cal_sources": c.get("sources", [])[:2]}
         print(f"[ep] FALLBACK: {fallback}")
     topic = t["title"].rstrip(".?!")
-    sentences = [s.strip() + "." for s in wiki_summary(topic) if len(s.strip()) > 40][:2]
+    sentences = [s.strip() + "." for s in wiki_summary(topic) if len(s.strip()) > 40][:4]
     s1 = sentences[0] if sentences else f"Today '{topic}' is everywhere online."
     s2 = sentences[1] if len(sentences) > 1 else "Most posts repeat it; almost nobody checks it."
+    s3 = sentences[2] if len(sentences) > 2 else "The story spreads faster than the evidence behind it."
+    s4 = sentences[3] if len(sentences) > 3 else "By the time people argue about it, nobody remembers the source."
+    # ~15 narration lines ≈ 75–95 s reel (target: 1–2 minutes, 9:16)
     en = [
         [{"t": t["hook"], "scene": "hook"}],
         [{"t": f"Today it is everywhere: {topic}.", "scene": "article"},
          {"t": s1, "scene": "article"}],
         [{"t": s2, "scene": "article"},
+         {"t": s3, "scene": "article"}],
+        [{"t": s4, "scene": "article"},
          {"t": "Here is the part most posts skip.", "scene": "article"}],
-        [{"t": "Same questions as always: how do we know it is true?", "scene": "loop"},
-         {"t": "Plan your sources. Monitor your confidence. Evaluate the evidence.", "scene": "loop"}],
-        [{"t": "That is the metacognition way: watch the thinking, not just the topic.", "scene": "hq"}],
+        [{"t": "So slow down and ask the basic question: how do we know it is true?", "scene": "loop"},
+         {"t": "Who measured it, who paid for it, and what would change their mind?", "scene": "loop"}],
+        [{"t": "Plan your sources before you form an opinion.", "scene": "loop"},
+         {"t": "Monitor your confidence while you read.", "scene": "loop"},
+         {"t": "Evaluate the evidence after the argument, not during it.", "scene": "loop"}],
+        [{"t": "That is the metacognition way: watch the thinking, not just the topic.", "scene": "hq"},
+         {"t": "Every trend is a chance to train the watcher inside your head.", "scene": "hq"}],
         [{"t": "Follow @metacognition.hq — we watch the watchers, daily.", "scene": "cta"}],
     ]
-    flat = [l["t"] for ch in en for l in ch]
-    fa_groups = [[0], [1, 2], [3, 4], [5, 6], [7], [8]]
-    fa_all = translate(flat)
-    fa = [" ".join(fa_all[i] for i in g) for g in fa_groups]
+    # one Persian subtitle line per English line (ep02 convention)
+    fa_chunks = [translate([l["t"] for l in ch]) for ch in en]
     epdir = f"{ROOT}/content/episodes/auto-{tag}"
     os.makedirs(epdir, exist_ok=True)
     script = {
@@ -103,7 +110,8 @@ def main():
                             "title": split2(topic), "subtitle": s1[:90],
                             "author": "TREND RADAR", "affil": "daily free scan",
                             "seal1": "THE TREND", "seal2": tag}},
-        "chunks": [{"id": f"c{i}", "en": ch, "fa": [fa[i - 1]]} for i, ch in enumerate(en, 1)],
+        "chunks": [{"id": f"c{i}", "en": ch, "fa": fa}
+                   for i, (ch, fa) in enumerate(zip(en, fa_chunks), 1)],
         "caption": {
             "hook": t["hook"],
             "intro": s1,
