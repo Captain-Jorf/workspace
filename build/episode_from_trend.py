@@ -20,13 +20,27 @@ def wiki_summary(topic):
 
 
 def translate(lines):
+    """Chain free engines: Google (scrape) → MyMemory (official free API) → give up (EN)."""
+    out = list(lines)
     try:
         from deep_translator import GoogleTranslator
         tr = GoogleTranslator(source="en", target="fa")
-        return [tr.translate(x) or x for x in lines]
+        res = [tr.translate(x) for x in lines]
+        if all(res) and any("\u0600" <= ch <= "\u06FF" for ch in "".join(res)):
+            return [r or l for r, l in zip(res, lines)]
     except Exception as e:
-        print(f"[ep] translation unavailable ({e}) — FA left as EN for human polish")
-        return list(lines)
+        print(f"[ep] google translate failed: {e}")
+    try:
+        from deep_translator import MyMemoryTranslator
+        tr = MyMemoryTranslator(source="en-US", target="fa-IR")
+        res = [tr.translate(x) for x in lines]
+        if all(res) and any("\u0600" <= ch <= "\u06FF" for ch in "".join(res)):
+            print("[ep] translated via MyMemory")
+            return [r or l for r, l in zip(res, lines)]
+    except Exception as e:
+        print(f"[ep] mymemory failed: {e}")
+    print("[ep] FA left as EN for human polish")
+    return out
 
 
 def split2(title, maxlen=26):
