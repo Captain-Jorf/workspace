@@ -1,0 +1,50 @@
+name: daily-trend-draft
+on:
+  schedule:
+    - cron: "0 6 * * *"          # daily 06:00 UTC
+  workflow_dispatch:             # manual "run now"
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    permissions: {contents: write, issues: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: deps
+        run: |
+          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator
+          ./build/fetch_fonts.sh && python3 build/logo_make.py
+      - name: trend radar
+        run: python3 build/trend_radar.py --out content/trends.json
+      - name: draft episode + free TTS + timing + caption
+        run: |
+          TAG=$(date -u +%F)
+          python3 build/episode_from_trend.py --top 1 --date "$TAG"
+          EP=content/episodes/auto-$TAG
+          python3 build/tts_edge.py "$EP"
+          EP_DIR=$EP python3 build/timing.py
+          EP_DIR=$EP python3 build/caption.py "$EP"
+          EP_DIR=$EP python3 build/preview_stills.py
+          echo "TAG=$TAG" >> $GITHUB_ENV
+      - name: publish draft branch + open approval issue
+        env: {GH_TOKEN: ${{ github.token }}}
+        run: |
+          git config user.name "trend-factory"
+          git config user.email "factory@metacognition.hq"
+          git add -A
+          git commit -q -m "auto draft $TAG" || true
+          git push -q origin HEAD:refs/heads/drafts/$TAG || true
+          BODY=$(cat <<MD
+          ## 📈 Daily trend reel draft — $TAG
+          Episode: \`content/episodes/auto-$TAG/script.json\`
+          Caption: \`output/auto-$TAG_caption.txt\`
+          Previews: \`output/drafts/\` (branch \`drafts/$TAG\`)
+
+          Review, then comment **/publish** on this issue to render + post it to Instagram.
+          (Needs repo secrets IG_USER_ID + IG_PAGE_TOKEN; video URL must be public.)
+          MD
+          )
+          gh issue create --title "📈 trend reel draft $TAG" --body "$BODY" --label auto-draft || \
+          gh issue create --title "📈 trend reel draft $TAG" --body "$BODY"

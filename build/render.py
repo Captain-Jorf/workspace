@@ -40,6 +40,8 @@ def draw_web(fr, t, cur_scene):
     ss = R.scene_start
     for a, b in R.edges:
         na, nb = R.nodes[a], R.nodes[b]
+        if ss.get(na["sc"]) is None or ss.get(nb["sc"]) is None:
+            continue
         t0 = max(ss[na["sc"]], ss[nb["sc"]])
         p = ease((t - t0) / 0.9)
         if p <= 0:
@@ -61,8 +63,8 @@ def draw_web(fr, t, cur_scene):
         for i in range(len(pts) - 1):
             d.line([pts[i], pts[i + 1]], fill=(233, 180, 74, al), width=2)
     for k, nd in R.nodes.items():
-        t0 = ss[nd["sc"]]
-        if t < t0:
+        t0 = ss.get(nd["sc"])
+        if t0 is None or t < t0:
             continue
         p = ease((t - t0) / 0.5)
         hot = nd["sc"] == cur_scene

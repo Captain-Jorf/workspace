@@ -1,0 +1,32 @@
+{
+ "fetched": "2026-09-13T11:55:08.485253Z",
+ "trends": [
+  {
+   "source": "google-trends-US",
+   "title": "Why spaced repetition is trending among med students",
+   "url": "https://trends.google.com/x",
+   "traffic": 12000,
+   "score": 9,
+   "pillar": "LEARN",
+   "hook": "Why is everyone talking about why spaced repetition is trending among med students — and should you?"
+  },
+  {
+   "source": "hackernews",
+   "title": "Overconfidence bias in startup forecasting",
+   "url": "https://news.ycombinator.com/x",
+   "traffic": 400,
+   "score": 7,
+   "pillar": "MIND",
+   "hook": "Why is everyone talking about overconfidence bias in startup forecasting — and should you?"
+  },
+  {
+   "source": "reddit/r/MachineLearning",
+   "title": "LLM agents that verbalize self-reflection beat baseline",
+   "url": "https://reddit.com/x",
+   "traffic": 900,
+   "score": 6,
+   "pillar": "AI",
+   "hook": "Why is everyone talking about llm agents that verbalize self-reflection beat baseline — and should you?"
+  }
+ ]
+}
