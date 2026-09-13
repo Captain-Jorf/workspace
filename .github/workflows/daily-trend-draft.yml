@@ -8,8 +8,6 @@ on:
         description: "silent audio instead of edge-tts (dry run)"
         type: boolean
         default: false
-  push:
-    branches: [main]
 
 jobs:
   draft:
