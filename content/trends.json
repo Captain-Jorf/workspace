@@ -1,35 +1,155 @@
 {
- "fetched": "2026-09-13T12:12:42.216756Z",
+ "fetched": "2026-09-14T12:12:08.872433Z",
  "trends": [
   {
    "source": "google-trends-US",
-   "title": "Why spaced repetition is trending among med students",
-   "url": "https://trends.google.com/x",
-   "traffic": 12000,
+   "title": "crwd stock",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 9,
-   "pillar": "LEARN",
-   "hook": "Why is everyone talking about why spaced repetition is trending among med students — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about crwd stock — and should you?"
   },
   {
-   "source": "hackernews",
-   "title": "Overconfidence bias in startup forecasting",
-   "url": "https://news.ycombinator.com/x",
-   "traffic": 400,
+   "source": "google-trends-US",
+   "title": "deportation",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 7,
-   "pillar": "MIND",
-   "hook": "Why is everyone talking about overconfidence bias in startup forecasting — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about deportation — and should you?"
   },
   {
-   "source": "reddit/r/MachineLearning",
-   "title": "LLM agents that verbalize self-reflection beat baseline",
-   "url": "https://reddit.com/x",
-   "traffic": 900,
+   "source": "google-trends-US",
+   "title": "pluribus",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
    "neg": 0,
-   "score": 6,
-   "pillar": "AI",
-   "hook": "Why is everyone talking about llm agents that verbalize self-reflection beat baseline — and should you?"
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about pluribus — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "iren stock",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about iren stock — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "gta 6 stephen root",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about gta 6 stephen root — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "hugging face incident",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about hugging face incident — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "michael j fox",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about michael j fox — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "oracle layoffs",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about oracle layoffs — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "mta",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about mta — and should you?"
+  },
+  {
+   "source": "google-trends-US",
+   "title": "angel reese fiba world cup stats",
+   "url": "https://trends.google.com/trending/rss?geo=US",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about angel reese fiba world cup stats — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "jamie dimon",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about jamie dimon — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "the walking dead",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about the walking dead — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "illegal dumping",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about illegal dumping — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "daniel farke",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about daniel farke — and should you?"
+  },
+  {
+   "source": "google-trends-GB",
+   "title": "michael j. fox",
+   "url": "https://trends.google.com/trending/rss?geo=GB",
+   "traffic": 0,
+   "neg": 0,
+   "score": -3,
+   "pillar": "LIFE",
+   "hook": "Why is everyone talking about michael j. fox — and should you?"
   }
  ]
 }

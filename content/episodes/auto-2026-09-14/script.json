@@ -1,0 +1,151 @@
+{
+ "meta": {
+  "title": "Auto draft 2026-09-14 — Self-explanation",
+  "note": "today's trends scored below relevance floor (-3 < 2); using evergreen calendar topic #19",
+  "handle": "@metacognition.hq",
+  "fps": 30,
+  "w": 1080,
+  "h": 1920,
+  "gap": 0.34,
+  "lead": 0.55,
+  "tail": 1.1
+ },
+ "scene_tags": {
+  "hook": "01 · THE QUESTION",
+  "article": "02 · THE TREND",
+  "loop": "03 · THE LENS",
+  "hq": "04 · THE HQ",
+  "cta": "04 · THE HQ"
+ },
+ "props": {
+  "paper": {
+   "journal": "CONTENT CALENDAR (EVERGREEN)",
+   "year": "2026",
+   "title": [
+    "Self-explanation"
+   ],
+   "subtitle": "Today 'Self-explanation' is everywhere online.",
+   "author": "TREND RADAR",
+   "affil": "daily free scan",
+   "seal1": "THE TREND",
+   "seal2": "2026-09-14"
+  }
+ },
+ "chunks": [
+  {
+   "id": "c1",
+   "en": [
+    {
+     "t": "Why do students who explain out loud learn 2x deeper?",
+     "scene": "hook"
+    }
+   ],
+   "fa": [
+    "چرا دانش‌آموزانی که با صدای بلند توضیح می‌دهند، دو برابر عمیق‌تر یاد می‌گیرند؟"
+   ]
+  },
+  {
+   "id": "c2",
+   "en": [
+    {
+     "t": "Today it is everywhere: Self-explanation.",
+     "scene": "article"
+    },
+    {
+     "t": "Today 'Self-explanation' is everywhere online.",
+     "scene": "article"
+    }
+   ],
+   "fa": [
+    "امروز همه جا هست: توضیح واضحات. امروزه «توضیح خود» همه جا در فضای آنلاین وجود دارد."
+   ]
+  },
+  {
+   "id": "c3",
+   "en": [
+    {
+     "t": "Most posts repeat it; almost nobody checks it.",
+     "scene": "article"
+    },
+    {
+     "t": "Here is the part most posts skip.",
+     "scene": "article"
+    }
+   ],
+   "fa": [
+    "بیشتر پست‌ها این را تکرار می‌کنند؛ تقریباً هیچ‌کس آن را بررسی نمی‌کند. این بخشی است که اکثر پست‌ها از آن صرف نظر می‌کنند."
+   ]
+  },
+  {
+   "id": "c4",
+   "en": [
+    {
+     "t": "Same questions as always: how do we know it is true?",
+     "scene": "loop"
+    },
+    {
+     "t": "Plan your sources. Monitor your confidence. Evaluate the evidence.",
+     "scene": "loop"
+    }
+   ],
+   "fa": [
+    "همان سوالات همیشگی: از کجا بفهمیم که این درست است؟ منابع خود را برنامه‌ریزی کنید. میزان اطمینان خود را بررسی کنید. شواهد را ارزیابی کنید."
+   ]
+  },
+  {
+   "id": "c5",
+   "en": [
+    {
+     "t": "That is the metacognition way: watch the thinking, not just the topic.",
+     "scene": "hq"
+    }
+   ],
+   "fa": [
+    "این روش فراشناخت است: به تفکر توجه کنید، نه فقط به موضوع."
+   ]
+  },
+  {
+   "id": "c6",
+   "en": [
+    {
+     "t": "Follow @metacognition.hq — we watch the watchers, daily.",
+     "scene": "cta"
+    }
+   ],
+   "fa": [
+    "@metacognition.hq را دنبال کنید - ما روزانه مراقب تماشاگران هستیم."
+   ]
+  }
+ ],
+ "caption": {
+  "hook": "Why do students who explain out loud learn 2x deeper?",
+  "intro": "Today 'Self-explanation' is everywhere online.",
+  "sections": [
+   {
+    "icon": "✦",
+    "title": "WATCH IT LIKE A METACOGNITIVIST",
+    "lines": [
+     "Most posts repeat it; almost nobody checks it.",
+     "Plan your sources → monitor your confidence → evaluate the evidence"
+    ]
+   }
+  ],
+  "sources": [
+   "Chi, Bassok, Lewis, Reimann & Glaser (1989), Cognitive Science 13(2)",
+   "Fiorella & Mayer (2016), Educational Psychologist"
+  ],
+  "ctas": [
+   "↗ SHARE this before the trend shares misinformation.",
+   "💬 What should we watch next? Comment it.",
+   "Follow @metacognition.hq — the watcher trains here."
+  ],
+  "hashtags": [
+   "#metacognition",
+   "#trendwatch",
+   "#selfexplanation",
+   "#cognitivescience",
+   "#criticalthinking",
+   "#metacognitionhq"
+  ]
+ }
+}
