@@ -416,16 +416,37 @@
   },
   "min_evidence_tier_for_claims": "B",
   "require_evidence_for_claim_words": [
-   "study",
-   "studies",
-   "research",
+   "studies show",
+   "study shows",
+   "one study",
+   "studies found",
+   "study found",
+   "research shows",
+   "research found",
+   "research says",
+   "according to research",
    "researchers",
-   "experiment",
-   "found",
-   "shows",
-   "showed",
-   "evidence",
-   "meta-analysis"
+   "scientists",
+   "science says",
+   "science shows",
+   "experiment showed",
+   "experiments show",
+   "in an experiment",
+   "meta-analysis",
+   "peer-reviewed",
+   "the data shows",
+   "data show",
+   "proven",
+   "proves",
+   "clinically",
+   "psychologists found",
+   "neuroscience shows",
+   "brain scans",
+   "the evidence shows",
+   "evidence suggests",
+   "studies suggest",
+   "published in",
+   "journal"
   ],
   "forbidden": [
    "fabricated url",
@@ -435,7 +456,8 @@
    "generalizing a small study",
    "hiding limitations",
    "preprint stated as settled fact"
-  ]
+  ],
+  "_claim_words_comment": "Phrases that assert empirical backing. Bare verbs like 'study' (a study session), 'found' (you've found the gap) or 'shows' (the gap shows up) are everyday English and are not claims."
  },
  "cta_policy": {
   "allowed_types": [

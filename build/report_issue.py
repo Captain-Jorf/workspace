@@ -124,6 +124,10 @@ def render_body(tag, st, repo, run_url):
                 role = "evidence" if s.get("role") == "evidence" else "discovery only"
                 lab = s.get("label", "")
                 L.append(f"- **{role}** (tier {s.get('tier', '?')}): {lab}" + (f" — {s['url']}" if s.get("url") else ""))
+            if any(s.get("role") == "evidence" and not s.get("url") for s in script["sources"]):
+                L.append("<sub>Evidence entries are bibliographic citations from the editorial calendar (curated by "
+                         "the owner); they are not fetched or verified automatically. The narration is written in "
+                         "limited-claims style — no figures, no 'studies show'.</sub>")
             L.append("")
         L.append("### Previews")
         L.append(" ".join(f'<img src="{blob_url(repo, branch, f"{prev_dir}/preview_{n}.jpg")}" width="180">'

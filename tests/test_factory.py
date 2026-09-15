@@ -696,3 +696,30 @@ class WordBoundaryTests(unittest.TestCase):
         tl = common.load_json(os.path.join(ep, "timing.json"))
         self.assertEqual(tl["word_timing"]["measured_lines"], 0)
         self.assertTrue(all(l["timing"] == "estimated" for c in tl["chunks"] for l in c["lines"]))
+
+
+class ClaimPhraseTests(unittest.TestCase):
+    """Claim detection is phrase-based: everyday verbs never trigger it, research assertions always do."""
+
+    def _blocking(self, sentence, sources=None, mode="calendar"):
+        sc = build_script()
+        sc["sources"] = sources if sources is not None else []
+        sc["meta"]["evidence_mode"] = mode
+        sc["chunks"][2]["en"][0]["t"] = sentence
+        r = qa.Report(POL)
+        qa.check_sources(r, sc, {}, POL, skip_network=True)
+        return [b for b in r.blocking if "claim" in b]
+
+    def test_everyday_words_are_not_claims(self):
+        for s in ("Try this after any study session.", "You've just found where to look.",
+                  "The gap only shows up when you explain.", "The mood is higher than the evidence."):
+            self.assertEqual(self._blocking(s), [], s)
+
+    def test_research_assertions_without_evidence_block(self):
+        for s in ("Studies show experts skip steps.", "Researchers found this in an experiment.",
+                  "This is proven by neuroscience.", "It was published in a journal last year."):
+            self.assertTrue(self._blocking(s), s)
+
+    def test_trend_topics_never_make_research_claims_even_with_sources(self):
+        src = [{"label": "x", "url": "https://arxiv.org/abs/1", "tier": "A", "role": "evidence"}]
+        self.assertTrue(self._blocking("Studies show experts skip steps.", src, mode="limited-claims"))
