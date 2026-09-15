@@ -198,6 +198,10 @@ def render_body(tag, st, repo, run_url):
                               for n in ("start", "middle", "end")))
         L.append("")
         L.append("Nothing was sent to Buffer. The next scheduled run will try a fresh topic.")
+    if st.get("notes"):
+        L.append("")
+        L.append("### Operator notes")
+        L += [f"- {common.scrub_secrets(str(n))}" for n in st["notes"]]
     L.append("")
     L.append(f"<sub>content_id: `{cid}` · run_id: `{st.get('run_id', 'local')}` · generated {common.utc_now()} UTC · "
              f"Buffer token never leaves the Actions secret store.</sub>")

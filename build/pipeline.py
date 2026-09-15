@@ -317,6 +317,14 @@ def record(a):
     return 0
 
 
+def note(a):
+    """Append a human-readable note to the state file (shown in the daily issue for any status)."""
+    st = load_state(a.tag)
+    st.setdefault("notes", []).append(common.scrub_secrets(a.text)[:500])
+    save_state(a.tag, st)
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -332,6 +340,9 @@ def main():
     p.add_argument("--tag", required=True)
     p.add_argument("--public-url", required=True)
     p.add_argument("--skip-network", action="store_true")
+    p = sub.add_parser("note")
+    p.add_argument("--tag", required=True)
+    p.add_argument("--text", required=True)
     p = sub.add_parser("record")
     p.add_argument("--tag", required=True)
     p.add_argument("--status", required=True)
@@ -346,6 +357,8 @@ def main():
         sys.exit(verify(a))
     if a.cmd == "record":
         sys.exit(record(a))
+    if a.cmd == "note":
+        sys.exit(note(a))
 
 
 if __name__ == "__main__":

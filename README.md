@@ -57,7 +57,7 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 | **1** | **Actions → buffer-connection-check → Run workflow** — فقط خواندن: حساب، سازمان، کانال دقیق، وضعیت صف. هیچ پستی ساخته نمی‌شود | Secret `BUFFER_TOKEN` |
 | **2** | **Actions → daily-trend-draft → Run workflow** با `dry_run = true` (پیش‌فرض): ریل کامل + ناظر + Issue با پیش‌نمایش؛ `createPost` صدا زده نمی‌شود | مرحلهٔ ۱ سبز |
 | **3** | یک تست کنترل‌شدهٔ صف — فقط با تأیید صریح مالک: `AUTO_PUBLISH_ENABLED=true` + اجرای دستی با `dry_run = false` | Issue مرحلهٔ ۲ بازبینی شده |
-| **4** | فعال‌سازی: `AUTO_PUBLISH_ENABLED=true` بماند؛ کرون `0 6 * * *` (۰۹:۳۰ تهران) هر روز حداکثر **یک** پست به صف می‌فرستد؛ Buffer ۱۹:۳۰ منتشر می‌کند | ورک‌فلو روی شاخهٔ پیش‌فرض merge شده |
+| **4** | فعال‌سازی: `AUTO_PUBLISH_ENABLED=true` بماند؛ کرون `23 3 * * *` (۰۶:۵۳ تهران؛ GitHub معمولاً چند ساعت تأخیر دارد) هر روز حداکثر **یک** پست به صف می‌فرستد؛ Buffer ۱۹:۳۰ منتشر می‌کند | ورک‌فلو روی شاخهٔ پیش‌فرض merge شده |
 
 > کرون فقط روی **شاخهٔ پیش‌فرض** اجرا می‌شود؛ تا زمانی که PR merge نشده، فقط اجرای دستی از
 > شاخهٔ PR ممکن است (در صفحهٔ Run workflow شاخه را انتخاب کنید).

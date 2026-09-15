@@ -70,7 +70,10 @@ class DailyWorkflowTests(unittest.TestCase):
     def test_schedule_and_dispatch_only(self):
         t = triggers(self.wf)
         self.assertEqual(set(t), {"schedule", "workflow_dispatch"})
-        self.assertEqual(t["schedule"][0]["cron"], "0 6 * * *")       # 09:30 Tehran, hours before 16:00 UTC
+        cron = t["schedule"][0]["cron"]
+        minute, hour = cron.split()[:2]
+        self.assertNotEqual(minute, "0", "top-of-the-hour schedules are delayed the most by GitHub")
+        self.assertLessEqual(int(hour), 6, "must leave many hours of margin before the 16:00 UTC slot")
 
     def test_dry_run_input_defaults_true(self):
         inp = triggers(self.wf)["workflow_dispatch"]["inputs"]["dry_run"]

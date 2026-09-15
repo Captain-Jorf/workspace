@@ -17,7 +17,8 @@
 name: daily-trend-draft
 on:
   schedule:
-    - cron: "0 6 * * *"          # 09:30 Asia/Tehran → finishes hours before the 19:30 Buffer slot
+    - cron: "23 3 * * *"         # 06:53 Asia/Tehran. GitHub delays schedules by hours (observed 5-6 h for "0 6");
+                                 # an off-the-hour minute + a 12.5 h margin to the 16:00 UTC (19:30 Tehran) slot.
   workflow_dispatch:
     inputs:
       dry_run:
@@ -201,12 +202,17 @@ jobs:
           git add content/editorial_memory.json content/performance_history.json
           git add -f "output/auto-${TAG}_manifest.json" 2>/dev/null || true
           git commit -q -m "memory: reel $TAG → $STATUS" || echo "nothing to commit"
+          pushed=no
           for i in 1 2 3; do
             if git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}"; then
-              echo "memory pushed"; break
+              echo "memory pushed"; pushed=yes; break
             fi
             echo "push attempt $i failed — retrying"; sleep 5
           done
+          if [ "$pushed" != "yes" ]; then
+            echo "::warning::editorial memory could not be pushed to ${GITHUB_REF_NAME} (branch protection?) — topic de-duplication for the next run is at risk"
+            python3 build/pipeline.py note --tag "$TAG" --text "⚠️ editorial memory / manifest could NOT be pushed to \`${GITHUB_REF_NAME}\` (branch protection or race). Tomorrow's topic de-duplication may not see today's reel; allow the workflow to push to the default branch."
+          fi
 
       - name: daily report issue (exactly one per content id)
         if: always()
