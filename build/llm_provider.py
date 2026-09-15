@@ -1,47 +1,393 @@
 """LLM Provider Interface for @metacognition.hq — English-only, Technology × Metacognition.
 
 Providers:
-- GitHubModelsProducer: uses GitHub Models (GITHUB_TOKEN, models: read permission)
-- GitHubModelsReviewer: independent reviewer, preferably different model
+- GroqProducer: Groq Free Tier (GROQ_API_KEY), models auto-discovered via /models
+- GroqReviewer: independent reviewer, preferably a different model
 - StaticEnglishFallback: curated English playbooks filtered to tech domain
 
-No billing, no paid usage, no external secret. Uses secrets.GITHUB_TOKEN.
+No billing, no paid endpoints, no auto-upgrade. The free tier is rate-limited
+without SLA; on quota/auth/outage failure the daily pipeline falls back to
+static English (generation_mode=static-fallback).
+
+Historical note: GitHub Models was retired on 2026-07-30 and removed as a
+provider (see docs/groq_migration.md). Nothing here uses GITHUB_TOKEN, the
+models: read scope, or the retired endpoints.
 
 Max daily requests: 1 producer, 1 reviewer, 1 revision, 1 final reviewer.
-Quota/429/outage → limited retry then static fallback.
+429 → honor Retry-After, max 2 short retries, then static fallback.
+401/403 → no retry, authentication error recorded, static fallback.
+5xx/timeout → limited retry, then static fallback.
 
 Evidence packet is sanitized — web content is untrusted and must not inject prompt instructions.
 """
 import json
 import os
 import re
+import socket
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 common.assert_content_language_en()  # fail-closed EN-only
 
-# Supported models in GitHub Models (as of 2025-2026)
-# Checked via https://github.com/marketplace/models/catalog
-SUPPORTED_MODELS = [
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4o-mini-2024-07-18",
-    "meta/llama-3.3-70b-instruct",
-    "meta/llama-3.1-70b-instruct",
-    "mistral-ai/mistral-large-2407",
-    "mistral-ai/mistral-small-2503",
-    "microsoft/phi-4",
-    "cohere/command-r-plus",
-    "deepseek/deepseek-v3-0324",
-    "deepseek/deepseek-r1",
+# Official Groq OpenAI-compatible API.
+# Docs: https://console.groq.com/docs/api-reference
+GROQ_HOSTNAME = "api.groq.com"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODELS_PATH = "/models"
+GROQ_CHAT_PATH = "/chat/completions"
+
+# Test-only override (local HTTP stub servers). Never set in workflows.
+_TEST_BASE_ENV = "GROQ_BASE_URL"
+
+# Retry policy: 1 initial attempt + 2 retries, exponential backoff.
+MAX_ATTEMPTS = 3
+RETRY_BASE_SECONDS = 1.0
+MAX_429_RETRIES = 2
+RETRY_AFTER_CAP_SECONDS = 30
+REQUEST_TIMEOUT = 60
+MODELS_TIMEOUT = 20
+
+AUTO_MODEL = "auto"
+
+# Candidate instruction-capable text models, ordered by producer preference
+# (strongest first). ONLY models confirmed by the authenticated /models call
+# are ever used — this list is intersected with live discovery, never trusted
+# blindly. Verified against Groq docs (tool-use table + models API), 2026-09.
+GROQ_CANDIDATE_MODELS = [
+    "openai/gpt-oss-120b",
+    "moonshotai/kimi-k2-instruct",
+    "qwen/qwen3-32b",
+    "qwen/qwen3.6-27b",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-20b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "llama-3.1-8b-instant",
 ]
 
-DEFAULT_PRODUCER_MODEL = os.environ.get("PRODUCER_MODEL", "openai/gpt-4o-mini")
-DEFAULT_REVIEWER_MODEL = os.environ.get("REVIEWER_MODEL", "meta/llama-3.3-70b-instruct")
+DEFAULT_PRODUCER_MODEL = os.environ.get("PRODUCER_MODEL", AUTO_MODEL)
+DEFAULT_REVIEWER_MODEL = os.environ.get("REVIEWER_MODEL", AUTO_MODEL)
+
+# ---------------------------------------------------------------- fail-closed helpers
+
+def is_mock_enabled():
+    """Mock is allowed ONLY with the explicit flag MOCK_GROQ=1.
+
+    Missing key, DNS failure, HTTP error, invalid model or malformed JSON must
+    NEVER silently switch to mock in real mode. Default: False.
+    """
+    return os.environ.get("MOCK_GROQ") == "1"
+
+
+def get_base_url():
+    """Official Groq base URL. Test-only override via GROQ_BASE_URL."""
+    override = os.environ.get(_TEST_BASE_ENV, "").strip().rstrip("/")
+    return override or GROQ_BASE_URL
+
+
+def get_models_url():
+    return get_base_url() + GROQ_MODELS_PATH
+
+
+def get_chat_url():
+    return get_base_url() + GROQ_CHAT_PATH
+
+
+def get_hostname():
+    """Hostname of the endpoint in use. Safe to log (no secret, no key)."""
+    try:
+        return urllib.parse.urlparse(get_base_url()).hostname or GROQ_HOSTNAME
+    except Exception:
+        return GROQ_HOSTNAME
+
+
+def get_groq_key():
+    """Return the API key or ''. Callers must NEVER log its value."""
+    return os.environ.get("GROQ_API_KEY", "")
+
+
+def require_groq_key():
+    """Raise (nonzero in workflows) when no key is available. Never logs it."""
+    key = get_groq_key()
+    if not key:
+        raise RuntimeError(
+            "GROQ_API_KEY not set — real Groq call impossible "
+            "(mock requires explicit MOCK_GROQ=1)"
+        )
+    return key
+
+
+def validate_candidate_model(model):
+    """Fail-fast check: 'auto' or a known candidate ID. Live /models is authoritative."""
+    if model == AUTO_MODEL:
+        return model
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("Invalid model: empty model ID")
+    if model not in GROQ_CANDIDATE_MODELS:
+        raise ValueError(
+            f"Invalid model ID: {model!r} — not a known Groq candidate "
+            f"({len(GROQ_CANDIDATE_MODELS)} known IDs, or {AUTO_MODEL!r})"
+        )
+    return model
+
+
+def resolve_hostname(hostname=None, timeout=10):
+    """DNS diagnostic without credentials. Returns (ok, detail).
+
+    Retries transient failures up to 2 times with exponential backoff.
+    Only the hostname (safe) is ever reported, never IPs or keys.
+    """
+    hostname = hostname or get_hostname()
+    last_err = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            infos = socket.getaddrinfo(hostname, 443)
+            return True, f"DNS resolution: OK host={hostname} records={len(infos)} attempt={attempt}"
+        except Exception as e:  # noqa: BLE001 — diagnostic, report type only
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    return False, f"DNS resolution: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
+
+
+def https_probe(timeout=15):
+    """Unauthenticated HTTPS/TLS reachability check (no Authorization header).
+
+    Any HTTP response (even 401/4xx/5xx) proves DNS+TLS work. Returns
+    (reachable, http_status_or_None, detail). Safe to log.
+    """
+    url = get_models_url()
+    hostname = get_hostname()
+    last_err = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            req = urllib.request.Request(url, method="GET")  # no auth header
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return True, r.status, f"HTTPS probe: OK host={hostname} status={r.status} attempt={attempt}"
+            except urllib.error.HTTPError as e:
+                # An HTTP status code IS reachability (server answered).
+                return True, e.code, f"HTTPS probe: OK host={hostname} status={e.code} attempt={attempt}"
+        except Exception as e:  # noqa: BLE001 — URLError/timeout/SSL
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    return False, None, f"HTTPS probe: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
+
+
+def parse_retry_after(headers):
+    """Parse Retry-After (seconds) from response headers. Returns 0 if absent."""
+    if not headers:
+        return 0
+    try:
+        raw = headers.get("Retry-After", "")
+    except Exception:
+        return 0
+    try:
+        return max(0, int(str(raw).strip().split(",")[0]))
+    except (ValueError, TypeError):
+        return 0
+
+
+def _read_error_body(e):
+    try:
+        return common.scrub_secrets(e.read().decode("utf-8", "replace")[:200])
+    except Exception:
+        return ""
+
+
+def groq_request(method, url, payload=None, timeout=60):
+    """Authenticated Groq request with the free-tier retry policy.
+
+    - 401/403: no retry, authentication error.
+    - 429: honor Retry-After, max 2 short retries, then raise.
+    - 5xx/timeout/network: limited retry (1+2), then raise.
+    - other 4xx: no retry.
+    Returns (parsed_json, meta). Messages carry only safe fields.
+    """
+    key = require_groq_key()
+    hostname = get_hostname()
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    last_err = ""
+    rate_retries = 0
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                status = getattr(r, "status", 200)
+                try:
+                    resp = json.load(r)
+                except Exception:
+                    raise RuntimeError(
+                        f"Groq invalid response envelope: host={hostname} "
+                        f"http_status={status} attempt={attempt}"
+                    )
+                return resp, {"mock": False, "host": hostname,
+                              "http_status": status, "attempt": attempt}
+        except urllib.error.HTTPError as e:
+            detail = _read_error_body(e)
+            if e.code in (401, 403):
+                raise RuntimeError(
+                    f"Groq HTTP {e.code}: authentication failed host={hostname} "
+                    f"attempt={attempt} detail={detail}"
+                )
+            if e.code == 429:
+                rate_retries += 1
+                if rate_retries > MAX_429_RETRIES or attempt >= MAX_ATTEMPTS:
+                    raise RuntimeError(
+                        f"Groq quota 429 exhausted: host={hostname} "
+                        f"attempts={attempt} detail={detail}"
+                    )
+                wait = parse_retry_after(e.headers) or RETRY_BASE_SECONDS * (2 ** (rate_retries - 1))
+                time.sleep(min(wait, RETRY_AFTER_CAP_SECONDS))
+                continue
+            if 500 <= e.code <= 599:
+                last_err = f"HTTP {e.code}"
+                if attempt < MAX_ATTEMPTS:
+                    time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+                    continue
+                raise RuntimeError(
+                    f"Groq HTTP {e.code}: host={hostname} "
+                    f"attempts={attempt} detail={detail}"
+                )
+            raise RuntimeError(
+                f"Groq HTTP {e.code}: host={hostname} "
+                f"attempt={attempt} detail={detail}"
+            )
+        except RuntimeError:
+            raise
+        except Exception as e:  # noqa: BLE001 — URLError/DNS/timeout/SSL: retry 2x
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    raise RuntimeError(
+        f"Groq call failed: {last_err} host={hostname} attempts={MAX_ATTEMPTS}"
+    )
+
+
+def discover_models(timeout=MODELS_TIMEOUT):
+    """Authenticated GET /models. Returns (ids, meta). Raises on any failure."""
+    hostname = get_hostname()
+    resp, meta = groq_request("GET", get_models_url(), timeout=timeout)
+    try:
+        ids = [m["id"] for m in resp.get("data", [])
+               if isinstance(m, dict) and m.get("id")]
+    except Exception:
+        ids = []
+    if not ids:
+        raise RuntimeError(
+            f"Groq model discovery returned no models: host={hostname} "
+            f"http_status={meta.get('http_status', '?')}"
+        )
+    meta["models"] = ids
+    return ids, meta
+
+
+def select_models(discovered_ids, producer_want=None, reviewer_want=None):
+    """Intersect candidates with live /models; pick producer + reviewer.
+
+    - 'auto' producer → strongest matched candidate.
+    - 'auto' reviewer → strongest matched candidate DIFFERENT from producer
+      (reuses producer only when a single candidate is available).
+    - explicit IDs must be known candidates AND present in discovery.
+    Returns (producer, reviewer, report). Report is non-sensitive.
+    """
+    producer_want = producer_want or DEFAULT_PRODUCER_MODEL
+    reviewer_want = reviewer_want or DEFAULT_REVIEWER_MODEL
+    discovered = list(discovered_ids or [])
+    dset = set(discovered)
+    matched = [c for c in GROQ_CANDIDATE_MODELS if c in dset]
+
+    if producer_want == AUTO_MODEL:
+        if not matched:
+            raise ValueError(
+                f"Groq model discovery: none of the {len(GROQ_CANDIDATE_MODELS)} "
+                f"candidate models are available ({len(discovered)} discovered)"
+            )
+        producer = matched[0]
+        p_reason = (f"auto: strongest available candidate "
+                    f"({len(matched)} matched of {len(discovered)} discovered)")
+    else:
+        validate_candidate_model(producer_want)
+        if producer_want not in dset:
+            raise ValueError(
+                f"Groq model unavailable: {producer_want!r} not in discovered "
+                f"/models ({len(discovered)} discovered)"
+            )
+        producer = producer_want
+        p_reason = "explicit PRODUCER_MODEL confirmed by /models"
+
+    if reviewer_want == AUTO_MODEL:
+        others = [m for m in matched if m != producer]
+        if others:
+            reviewer = others[0]
+            r_reason = "auto: strongest available candidate different from producer"
+        else:
+            reviewer = producer
+            r_reason = "auto: only one candidate available; reviewer reuses producer model"
+    else:
+        validate_candidate_model(reviewer_want)
+        if reviewer_want not in dset:
+            raise ValueError(
+                f"Groq model unavailable: {reviewer_want!r} not in discovered "
+                f"/models ({len(discovered)} discovered)"
+            )
+        reviewer = reviewer_want
+        r_reason = "explicit REVIEWER_MODEL confirmed by /models"
+
+    report = {
+        "producer_model": producer,
+        "reviewer_model": reviewer,
+        "selected_at_utc": common.utc_now(),
+        "reason": f"producer: {p_reason}; reviewer: {r_reason}",
+        "discovered_count": len(discovered),
+        "candidates_matched": matched,
+    }
+    return producer, reviewer, report
+
+
+def call_groq_chat(prompt, model, max_tokens=1200, temperature=0.7, timeout=REQUEST_TIMEOUT):
+    """Real Groq chat completion. Fail-closed, never mock.
+
+    Returns (content, meta). Raises on: missing key, empty model, network
+    failure (after retries), HTTP error, invalid/empty envelope.
+    """
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("Invalid model: empty model ID")
+    hostname = get_hostname()
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant for @metacognition.hq, English-only, technology×metacognition. Output valid JSON only."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    resp, meta = groq_request("POST", get_chat_url(), payload, timeout=timeout)
+    try:
+        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+    except Exception:
+        content = ""
+    if not isinstance(content, str) or not content:
+        raise RuntimeError(
+            f"Groq empty message content: host={hostname} model={model} "
+            f"http_status={meta.get('http_status', '?')} attempt={meta.get('attempt', '?')}"
+        )
+    meta.update({"model": model, "content_len": len(content)})
+    if isinstance(resp, dict):
+        meta["envelope"] = resp
+    return content, meta
+
 
 def sanitize_untrusted(text, max_len=800):
     """Sanitize untrusted web content to prevent prompt injection."""
@@ -55,6 +401,7 @@ def sanitize_untrusted(text, max_len=800):
     text = text[:max_len]
     # Escape JSON-breaking chars will be handled by json dumps
     return text.strip()
+
 
 def build_evidence_packet(topic, policy, recent_topics=None):
     """Build limited sanitized evidence packet for LLM producer."""
@@ -93,6 +440,7 @@ def build_evidence_packet(topic, policy, recent_topics=None):
     }
     return packet
 
+
 # JSON schema for producer output
 PRODUCER_SCHEMA = {
     "title": "string",
@@ -126,70 +474,103 @@ REVIEWER_SCHEMA = {
     "blocking_errors": "list"
 }
 
-def call_github_models(prompt, model, max_tokens=1200, temperature=0.7, timeout=60):
-    """Call GitHub Models API using GITHUB_TOKEN. Returns parsed JSON or raises."""
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
-    if not token:
-        raise RuntimeError("GITHUB_TOKEN not set — cannot call GitHub Models (use mock for local tests)")
 
-    # Endpoint — GitHub Models inference (OpenAI compatible)
-    # Docs: https://docs.github.com/en/github-models/use-github-models/prototyping-with-ai-models
-    url = "https://models.inference.ai.azure.com/chat/completions"
-    # Alternative endpoint that also works: https://models.github.ai/inference/chat/completions
-    # We try primary, fallback to secondary on failure
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    body = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant for @metacognition.hq, English-only, technology×metacognition. Output valid JSON only."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+def _parse_json_content(content, who, model):
+    """Parse (possibly fenced) JSON object. Safe errors, never echoes content."""
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            resp = json.load(r)
-            content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return content, resp
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            raise RuntimeError(f"GitHub Models quota 429: {e.read().decode()[:200]}")
-        # Try secondary endpoint
-        try:
-            url2 = "https://models.github.ai/inference/chat/completions"
-            req2 = urllib.request.Request(url2, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req2, timeout=timeout) as r:
-                resp = json.load(r)
-                content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-                return content, resp
-        except Exception as e2:
-            raise RuntimeError(f"GitHub Models HTTP {e.code}: {e.read().decode()[:200]} | fallback {e2}")
+        m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
+        if m:
+            content = m.group(1)
+        parsed = json.loads(content)
+        if not isinstance(parsed, dict):
+            raise ValueError("top-level JSON is not an object")
+        return parsed
     except Exception as e:
-        raise RuntimeError(f"GitHub Models call failed: {type(e).__name__}: {e}")
+        raise RuntimeError(
+            f"{who} returned malformed JSON: {type(e).__name__} "
+            f"model={model} content_len={len(content)}"
+        )
 
-class GitHubModelsProducer:
+
+class LLMProvider:
+    """Generic provider base: model handling + explicit-mock gating.
+
+    Subclasses implement produce()/review(). Real calls resolve 'auto' via
+    live /models discovery; explicit IDs must be known candidates confirmed
+    by discovery.
+    """
+    kind = "llm"
+
     def __init__(self, model=None):
-        self.model = model or DEFAULT_PRODUCER_MODEL
-        # Validate model is in supported list, else fallback
-        if self.model not in SUPPORTED_MODELS:
-            # Try to find closest
-            for m in SUPPORTED_MODELS:
-                if self.model.split("/")[-1] in m:
-                    self.model = m
-                    break
-            else:
-                self.model = SUPPORTED_MODELS[1]  # gpt-4o-mini
+        self.requested_model = model or self._default_model()
+        if self.requested_model != AUTO_MODEL:
+            validate_candidate_model(self.requested_model)
+        self.model = self.requested_model  # concrete ID after real resolution
+        self.selection = None
 
-    def produce(self, evidence_packet):
+    def _default_model(self):
+        return AUTO_MODEL
+
+    @property
+    def mock_enabled(self):
+        return is_mock_enabled()
+
+    def _mock_raw(self):
+        return {"mock": True, "model": self.model}
+
+
+class GroqProducer(LLMProvider):
+    kind = "groq-producer"
+
+    def _default_model(self):
+        return DEFAULT_PRODUCER_MODEL
+
+    def produce(self, evidence_packet, _discovered=None):
+        # Mock ONLY with the explicit flag. Missing key in real mode raises
+        # (fail closed) instead of silently returning fixture content.
+        if self.mock_enabled:
+            # Mocked valid response for local tests / dry-runs — expanded to meet 70-105s target
+            topic = evidence_packet.get('topic','automation bias')
+            tech_angle = evidence_packet.get('technology_angle') or "automation bias in AI assistants"
+            mock_response = {
+                "title": f"{topic} — tech angle",
+                "technology_angle": tech_angle,
+                "metacognition_concept": "automation bias",
+                "hook": "When does your AI assistant make you think less?",
+                "scenes": ["hook", "problem", "explain", "example", "technique", "ending"],
+                "narration": {
+                    "hook": "When does your AI assistant make you think less?",
+                    "problem": ["You ask AI for code, it gives you an answer instantly.", "It feels productive, and you move on without checking.", "The speed hides the need to verify."],
+                    "explain": ["Your brain treats the AI's fluency as your own understanding.", "That's automation bias: trusting the tool because it sounds confident.", "The more you use it, the less you verify.", "Fluency is not accuracy, but it feels like it."],
+                    "example": ["Think of the last time autocomplete finished your function.", "Did you read it line by line, or just accept it?", "Most people accept, because checking feels slower.", "That pause you skip is where learning lives."],
+                    "technique": ["Try this: before you accept AI code, explain it out loud in one sentence.", "Then run one edge-case test yourself.", "If you can't explain it, you haven't learned it.", "Make that pause your new habit."],
+                    "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it."
+                },
+                "on_screen_text": ["ASK AI", "FLUENT", "BIAS", "CHECK", "EXPLAIN", "LEARN"],
+                "visual_direction": "confidence meter + code visual + human-AI network + decision tree",
+                "actionable_technique": "Explain AI output before accepting, test one edge case",
+                "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it.",
+                "caption": {
+                    "hook": "When does your AI assistant make you think less?",
+                    "intro": "AI fluency feels like your own understanding. That feeling is automation bias, not knowledge.",
+                    "sections": [
+                        {"title": "WHAT'S GOING ON", "lines": ["Your brain treats AI fluency as your own understanding.", "Automation bias: trusting the tool because it sounds confident.", "Fluency is not accuracy."]},
+                        {"title": "TRY THIS", "lines": ["Before you accept AI code, explain it out loud in one sentence.", "Then run one edge-case test yourself.", "Make that pause your new habit."]}
+                    ],
+                    "hashtags": ["#metacognition", "#AI", "#coding", "#automationbias", "#cognitivescience"]
+                },
+                "claims": [],
+                "sources": [{"label": "Bansal et al. (2021), AI and Human Judgment", "url": "", "tier": "B"}]
+            }
+            return mock_response, self._mock_raw()
+
+        discovered = _discovered if _discovered is not None else discover_models()[0]
+        producer, _, report = select_models(discovered, self.requested_model, AUTO_MODEL)
+        self.model = producer
+        self.selection = report
+
         prompt = f"""
-You are GitHubModelsProducer for @metacognition.hq — Metacognition for the AI age.
+You are GroqProducer for @metacognition.hq — Metacognition for the AI age.
 
 Brand: {evidence_packet['editorial_policy']['brand']}
 Pillars: {', '.join(evidence_packet['editorial_policy']['pillars'])}
@@ -233,64 +614,53 @@ Technology relevance required: must be about AI, software, coding, product, digi
 Metacognition relevance required: must have clear metacognitive concept.
 No Persian, no FA, language=en.
 """
-        # In production, call GitHub Models; in local tests without token, use mock
-        if os.environ.get("MOCK_GITHUB_MODELS") == "1" or not os.environ.get("GITHUB_TOKEN"):
-            # Mocked valid response for local tests / dry-runs — expanded to meet 70-105s target
-            topic = evidence_packet.get('topic','automation bias')
-            tech_angle = evidence_packet.get('technology_angle') or "automation bias in AI assistants"
-            mock_response = {
-                "title": f"{topic} — tech angle",
-                "technology_angle": tech_angle,
-                "metacognition_concept": "automation bias",
-                "hook": "When does your AI assistant make you think less?",
-                "scenes": ["hook", "problem", "explain", "example", "technique", "ending"],
-                "narration": {
-                    "hook": "When does your AI assistant make you think less?",
-                    "problem": ["You ask AI for code, it gives you an answer instantly.", "It feels productive, and you move on without checking.", "The speed hides the need to verify."],
-                    "explain": ["Your brain treats the AI's fluency as your own understanding.", "That's automation bias: trusting the tool because it sounds confident.", "The more you use it, the less you verify.", "Fluency is not accuracy, but it feels like it."],
-                    "example": ["Think of the last time autocomplete finished your function.", "Did you read it line by line, or just accept it?", "Most people accept, because checking feels slower.", "That pause you skip is where learning lives."],
-                    "technique": ["Try this: before you accept AI code, explain it out loud in one sentence.", "Then run one edge-case test yourself.", "If you can't explain it, you haven't learned it.", "Make that pause your new habit."],
-                    "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it."
-                },
-                "on_screen_text": ["ASK AI", "FLUENT", "BIAS", "CHECK", "EXPLAIN", "LEARN"],
-                "visual_direction": "confidence meter + code visual + human-AI network + decision tree",
-                "actionable_technique": "Explain AI output before accepting, test one edge case",
-                "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it.",
-                "caption": {
-                    "hook": "When does your AI assistant make you think less?",
-                    "intro": "AI fluency feels like your own understanding. That feeling is automation bias, not knowledge.",
-                    "sections": [
-                        {"title": "WHAT'S GOING ON", "lines": ["Your brain treats AI fluency as your own understanding.", "Automation bias: trusting the tool because it sounds confident.", "Fluency is not accuracy."]},
-                        {"title": "TRY THIS", "lines": ["Before you accept AI code, explain it out loud in one sentence.", "Then run one edge-case test yourself.", "Make that pause your new habit."]}
-                    ],
-                    "hashtags": ["#metacognition", "#AI", "#coding", "#automationbias", "#cognitivescience"]
-                },
-                "claims": [],
-                "sources": [{"label": "Bansal et al. (2021), AI and Human Judgment", "url": "", "tier": "B"}]
+        content, raw = call_groq_chat(prompt, producer, max_tokens=1500, temperature=0.7)
+        raw["selection"] = report
+        return _parse_json_content(content, "Producer", producer), raw
+
+
+class GroqReviewer(LLMProvider):
+    kind = "groq-reviewer"
+
+    def _default_model(self):
+        return DEFAULT_REVIEWER_MODEL
+
+    def review(self, producer_output, evidence_packet, _discovered=None, producer_model=None):
+        if self.mock_enabled:
+            # Mocked reviewer that approves if tech and metacog present — broadened to match tech policy
+            # Explicit flag only; real mode without key raises in call_groq_chat.
+            ta = producer_output.get("technology_angle","").lower()
+            tech_keywords = ["ai","code","coding","software","product","metric","automation","human","debug","bias","research","attention","notification","llm","hallucination","architecture","offload","tutorial"]
+            tech = any(k in ta for k in tech_keywords) or "product" in producer_output.get("technology_angle","").lower() or "AI" in producer_output.get("technology_angle","")
+            meta_concept = producer_output.get("metacognition_concept","").lower()
+            meta = any(k in meta_concept for k in ["bias","metacog","calibration","illusion","offload","planning","fallacy","goodhart","switch","sunk","debug","desirable","skill","tutorial","learning"]) or len(meta_concept)>3
+            approved = tech and meta
+            mock_review = {
+                "approved": approved,
+                "score": 88 if approved else 70,
+                "technology_relevance": tech,
+                "metacognition_relevance": meta,
+                "source_grounding": True,
+                "unsupported_claims": [],
+                "hook_quality": "good",
+                "spoken_english_quality": "good",
+                "novelty": "high",
+                "practical_value": "high",
+                "safety": "safe",
+                "required_changes": [] if approved else ["Add clearer tech example"],
+                "blocking_errors": [] if approved else ["technology_relevance weak"]
             }
-            return mock_response, {"mock": True, "model": self.model}
+            return mock_review, self._mock_raw()
 
-        content, raw = call_github_models(prompt, self.model, max_tokens=1500, temperature=0.7)
-        # Try to parse JSON from content (may have markdown fences)
-        try:
-            # Remove ```json fences if present
-            m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
-            if m:
-                content = m.group(1)
-            parsed = json.loads(content)
-            return parsed, raw
-        except Exception as e:
-            raise RuntimeError(f"Producer returned malformed JSON: {e} | content: {content[:500]}")
+        discovered = _discovered if _discovered is not None else discover_models()[0]
+        # Prefer a reviewer different from the producer's model when possible.
+        _, reviewer, report = select_models(
+            discovered, producer_model or AUTO_MODEL, self.requested_model)
+        self.model = reviewer
+        self.selection = report
 
-class GitHubModelsReviewer:
-    def __init__(self, model=None):
-        self.model = model or DEFAULT_REVIEWER_MODEL
-        if self.model not in SUPPORTED_MODELS:
-            self.model = SUPPORTED_MODELS[0]
-
-    def review(self, producer_output, evidence_packet):
         prompt = f"""
-You are GitHubModelsReviewer for @metacognition.hq — independent, English-only.
+You are GroqReviewer for @metacognition.hq — independent, English-only.
 
 Producer output to review:
 {json.dumps(producer_output, ensure_ascii=False)[:3000]}
@@ -328,40 +698,10 @@ Output ONLY valid JSON:
 
 Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims, no fake URL, non-duplicate, hook and ending related.
 """
-        if os.environ.get("MOCK_GITHUB_MODELS") == "1" or not os.environ.get("GITHUB_TOKEN"):
-            # Mocked reviewer that approves if tech and metacog present — broadened to match tech policy
-            ta = producer_output.get("technology_angle","").lower()
-            tech_keywords = ["ai","code","coding","software","product","metric","automation","human","debug","bias","research","attention","notification","llm","hallucination","architecture","offload","tutorial"]
-            tech = any(k in ta for k in tech_keywords) or "product" in producer_output.get("technology_angle","").lower() or "AI" in producer_output.get("technology_angle","")
-            meta_concept = producer_output.get("metacognition_concept","").lower()
-            meta = any(k in meta_concept for k in ["bias","metacog","calibration","illusion","offload","planning","fallacy","goodhart","switch","sunk","debug","desirable","skill","tutorial","learning"]) or len(meta_concept)>3
-            approved = tech and meta
-            mock_review = {
-                "approved": approved,
-                "score": 88 if approved else 70,
-                "technology_relevance": tech,
-                "metacognition_relevance": meta,
-                "source_grounding": True,
-                "unsupported_claims": [],
-                "hook_quality": "good",
-                "spoken_english_quality": "good",
-                "novelty": "high",
-                "practical_value": "high",
-                "safety": "safe",
-                "required_changes": [] if approved else ["Add clearer tech example"],
-                "blocking_errors": [] if approved else ["technology_relevance weak"]
-            }
-            return mock_review, {"mock": True, "model": self.model}
+        content, raw = call_groq_chat(prompt, reviewer, max_tokens=800, temperature=0.3)
+        raw["selection"] = report
+        return _parse_json_content(content, "Reviewer", reviewer), raw
 
-        content, raw = call_github_models(prompt, self.model, max_tokens=800, temperature=0.3)
-        try:
-            m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
-            if m:
-                content = m.group(1)
-            parsed = json.loads(content)
-            return parsed, raw
-        except Exception as e:
-            raise RuntimeError(f"Reviewer returned malformed JSON: {e} | content: {content[:500]}")
 
 class StaticEnglishFallback:
     """Fallback using curated English playbooks filtered to tech domain."""

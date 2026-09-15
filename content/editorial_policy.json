@@ -12,18 +12,18 @@
  },
  "content_language": "en",
  "generation": {
-  "producer": "github-models",
+  "producer": "groq",
   "fallback": "static-english",
-  "producer_model": "openai/gpt-4o-mini",
-  "reviewer_model": "meta/llama-3.3-70b-instruct",
-  "fallback_models": ["openai/gpt-4o-mini", "meta/llama-3.3-70b-instruct", "mistral-large", "phi-4"],
+  "producer_model": "auto",
+  "reviewer_model": "auto",
+  "fallback_models": ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct", "qwen/qwen3-32b", "qwen/qwen3.6-27b", "meta-llama/llama-4-maverick-17b-128e-instruct", "llama-3.3-70b-versatile", "openai/gpt-oss-20b", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant"],
   "max_daily_requests": {
    "producer": 1,
    "reviewer": 1,
    "revision": 1,
    "final_reviewer": 1
   },
-  "quota_behavior": "limited retry then static-fallback, no cost, no pipeline stop if fallback valid"
+  "quota_behavior": "429 honors Retry-After (max 2 short retries), 401/403 no retry, 5xx/timeout limited retry, then static-fallback; no cost, no pipeline stop if fallback valid"
  },
  "content_strategy": {
   "hybrid_ratio": {

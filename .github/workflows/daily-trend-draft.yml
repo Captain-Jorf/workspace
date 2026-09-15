@@ -82,6 +82,19 @@ jobs:
           echo "CAL=${IN_CAL:-false}" >> "$GITHUB_ENV"
           echo "date=$TAG dry_run=$DRY calendar_only=${IN_CAL:-false}"
 
+      - name: forbid mock LLM in production (fail closed)
+        run: |
+          set -euo pipefail
+          # MOCK_GROQ=1 is forbidden in cron AND manual dispatch of the
+          # daily workflow. Mock fixtures must never become production content.
+          # If Groq fails, the pipeline falls back to the curated
+          # static English playbooks with generation_mode=static-fallback.
+          if [ "${MOCK_GROQ:-}" = "1" ]; then
+            echo "::error::mock LLM is forbidden in daily production (MOCK_GROQ must not be enabled)"
+            exit 1
+          fi
+          echo "mock guard: OK (MOCK_GROQ not enabled)"
+
       - name: dependencies, fonts, stand-in logo, self-test
         run: |
           set -euo pipefail
@@ -95,8 +108,15 @@ jobs:
 
       - name: produce + supervise (controlled retries inside)
         id: produce
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CONTENT_PRODUCER: groq
+          CONTENT_FALLBACK: static-english
+          PRODUCER_MODEL: auto
+          REVIEWER_MODEL: auto
         run: |
           set +e
+          unset MOCK_GROQ || true
           ARGS=""
           [ "$CAL" = "true" ] && ARGS="--calendar-only"
           python3 build/pipeline.py produce --tag "$TAG" $ARGS

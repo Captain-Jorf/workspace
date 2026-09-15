@@ -1,0 +1,86 @@
+# Groq connection check — FAIL-CLOSED, manual only.
+# Run from: GitHub → Actions → "groq-connection-check" → Run workflow
+#
+# Real mode is the default and the ONLY mode that can print
+# "Groq connection: OK". Any failure (missing key, DNS, HTTP/auth, discovery,
+# unavailable model, malformed JSON, reviewer failure) exits nonzero — the run
+# goes RED. There is NO automatic mock or static fallback in this check.
+#
+# Mock exists ONLY for explicit plumbing tests: dispatch with mock=true.
+# It prints an unambiguous "MOCK MODE" banner and never the real-success line.
+#
+# No Buffer, no publishing, no Instagram, no real user content.
+# Secrets: GROQ_API_KEY in exactly one step (boolean presence is logged; the
+# value is never printed). Groq needs no `models: read` permission.
+# Timeout 5 min. Safe logs: hostname, model IDs, HTTP status, attempt numbers.
+name: groq-connection-check
+on:
+  workflow_dispatch:
+    inputs:
+      mock:
+        description: "Explicit mock only (plumbing test, NOT a real connection check)"
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.11"
+      - name: Install deps (no external secret)
+        run: |
+          python -m pip install --quiet --upgrade pip
+
+      - name: DNS diagnostic for the official endpoint (no credentials)
+        run: |
+          set -euo pipefail
+          getent hosts api.groq.com || echo "getent: no record (python check below is authoritative)"
+          python3 - << 'PY'
+          import socket, sys, time
+          host = "api.groq.com"
+          print(f"Endpoint hostname: {host}")
+          ok = False
+          for attempt in (1, 2, 3):
+              try:
+                  infos = socket.getaddrinfo(host, 443)
+                  print(f"DNS resolution: OK ({len(infos)} record(s)) attempt={attempt}")
+                  ok = True
+                  break
+              except Exception as e:
+                  print(f"DNS attempt {attempt} failed: {type(e).__name__}")
+                  time.sleep(attempt)
+          if not ok:
+              print("::error::DNS resolution failed for api.groq.com after 3 attempts")
+              sys.exit(1)
+          PY
+
+      - name: Groq connection check (fail-closed, no mock or static fallback)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CONTENT_LANGUAGE: en
+          CONTENT_PRODUCER: groq
+          PRODUCER_MODEL: ${{ vars.PRODUCER_MODEL || 'auto' }}
+          REVIEWER_MODEL: ${{ vars.REVIEWER_MODEL || 'auto' }}
+          MOCK_INPUT: ${{ inputs.mock }}
+        run: |
+          set -euo pipefail
+          # NOTE: MOCK_GROQ is deliberately NEVER set in this workflow.
+          # Mock runs only when the dispatcher explicitly chose mock=true.
+          ARGS=""
+          if [ "${MOCK_INPUT:-false}" = "true" ]; then
+            echo "::warning::explicit mock requested — this run CANNOT validate the real connection"
+            ARGS="--mock"
+          fi
+          python3 build/groq_check.py \
+            --producer-model "$PRODUCER_MODEL" \
+            --reviewer-model "$REVIEWER_MODEL" $ARGS

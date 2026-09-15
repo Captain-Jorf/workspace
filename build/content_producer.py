@@ -1,14 +1,14 @@
-"""Content Producer — English-only, Technology × Metacognition, GitHub Models + Static Fallback.
+"""Content Producer — English-only, Technology × Metacognition, Groq + Static Fallback.
 
 - CONTENT_LANGUAGE=en fail-closed (via common.assert_content_language_en)
 - No translator calls, no Persian fixture, no FA layer
 - Output JSON schema: title, technology_angle, metacognition_concept, hook, scenes, narration, on_screen_text, visual_direction, actionable_technique, ending, caption, claims, sources
 - 70-105s target max 120s, English conversational, strong hook 3s, no "In today's video", no filler, no fake stats, no medical claim, one main idea, one tech example, one technique
-- Uses GitHubModelsProducer/Reviewer via build/llm_provider.py, with StaticEnglishFallback
+- Uses GroqProducer/Reviewer via build/llm_provider.py, with StaticEnglishFallback
 - Evidence packet sanitized, untrusted web content must not inject prompt
 - Max daily: 1 Producer, 1 Reviewer, if rejected max 1 Revision + final Reviewer
-- On quota 429/outage limited retry then static fallback
-- Metadata: language=en, generation_mode=github-models or static-fallback
+- On quota 429 (Retry-After honored, max 2 retries) / auth / outage → static fallback
+- Metadata: language=en, generation_mode=groq or static-fallback
 
 usage:
   python3 build/content_producer.py --topic <topic.json> --out <epdir> [--variant 0|1]
@@ -449,7 +449,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
     }
     return script
 
-def build_script_from_llm(topic, pol, llm_output, generation_mode="github-models"):
+def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
     """Build script.json from LLM producer output — English-only, validates schema."""
     # Validate required fields
     required = ["title", "technology_angle", "metacognition_concept", "hook", "scenes", "narration", "on_screen_text", "visual_direction", "actionable_technique", "ending"]
@@ -577,7 +577,7 @@ def main():
     recent_topics = [e.get("topic","") for e in recent]
     evidence_packet = llm_provider.build_evidence_packet(topic, pol, recent_topics)
 
-    producer_mode = os.environ.get("CONTENT_PRODUCER", "github-models")
+    producer_mode = os.environ.get("CONTENT_PRODUCER", "groq")
     fallback_mode = os.environ.get("CONTENT_FALLBACK", "static-english")
 
     script = None
@@ -585,22 +585,34 @@ def main():
     producer_report = {}
     reviewer_report = {}
 
-    # Try GitHub Models Producer if requested
-    if producer_mode == "github-models":
+    # Try Groq Producer if requested
+    if producer_mode == "groq":
         try:
-            prod = llm_provider.GitHubModelsProducer()
-            llm_out, raw = prod.produce(evidence_packet)
-            producer_report = {"model": prod.model, "raw": raw, "output": llm_out, "mode": "github-models"}
+            # One authenticated discovery for the whole daily run; producer and
+            # reviewer share it, and the selection report is recorded.
+            discovered, disc_meta = llm_provider.discover_models()
+            prod = llm_provider.GroqProducer()
+            llm_out, raw = prod.produce(evidence_packet, _discovered=discovered)
+            # Honesty gate: mock/fixture output must NEVER be recorded as
+            # generation_mode=groq. That label is reserved for genuine
+            # API responses. Mock in the daily path falls back to static.
+            if isinstance(raw, dict) and raw.get("mock"):
+                raise ValueError("mock output rejected in daily path — explicit mock is test-only")
+            producer_report = {"model": prod.model, "raw": raw, "output": llm_out, "mode": "groq",
+                               "discovered_count": len(discovered),
+                               "selection": raw.get("selection") if isinstance(raw, dict) else None}
             # Validate and build script
-            script = build_script_from_llm(topic, pol, llm_out, generation_mode="github-models")
-            generation_mode = "github-models"
+            script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
+            generation_mode = "groq"
 
             # Reviewer step
             try:
-                reviewer_mode = os.environ.get("CONTENT_REVIEWER", "github-models")
-                if reviewer_mode == "github-models":
-                    rev = llm_provider.GitHubModelsReviewer()
-                    review_out, review_raw = rev.review(llm_out, evidence_packet)
+                reviewer_mode = os.environ.get("CONTENT_REVIEWER", "groq")
+                if reviewer_mode == "groq":
+                    rev = llm_provider.GroqReviewer()
+                    review_out, review_raw = rev.review(llm_out, evidence_packet,
+                                                       _discovered=discovered,
+                                                       producer_model=prod.model)
                     reviewer_report = {"model": rev.model, "raw": review_raw, "output": review_out}
                     # If rejected, try one revision
                     if not review_out.get("approved", False) or review_out.get("score", 0) < 85:
@@ -608,10 +620,16 @@ def main():
                         if review_out.get("required_changes"):
                             evidence_packet["revision_request"] = review_out["required_changes"]
                             try:
-                                llm_out2, raw2 = prod.produce(evidence_packet)
-                                review_out2, review_raw2 = rev.review(llm_out2, evidence_packet)
+                                llm_out2, raw2 = prod.produce(evidence_packet, _discovered=discovered)
+                                if isinstance(raw2, dict) and raw2.get("mock"):
+                                    raise ValueError("mock revision rejected in daily path")
+                                review_out2, review_raw2 = rev.review(llm_out2, evidence_packet,
+                                                                     _discovered=discovered,
+                                                                     producer_model=prod.model)
+                                if isinstance(review_raw2, dict) and review_raw2.get("mock"):
+                                    raise ValueError("mock reviewer output rejected in daily path")
                                 if review_out2.get("approved") and review_out2.get("score",0) >=85 and review_out2.get("technology_relevance") and review_out2.get("metacognition_relevance"):
-                                    script = build_script_from_llm(topic, pol, llm_out2, generation_mode="github-models")
+                                    script = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
                                     reviewer_report = {"model": rev.model, "raw": review_raw2, "output": review_out2, "revision": True}
                                 else:
                                     # Second rejection → fallback
@@ -625,7 +643,7 @@ def main():
                 print(f"[producer] reviewer error, will fallback if needed: {e}")
 
         except Exception as e:
-            print(f"[producer] GitHub Models producer failed: {e} — trying fallback")
+            print(f"[producer] Groq producer failed: {e} — trying fallback")
             script = None
             producer_report["error"] = str(e)
 

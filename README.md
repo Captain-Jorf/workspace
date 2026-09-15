@@ -33,6 +33,7 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 | نام | نوع | مقدار | معنی |
 | --- | --- | --- | --- |
 | `BUFFER_TOKEN` | **Secret** | کلید شخصی Buffer | فقط در دو استپ (صف Buffer، همگام‌سازی متریک) دیده می‌شود؛ هرگز چاپ نمی‌شود |
+| `GROQ_API_KEY` | **Secret** | کلید رایگان Groq (ساخت: `console.groq.com/keys`) | فقط در استپ تولید daily و استپ groq-connection-check؛ هرگز چاپ نمی‌شود. نباشد ⇒ `generation_mode=static-fallback` |
 | `AUTO_PUBLISH_ENABLED` | Variable | دقیقاً `true` | فقط رشتهٔ دقیق `true`. نبودن/`True`/`1`/`yes` ⇒ غیرفعال (`approved-dry-run`) |
 | `TARGET_BUFFER_CHANNEL` | Variable | `metacognition.hq` (پیش‌فرض) | کانال فقط وقتی معتبر است که نامش **دقیقاً** برابر این باشد **و** سرویسش Instagram باشد |
 | `MIN_QA_SCORE` | Variable | `85` (پیش‌فرض) | حداقل امتیاز ناظر کیفیت؛ مقدار کمتر از **۸۰** پذیرفته نمی‌شود (به ۸۰ بالا می‌رود) |
@@ -53,9 +54,10 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 
 | مرحله | کار | پیش‌نیاز |
 | --- | --- | --- |
-| **0** | تست‌های محلی: `python3 -m unittest discover -s tests` (۱۳۷ تست، همه mock) | هیچ |
+| **0** | تست‌های محلی: `python3 -m unittest discover -s tests` (۱۶۶ تست، همه mock/استاب محلی) | هیچ |
 | **1** | **Actions → buffer-connection-check → Run workflow** — فقط خواندن: حساب، سازمان، کانال دقیق، وضعیت صف. هیچ پستی ساخته نمی‌شود | Secret `BUFFER_TOKEN` |
-| **2** | **Actions → daily-trend-draft → Run workflow** با `dry_run = true` (پیش‌فرض): ریل کامل + ناظر + Issue با پیش‌نمایش؛ `createPost` صدا زده نمی‌شود | مرحلهٔ ۱ سبز |
+| **1b** | **Actions → groq-connection-check → Run workflow** — اتصال واقعی Groq (کلید، DNS، `/models`، مدل Producer/Reviewer واقعی). سبز بدون mock یعنی اتصال واقعی. هیچ پستی ساخته نمی‌شود | Secret `GROQ_API_KEY` (راهنما: `docs/groq_migration.md`) |
+| **2** | **Actions → daily-trend-draft → Run workflow** با `dry_run = true` (پیش‌فرض): ریل کامل + ناظر + Issue با پیش‌نمایش؛ `createPost` صدا زده نمی‌شود | مرحلهٔ ۱ و 1b سبز |
 | **3** | یک تست کنترل‌شدهٔ صف — فقط با تأیید صریح مالک: `AUTO_PUBLISH_ENABLED=true` + اجرای دستی با `dry_run = false` | Issue مرحلهٔ ۲ بازبینی شده |
 | **4** | فعال‌سازی: `AUTO_PUBLISH_ENABLED=true` بماند؛ کرون `23 3 * * *` (۰۶:۵۳ تهران؛ GitHub معمولاً چند ساعت تأخیر دارد) هر روز حداکثر **یک** پست به صف می‌فرستد؛ Buffer ۱۹:۳۰ منتشر می‌کند | ورک‌فلو روی شاخهٔ پیش‌فرض merge شده |
 
@@ -133,7 +135,7 @@ Issue با `qa-failed`. آستانه‌ها هرگز پایین نمی‌آین�
 ```bash
 pip install pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
 bash build/fetch_fonts.sh && python3 build/logo_make.py
-python3 -m unittest discover -s tests                      # 137 tests, all mocked (Buffer + GitHub + CDN mocked; local bare git origin)
+python3 -m unittest discover -s tests                      # 166 tests, all mocked (Buffer + GitHub + CDN + Groq stubbed; local bare git origin)
 python3 build/pipeline.py produce --tag 2026-09-16 --calendar-only --synthetic-tts --fixture-translation --skip-network
 python3 build/report_issue.py --tag 2026-09-16 --state output/auto-2026-09-16_state.json --repo o/r --run-url x --dry-run
 ```

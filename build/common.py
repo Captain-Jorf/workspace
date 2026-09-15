@@ -7,7 +7,7 @@ New in this version:
 - CONTENT_LANGUAGE=en explicit fail-closed (English-only)
 - Quarantine for Issue #14 (reel-2026-09-15)
 - English-only script_hash (no FA)
-- Generation mode tracking (github-models vs static-fallback)
+- Generation mode tracking (groq vs static-fallback)
 """
 import datetime
 import hashlib
