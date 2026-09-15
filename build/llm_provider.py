@@ -32,7 +32,16 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import groq_http
 common.assert_content_language_en()  # fail-closed EN-only
+
+# The explicit project User-Agent sent on EVERY Groq request. api.groq.com sits
+# behind Cloudflare: the stdlib default `Python-urllib/3.x` signature is
+# rejected at the edge with HTTP 403 + Cloudflare error code 1010 ("banned your
+# access based on your browser's signature") before authentication is even
+# reached. See build/groq_http.py and docs/groq_cloudflare_1010_fix.md.
+PROJECT_USER_AGENT = groq_http.PROJECT_USER_AGENT
+GroqAPIError = groq_http.GroqAPIError
 
 # Official Groq OpenAI-compatible API.
 # Docs: https://console.groq.com/docs/api-reference
@@ -45,12 +54,13 @@ GROQ_CHAT_PATH = "/chat/completions"
 _TEST_BASE_ENV = "GROQ_BASE_URL"
 
 # Retry policy: 1 initial attempt + 2 retries, exponential backoff.
-MAX_ATTEMPTS = 3
-RETRY_BASE_SECONDS = 1.0
-MAX_429_RETRIES = 2
-RETRY_AFTER_CAP_SECONDS = 30
-REQUEST_TIMEOUT = 60
-MODELS_TIMEOUT = 20
+# Single source of truth lives in build/groq_http.py (the central client).
+MAX_ATTEMPTS = groq_http.MAX_ATTEMPTS
+RETRY_BASE_SECONDS = groq_http.RETRY_BASE_SECONDS
+MAX_429_RETRIES = groq_http.MAX_429_RETRIES
+RETRY_AFTER_CAP_SECONDS = groq_http.RETRY_AFTER_CAP_SECONDS
+REQUEST_TIMEOUT = groq_http.REQUEST_TIMEOUT
+MODELS_TIMEOUT = groq_http.MODELS_TIMEOUT
 
 AUTO_MODEL = "auto"
 
@@ -108,18 +118,17 @@ def get_hostname():
 
 def get_groq_key():
     """Return the API key or ''. Callers must NEVER log its value."""
-    return os.environ.get("GROQ_API_KEY", "")
+    return groq_http.get_api_key()
 
 
 def require_groq_key():
     """Raise (nonzero in workflows) when no key is available. Never logs it."""
-    key = get_groq_key()
-    if not key:
-        raise RuntimeError(
-            "GROQ_API_KEY not set — real Groq call impossible "
-            "(mock requires explicit MOCK_GROQ=1)"
-        )
-    return key
+    return groq_http.require_api_key()
+
+
+def groq_headers(with_auth=True, with_body=False):
+    """Headers used for EVERY Groq request (explicit project User-Agent)."""
+    return groq_http.build_headers(with_auth=with_auth, with_body=with_body)
 
 
 def validate_candidate_model(model):
@@ -155,123 +164,42 @@ def resolve_hostname(hostname=None, timeout=10):
     return False, f"DNS resolution: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
 
 
-def https_probe(timeout=15):
-    """Unauthenticated HTTPS/TLS reachability check (no Authorization header).
+def https_probe(timeout=None):
+    """Unauthenticated HTTPS/TLS reachability check — SAME safe client.
 
-    Any HTTP response (even 401/4xx/5xx) proves DNS+TLS work. Returns
-    (reachable, http_status_or_None, detail). Safe to log.
+    Sends the explicit project User-Agent + Accept but NO Authorization header,
+    so the key is never exposed on an unauthenticated request. Any HTTP
+    response (even 401/403/4xx/5xx) proves DNS + TLS + edge work.
+    Returns (reachable, http_status_or_None, detail). Safe to log.
     """
-    url = get_models_url()
-    hostname = get_hostname()
-    last_err = ""
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        try:
-            req = urllib.request.Request(url, method="GET")  # no auth header
-            try:
-                with urllib.request.urlopen(req, timeout=timeout) as r:
-                    return True, r.status, f"HTTPS probe: OK host={hostname} status={r.status} attempt={attempt}"
-            except urllib.error.HTTPError as e:
-                # An HTTP status code IS reachability (server answered).
-                return True, e.code, f"HTTPS probe: OK host={hostname} status={e.code} attempt={attempt}"
-        except Exception as e:  # noqa: BLE001 — URLError/timeout/SSL
-            last_err = f"{type(e).__name__}"
-            if attempt < MAX_ATTEMPTS:
-                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-    return False, None, f"HTTPS probe: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
+    return groq_http.probe(get_models_url(),
+                           timeout=timeout if timeout is not None else groq_http.PROBE_TIMEOUT,
+                           max_attempts=MAX_ATTEMPTS)
 
 
 def parse_retry_after(headers):
     """Parse Retry-After (seconds) from response headers. Returns 0 if absent."""
-    if not headers:
-        return 0
-    try:
-        raw = headers.get("Retry-After", "")
-    except Exception:
-        return 0
-    try:
-        return max(0, int(str(raw).strip().split(",")[0]))
-    except (ValueError, TypeError):
-        return 0
-
-
-def _read_error_body(e):
-    try:
-        return common.scrub_secrets(e.read().decode("utf-8", "replace")[:200])
-    except Exception:
-        return ""
+    return groq_http.parse_retry_after(headers)
 
 
 def groq_request(method, url, payload=None, timeout=60):
-    """Authenticated Groq request with the free-tier retry policy.
+    """Authenticated Groq request — thin wrapper over the central HTTP client.
 
-    - 401/403: no retry, authentication error.
-    - 429: honor Retry-After, max 2 short retries, then raise.
+    ALL Groq traffic (model discovery, Producer, Reviewer, revision) uses
+    build/groq_http.request(), which always sends the explicit project
+    User-Agent + Accept, adds Authorization/Content-Type when needed, and
+    applies the safe error taxonomy + bounded retry policy:
+
+    - 403 + Cloudflare code 1010: cloudflare-client-blocked, NO retry.
+    - 401: invalid-or-missing-api-key, no retry.
+    - other 403: permission-or-account-restriction, no retry.
+    - 429: rate-limited, Retry-After honored, max 2 short retries.
     - 5xx/timeout/network: limited retry (1+2), then raise.
-    - other 4xx: no retry.
     Returns (parsed_json, meta). Messages carry only safe fields.
     """
-    key = require_groq_key()
-    hostname = get_hostname()
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
-    data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    last_err = ""
-    rate_retries = 0
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        req = urllib.request.Request(url, data=data, headers=headers, method=method)
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                status = getattr(r, "status", 200)
-                try:
-                    resp = json.load(r)
-                except Exception:
-                    raise RuntimeError(
-                        f"Groq invalid response envelope: host={hostname} "
-                        f"http_status={status} attempt={attempt}"
-                    )
-                return resp, {"mock": False, "host": hostname,
-                              "http_status": status, "attempt": attempt}
-        except urllib.error.HTTPError as e:
-            detail = _read_error_body(e)
-            if e.code in (401, 403):
-                raise RuntimeError(
-                    f"Groq HTTP {e.code}: authentication failed host={hostname} "
-                    f"attempt={attempt} detail={detail}"
-                )
-            if e.code == 429:
-                rate_retries += 1
-                if rate_retries > MAX_429_RETRIES or attempt >= MAX_ATTEMPTS:
-                    raise RuntimeError(
-                        f"Groq quota 429 exhausted: host={hostname} "
-                        f"attempts={attempt} detail={detail}"
-                    )
-                wait = parse_retry_after(e.headers) or RETRY_BASE_SECONDS * (2 ** (rate_retries - 1))
-                time.sleep(min(wait, RETRY_AFTER_CAP_SECONDS))
-                continue
-            if 500 <= e.code <= 599:
-                last_err = f"HTTP {e.code}"
-                if attempt < MAX_ATTEMPTS:
-                    time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-                    continue
-                raise RuntimeError(
-                    f"Groq HTTP {e.code}: host={hostname} "
-                    f"attempts={attempt} detail={detail}"
-                )
-            raise RuntimeError(
-                f"Groq HTTP {e.code}: host={hostname} "
-                f"attempt={attempt} detail={detail}"
-            )
-        except RuntimeError:
-            raise
-        except Exception as e:  # noqa: BLE001 — URLError/DNS/timeout/SSL: retry 2x
-            last_err = f"{type(e).__name__}"
-            if attempt < MAX_ATTEMPTS:
-                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-    raise RuntimeError(
-        f"Groq call failed: {last_err} host={hostname} attempts={MAX_ATTEMPTS}"
-    )
+    return groq_http.request(method, url, payload=payload, timeout=timeout,
+                            with_auth=True, max_attempts=MAX_ATTEMPTS,
+                            max_rate_retries=MAX_429_RETRIES)
 
 
 def discover_models(timeout=MODELS_TIMEOUT):
@@ -569,9 +497,24 @@ class GroqProducer(LLMProvider):
         self.model = producer
         self.selection = report
 
+        # A revision request carries the reviewer's required changes so the
+        # second Producer call is a real revision and not a blind regeneration.
+        revision_block = ""
+        revision_items = evidence_packet.get("revision_request") or []
+        if isinstance(revision_items, str):
+            revision_items = [revision_items]
+        if revision_items:
+            safe_items = [sanitize_untrusted(str(x), 200) for x in revision_items[:8]]
+            revision_block = (
+                "\nRevision requirements from the independent reviewer "
+                "(address EVERY one of them):\n- "
+                + "\n- ".join(i for i in safe_items if i)
+                + "\n"
+            )
+
         prompt = f"""
 You are GroqProducer for @metacognition.hq — Metacognition for the AI age.
-
+{revision_block}
 Brand: {evidence_packet['editorial_policy']['brand']}
 Pillars: {', '.join(evidence_packet['editorial_policy']['pillars'])}
 

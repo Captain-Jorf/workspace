@@ -7,12 +7,21 @@
 # goes RED. There is NO automatic mock or static fallback in this check.
 #
 # Mock exists ONLY for explicit plumbing tests: dispatch with mock=true.
-# It prints an unambiguous "MOCK MODE" banner and never the real-success line.
+# It prints a large "MOCK MODE" banner and never the real-success line.
+#
+# api.groq.com sits behind Cloudflare. A stdlib client that announces itself as
+# `Python-urllib/3.x` is discarded at the edge with HTTP 403 + Cloudflare error
+# code 1010 ("banned your access based on your browser's signature") BEFORE any
+# credential is checked — which is why rotating GROQ_API_KEY did not change that
+# failure. Every call here goes through build/groq_http.py, which always sends
+# the explicit project User-Agent plus Accept/Content-Type. The first step below
+# asserts that client signature without touching the network or the secret.
 #
 # No Buffer, no publishing, no Instagram, no real user content.
 # Secrets: GROQ_API_KEY in exactly one step (boolean presence is logged; the
-# value is never printed). Groq needs no `models: read` permission.
-# Timeout 5 min. Safe logs: hostname, model IDs, HTTP status, attempt numbers.
+# value is never printed — not even its length, prefix or suffix). Groq needs no
+# `models: read` permission. Timeout 5 min. Safe logs: hostname, the explicit
+# client User-Agent, model IDs, HTTP status, attempt numbers.
 name: groq-connection-check
 on:
   workflow_dispatch:
@@ -23,6 +32,10 @@ on:
         default: false
 
 permissions: {}
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
 
 jobs:
   check:
@@ -40,6 +53,35 @@ jobs:
       - name: Install deps (no external secret)
         run: |
           python -m pip install --quiet --upgrade pip
+
+      - name: HTTP client signature self-check (offline, no credentials)
+        env:
+          CONTENT_LANGUAGE: en
+        run: |
+          set -euo pipefail
+          # Fail fast, before the secret is in scope: every Groq call must go
+          # through the one central client and must send the explicit project
+          # User-Agent. A default client signature gets a Cloudflare 403/1010.
+          python3 - << 'PY'
+          import sys
+          sys.path.insert(0, "build")
+          import groq_http
+
+          ua = groq_http.user_agent()
+          print(f"Client User-Agent: {ua}")
+          print(f"Expected User-Agent: {groq_http.PROJECT_USER_AGENT}")
+          assert ua == groq_http.PROJECT_USER_AGENT, "explicit project User-Agent missing"
+          assert groq_http.is_acceptable_user_agent(ua), "blocked default client signature"
+          for bad in ("Python-urllib/3.11", "python-requests/2.31.0", "", None):
+              assert not groq_http.is_acceptable_user_agent(bad), f"accepted bad UA: {bad!r}"
+          get_headers = groq_http.build_headers(with_auth=False, with_body=False)
+          post_headers = groq_http.build_headers(with_auth=False, with_body=True)
+          assert get_headers["Accept"] == "application/json", "Accept header missing"
+          assert post_headers["Content-Type"] == "application/json", "Content-Type missing"
+          assert sorted(get_headers) == ["Accept", "User-Agent"], sorted(get_headers)
+          print("HTTP client signature self-check: OK "
+                "(all Groq calls share build/groq_http.py)")
+          PY
 
       - name: DNS diagnostic for the official endpoint (no credentials)
         run: |
@@ -76,6 +118,7 @@ jobs:
           set -euo pipefail
           # NOTE: MOCK_GROQ is deliberately NEVER set in this workflow.
           # Mock runs only when the dispatcher explicitly chose mock=true.
+          unset MOCK_GROQ || true
           ARGS=""
           if [ "${MOCK_INPUT:-false}" = "true" ]; then
             echo "::warning::explicit mock requested — this run CANNOT validate the real connection"

@@ -192,10 +192,67 @@ def output_paths(tag):
         "marker": os.path.join(out, f"auto-{tag}.buffer.json"),
     }
 
+# Env vars whose VALUES must never survive in a log, error, traceback,
+# GitHub annotation, issue body, artifact or test failure diff.
+SECRET_ENV_NAMES = ("GROQ_API_KEY", "BUFFER_TOKEN", "GITHUB_TOKEN", "GH_TOKEN",
+                    "GROQ_KEY", "OPENAI_API_KEY")
+# sha256(value) -> compiled fragment matcher (the value itself is never cached)
+_FRAGMENT_CACHE = {}
+
+
+def _fragment_pattern(value):
+    """Compiled matcher for identifiable FRAGMENTS of a secret value.
+
+    A rotated/partially-copied key can still show up in a log as a substring, so
+    redacting only the exact value is not enough. Windows are long enough to
+    avoid colliding with ordinary prose. Compiled patterns are cached by the
+    SHA-256 of the value (the value itself is never stored).
+    """
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    cached = _FRAGMENT_CACHE.get(digest)
+    if cached is not None:
+        return cached
+    width = max(12, min(16, len(value) // 4))
+    windows = sorted({value[i:i + width] for i in range(0, len(value) - width + 1)})
+    pattern = re.compile("|".join(re.escape(w) for w in windows)) if windows else None
+    _FRAGMENT_CACHE[digest] = pattern
+    return pattern
+
+
 def scrub_secrets(text):
-    text = re.sub(r"(?i)(bearer\s+)[A-Za-z0-9._\-]{12,}", r"\1***", text or "")
-    text = re.sub(r"\b[A-Za-z0-9_\-]{40,}\b", "***", text)
-    return text
+    """Central secret scrubber for EVERY log/error/artifact/issue path.
+
+    Redacts, in order:
+      1. exact values of credential-bearing env vars (GROQ_API_KEY,
+         BUFFER_TOKEN, GITHUB_TOKEN, GH_TOKEN, ...) — and identifiable
+         fragments of them, so a partially copied key cannot survive;
+      2. `Bearer <token>` / `token=<value>` / `api_key: <value>` shapes;
+      3. provider key shapes (`gsk_...`);
+      4. long opaque runs (>= 40 chars).
+
+    Only the NAME of the redacted variable is kept. Never the value, never its
+    length, never a real prefix/suffix.
+    """
+    if text is None:
+        return ""
+    s = str(text)
+    for name in SECRET_ENV_NAMES:
+        value = (os.environ.get(name) or "").strip()
+        if len(value) < 8:
+            continue
+        if value in s:
+            s = s.replace(value, f"[redacted:{name}]")
+        if len(value) >= 20:
+            frag = _fragment_pattern(value)
+            if frag is not None:
+                s = frag.sub(f"[redacted:{name}:fragment]", s)
+    s = re.sub(r"(?i)(bearer\s+)[^\s'\"]+", r"\1***", s)
+    s = re.sub(r"(?i)\bgsk_[A-Za-z0-9_\-]{4,}", "[redacted-key]", s)
+    s = re.sub(r"(?i)((?:api|access|auth|secret|client|refresh)[_-]?(?:key|token)|password)"
+               r"([\"']?\s*[:=]\s*)([^\s,;\"'}\]]{6,})",
+               r"\1\2***", s)
+    s = re.sub(r"\b[A-Za-z0-9_\-]{40,}\b", "***", s)
+    return s
 
 def env_flag_exact_true(name):
     return os.environ.get(name, "") == "true"

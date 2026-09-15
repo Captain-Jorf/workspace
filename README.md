@@ -56,7 +56,7 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 | --- | --- | --- |
 | **0** | تست‌های محلی: `python3 -m unittest discover -s tests` (۱۶۶ تست، همه mock/استاب محلی) | هیچ |
 | **1** | **Actions → buffer-connection-check → Run workflow** — فقط خواندن: حساب، سازمان، کانال دقیق، وضعیت صف. هیچ پستی ساخته نمی‌شود | Secret `BUFFER_TOKEN` |
-| **1b** | **Actions → groq-connection-check → Run workflow** — اتصال واقعی Groq (کلید، DNS، `/models`، مدل Producer/Reviewer واقعی). سبز بدون mock یعنی اتصال واقعی. هیچ پستی ساخته نمی‌شود | Secret `GROQ_API_KEY` (راهنما: `docs/groq_migration.md`) |
+| **1b** | **Actions → groq-connection-check → Run workflow** — اتصال واقعی Groq (کلید، DNS، `/models`، مدل Producer/Reviewer واقعی) با `User-Agent` صریح پروژه از طریق `build/groq_http.py`. سبز بدون mock یعنی اتصال واقعی. هیچ پستی ساخته نمی‌شود | Secret `GROQ_API_KEY` (راهنما: `docs/groq_migration.md`، رفع خطای 1010: `docs/groq_cloudflare_1010_fix.md`) |
 | **2** | **Actions → daily-trend-draft → Run workflow** با `dry_run = true` (پیش‌فرض): ریل کامل + ناظر + Issue با پیش‌نمایش؛ `createPost` صدا زده نمی‌شود | مرحلهٔ ۱ و 1b سبز |
 | **3** | یک تست کنترل‌شدهٔ صف — فقط با تأیید صریح مالک: `AUTO_PUBLISH_ENABLED=true` + اجرای دستی با `dry_run = false` | Issue مرحلهٔ ۲ بازبینی شده |
 | **4** | فعال‌سازی: `AUTO_PUBLISH_ENABLED=true` بماند؛ کرون `23 3 * * *` (۰۶:۵۳ تهران؛ GitHub معمولاً چند ساعت تأخیر دارد) هر روز حداکثر **یک** پست به صف می‌فرستد؛ Buffer ۱۹:۳۰ منتشر می‌کند | ورک‌فلو روی شاخهٔ پیش‌فرض merge شده |
@@ -82,6 +82,7 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 | `translation-error` | ترجمهٔ فارسی معتبر به دست نیامد (Google و MyMemory) | گذرا؛ اگر چند روز تکرار شد سرویس‌های ترجمه از runner مسدود شده‌اند |
 | `tts-error` | Edge-TTS پاسخ نداد | گذرا (سرویس مایکروسافت)؛ Re-run کنید یا منتظر فردا بمانید |
 | `render-error` | رندر/ffmpeg شکست خورد | لاگ اجرا؛ فونت‌ها (`build/fetch_fonts.sh`) و ffmpeg را چک کنید |
+| `cloudflare-client-blocked` (فقط `groq-connection-check`) | لبهٔ Cloudflare جلوی `api.groq.com` درخواست را به‌خاطر **امضای کلاینت HTTP** با `HTTP 403` و کد `1010` رد کرده — قبل از بررسی کلید. مشکل کلید نیست | همهٔ درخواست‌ها باید از `build/groq_http.py` با `User-Agent` صریح پروژه بروند. **کلید را rotate نکنید.** جزئیات: `docs/groq_cloudflare_1010_fix.md` |
 | `buffer-error` | کانال پیدا نشد / توکن نامعتبر / خطای API | `buffer-connection-check` را اجرا کنید؛ نام کانال و `TARGET_BUFFER_CHANNEL` را مقایسه کنید؛ توکن را در Buffer تازه کنید |
 | `queue-full` | صف کانال پر است (پلن رایگان ۱۰ پست) | چند پست در Buffer منتشر/حذف شوند؛ فردا دوباره تلاش می‌شود |
 | `duplicate-prevented` | پستی با همین `reel-id` از قبل در صف بود (اجرای تکراری) | هیچ؛ همان پست قبلی معتبر است |
@@ -135,7 +136,7 @@ Issue با `qa-failed`. آستانه‌ها هرگز پایین نمی‌آین�
 ```bash
 pip install pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
 bash build/fetch_fonts.sh && python3 build/logo_make.py
-python3 -m unittest discover -s tests                      # 166 tests, all mocked (Buffer + GitHub + CDN + Groq stubbed; local bare git origin)
+python3 -m unittest discover -s tests                      # 205 tests, all mocked (Buffer + GitHub + CDN + Groq stubbed behind a local Cloudflare-style edge; local bare git origin)
 python3 build/pipeline.py produce --tag 2026-09-16 --calendar-only --synthetic-tts --fixture-translation --skip-network
 python3 build/report_issue.py --tag 2026-09-16 --state output/auto-2026-09-16_state.json --repo o/r --run-url x --dry-run
 ```
