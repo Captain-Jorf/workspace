@@ -1,0 +1,5 @@
+[
+ {"source": "hackernews", "title": "New AI coding assistant changes how developers debug and review code", "url": "https://news.ycombinator.com/item?id=tech1", "traffic": 800},
+ {"source": "github-search", "title": "GitHub Copilot autocomplete and deskilling in software teams", "url": "https://github.com/features/copilot", "traffic": 1200},
+ {"source": "arxiv", "title": "Automation bias in AI-assisted programming: when developers trust AI too much", "url": "https://arxiv.org/abs/2401.00001", "traffic": 0}
+]

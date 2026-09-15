@@ -1,162 +1,118 @@
 {
- "_comment": "Permanent editorial rules for @metacognition.hq. Read by trend_scout, content_producer, render (layout), qa_supervisor and performance_analyst. Owner-editable. The QA thresholds here are FLOORS: code never lowers them at runtime.",
+ "_comment": "English-only production policy for @metacognition.hq — Metacognition for the AI age. How humans think, learn, build, and make decisions with technology.",
  "page": {
   "handle": "@metacognition.hq",
   "buffer_channel_name": "metacognition.hq",
   "language_primary": "en",
-  "language_subtitles": "fa",
+  "language_subtitles": "en",
+  "content_language": "en",
   "timezone": "Asia/Tehran",
-  "publish_slot_local": "19:30"
+  "publish_slot_local": "19:30",
+  "brand_positioning": "Metacognition for the AI age. How humans think, learn, build, and make decisions with technology."
+ },
+ "content_language": "en",
+ "generation": {
+  "producer": "github-models",
+  "fallback": "static-english",
+  "producer_model": "openai/gpt-4o-mini",
+  "reviewer_model": "meta/llama-3.3-70b-instruct",
+  "fallback_models": ["openai/gpt-4o-mini", "meta/llama-3.3-70b-instruct", "mistral-large", "phi-4"],
+  "max_daily_requests": {
+   "producer": 1,
+   "reviewer": 1,
+   "revision": 1,
+   "final_reviewer": 1
+  },
+  "quota_behavior": "limited retry then static-fallback, no cost, no pipeline stop if fallback valid"
+ },
+ "content_strategy": {
+  "hybrid_ratio": {
+   "evergreen_tech_metacognition": 0.6,
+   "trend_analysis": 0.3,
+   "quiz_experiment_prediction": 0.1
+  },
+  "rolling_window": 20,
+  "note": "Ratios controlled in rolling window 10-20 posts, not weekly exact"
+ },
+ "pillars": {
+  "AI_JUDGMENT": "AI and human judgment — automation bias, confidence calibration, hallucination",
+  "CODING": "Coding and debugging — metacognition in debugging, tutorial hell, deskilling",
+  "LEARNING_TECH": "Learning technical skills — learning to code with AI, cognitive offloading",
+  "PRODUCT": "Product and startup decisions — planning fallacy in estimation, Goodhart's law, sunk cost in architecture",
+  "ATTENTION": "Attention and digital behavior — context switching, notifications, focus",
+  "HUMAN_AI": "Human-AI collaboration — when AI improves vs replaces thinking"
  },
  "allowed_topics": [
-  "metacognition",
-  "cognitive biases",
-  "decision-making",
-  "critical thinking",
-  "learning science",
-  "memory",
-  "attention",
-  "problem-solving",
-  "self-awareness",
-  "thinking in probabilities",
-  "mental models"
+  "metacognition for AI age",
+  "AI and human judgment",
+  "automation bias in AI assistants",
+  "hallucination and confidence calibration",
+  "cognitive offloading to AI",
+  "tutorial hell and illusion of competence",
+  "metacognition in debugging",
+  "learning to code with AI",
+  "deskilling through autocomplete",
+  "planning fallacy in software estimation",
+  "confirmation bias in user research",
+  "Goodhart's law in product metrics",
+  "context switching and notifications",
+  "sunk cost in software architecture",
+  "coding and debugging",
+  "product and startup decisions",
+  "attention and digital behavior",
+  "human-AI collaboration"
  ],
- "pillars": {
-  "LEARN": "learning science & study techniques",
-  "MEMORY": "how memory works and fails",
-  "ATTENTION": "focus, distraction, task switching",
-  "BIAS": "cognitive biases and calibration",
-  "DECIDE": "decision-making and planning",
-  "THINK": "critical thinking and reasoning",
-  "SOLVE": "problem-solving",
-  "SELF": "self-awareness and metacognitive monitoring",
-  "PROB": "thinking in probabilities",
-  "MODELS": "mental models"
- },
  "banned_topics": [
+  "general psychology without technology example",
+  "pure tech news without metacognitive lesson",
   "sports",
-  "match results",
   "celebrity gossip",
   "daily politics",
   "war",
   "violence",
-  "tabloid news",
   "crypto promotion",
   "investment advice",
   "medical diagnosis",
   "medical treatment",
   "psychiatric diagnosis",
   "psychiatric treatment",
-  "weak or artificial link to metacognition"
- ],
- "negative_keywords": [
-  "nfl",
-  "nba",
-  "mlb",
-  "nhl",
-  "fifa",
-  "uefa",
-  "premier league",
-  "champions league",
-  "super bowl",
-  "world cup",
-  "playoff",
-  "touchdown",
-  "goal scorer",
-  "match",
-  "vs",
-  "wrestlemania",
-  "ufc",
-  "boxing",
-  "dolphins",
-  "patriots",
-  "cowboys",
-  "lakers",
-  "celtics",
-  "warriors",
-  "manchester",
-  "real madrid",
-  "arsenal",
-  "kardashian",
-  "celebrity",
-  "divorce",
-  "dating rumor",
-  "red carpet",
-  "grammy",
-  "oscars",
-  "netflix series",
-  "election",
-  "senate",
-  "congress",
-  "parliament",
-  "president",
-  "prime minister",
-  "minister",
-  "party leader",
-  "ballot",
-  "impeach",
-  "sanction",
-  "war",
-  "missile",
-  "airstrike",
-  "troops",
-  "shooting",
-  "murder",
-  "stabbing",
-  "terror",
-  "hostage",
-  "explosion",
-  "crash",
-  "hurricane",
-  "earthquake",
-  "wildfire",
-  "flood",
-  "bitcoin",
-  "crypto",
-  "token",
-  "airdrop",
-  "memecoin",
-  "nft",
-  "stock pick",
-  "buy now",
-  "price target",
-  "invest in",
-  "earnings call",
-  "ipo",
-  "forex",
-  "lottery",
-  "powerball",
-  "jackpot",
-  "casino",
-  "betting",
-  "odds",
-  "diagnos",
-  "treatment",
-  "therapy for",
-  "cure",
-  "symptom",
-  "adhd medication",
-  "antidepressant",
-  "dosage",
-  "supplement",
-  "weight loss",
-  "diet plan",
-  "vaccine",
-  "outbreak",
-  "suicide",
-  "self-harm",
-  "overdose",
   "porn",
   "onlyfans",
   "leak",
   "nude",
   "scandal",
-  "arrested",
-  "lawsuit",
-  "verdict"
+  "weak or artificial link to metacognition",
+  "pure hype without evidence",
+  "advertisement",
+  "rumor"
+ ],
+ "technology_examples": [
+  "automation bias in AI assistants",
+  "hallucination and confidence calibration",
+  "tutorial hell and illusion of competence",
+  "cognitive offloading to AI",
+  "planning fallacy in software estimation",
+  "confirmation bias in user research",
+  "Goodhart's law in product metrics",
+  "context switching and notifications",
+  "sunk cost in software architecture",
+  "metacognition in debugging",
+  "learning to code with AI",
+  "deskilling through autocomplete"
+ ],
+ "negative_keywords": [
+  "nfl", "nba", "mlb", "nhl", "fifa", "uefa", "premier league", "champions league", "super bowl", "world cup",
+  "playoff", "touchdown", "goal scorer", "match", "wrestlemania", "ufc", "boxing",
+  "kardashian", "celebrity", "divorce", "dating rumor", "red carpet", "grammy", "oscars", "netflix series",
+  "election", "senate", "congress", "parliament", "president", "prime minister", "minister", "party leader", "ballot", "impeach", "sanction",
+  "war", "missile", "airstrike", "troops", "shooting", "murder", "stabbing", "terror", "hostage", "explosion", "crash",
+  "hurricane", "earthquake", "wildfire", "flood",
+  "bitcoin", "crypto", "token", "airdrop", "memecoin", "nft", "stock pick", "buy now", "price target", "invest in", "earnings call", "ipo", "forex", "lottery", "powerball", "jackpot", "casino", "betting", "odds",
+  "diagnos", "treatment", "therapy for", "cure", "symptom", "adhd medication", "antidepressant", "dosage", "supplement", "weight loss", "diet plan", "vaccine", "outbreak",
+  "suicide", "self-harm", "overdose", "porn", "onlyfans", "leak", "nude", "scandal", "arrested", "lawsuit", "verdict"
  ],
  "tone": {
-  "style": "informal, conversational, natural spoken English; second person; short sentences",
+  "style": "informal, conversational, natural spoken English; second person; short sentences; strong hook in 3 seconds",
   "forbidden_openers": [
    "in today's video",
    "in this video",
@@ -170,178 +126,73 @@
    "did you know"
   ],
   "banned_phrases": [
-   "science proves",
-   "scientists proved",
-   "scientifically proven",
-   "proven fact",
-   "studies prove",
-   "you won't believe",
-   "shocking",
-   "mind-blowing",
-   "brain hack",
-   "one weird trick",
-   "changes everything",
-   "doctors hate",
-   "guaranteed",
-   "100%",
-   "never fails",
-   "life-changing secret",
-   "the truth they",
-   "smash that like",
-   "like and subscribe",
-   "follow for more",
-   "link in bio"
+   "science proves", "scientists proved", "scientifically proven", "proven fact", "studies prove",
+   "you won't believe", "shocking", "mind-blowing", "brain hack", "one weird trick", "changes everything",
+   "doctors hate", "guaranteed", "100%", "never fails", "life-changing secret", "the truth they",
+   "smash that like", "like and subscribe", "follow for more", "link in bio"
   ],
-  "fear_words": [
-   "terrifying",
-   "dangerous secret",
-   "destroying your brain",
-   "ruining your life",
-   "before it's too late"
-  ],
+  "fear_words": ["terrifying", "dangerous secret", "destroying your brain", "ruining your life", "before it's too late"],
   "jargon_needing_explanation": [
-   "metacognition",
-   "retrieval practice",
-   "spacing effect",
-   "interleaving",
-   "working memory",
-   "base rate",
-   "regression to the mean",
-   "calibration",
-   "heuristic",
-   "cognitive load",
-   "consolidation",
-   "implementation intention",
-   "functional fixedness",
-   "incubation"
+   "metacognition", "retrieval practice", "spacing effect", "interleaving", "working memory", "base rate",
+   "regression to the mean", "calibration", "heuristic", "cognitive load", "consolidation",
+   "automation bias", "cognitive offloading", "Goodhart's law", "sunk cost"
   ],
   "informality_markers": [
-   "you're",
-   "you'll",
-   "don't",
-   "can't",
-   "isn't",
-   "it's",
-   "that's",
-   "won't",
-   "let's",
-   "here's",
-   "there's",
-   "didn't",
-   "doesn't",
-   "wasn't",
-   "we're",
-   "they're"
+   "you're", "you'll", "don't", "can't", "isn't", "it's", "that's", "won't", "let's", "here's", "there's",
+   "didn't", "doesn't", "wasn't", "we're", "they're"
   ]
  },
  "length": {
-  "target_seconds": [
-   66,
-   100
-  ],
-  "hard_seconds": [
-   60,
-   120
-  ],
-  "narration_words": [
-   150,
-   260
-  ],
+  "target_seconds": [70, 105],
+  "hard_seconds": [60, 120],
+  "narration_words": [150, 260],
   "max_words_per_line": 20,
   "max_chars_per_line_en": 110,
-  "max_chars_per_line_fa": 90,
   "hook_max_words": 15,
   "ending_max_words": 40,
-  "speech_rate_wps": [
-   1.6,
-   3.4
-  ]
+  "speech_rate_wps": [1.6, 3.4]
  },
- "script_structure": [
-  "hook",
-  "problem",
-  "explain",
-  "example",
-  "technique",
-  "ending"
- ],
- "beat_min_lines": {
-  "hook": 1,
-  "problem": 1,
-  "explain": 2,
-  "example": 2,
-  "technique": 2,
-  "ending": 1
- },
+ "script_structure": ["hook", "problem", "explain", "example", "technique", "ending"],
+ "beat_min_lines": {"hook": 1, "problem": 1, "explain": 2, "example": 2, "technique": 2, "ending": 1},
  "hook_policy": {
   "must_be_question_or_contrast": true,
-  "contrast_markers": [
-   "but",
-   "yet",
-   "so why",
-   "still",
-   "instead",
-   "not",
-   "why"
-  ],
+  "contrast_markers": ["but", "yet", "so why", "still", "instead", "not", "why"],
   "max_words": 15,
-  "banned_hook_phrases": [
-   "you won't believe",
-   "shocking",
-   "scientists discovered",
-   "brain hack",
-   "changes everything",
-   "secret",
-   "nobody tells you"
-  ]
+  "banned_hook_phrases": ["you won't believe", "shocking", "scientists discovered", "brain hack", "changes everything", "secret", "nobody tells you"]
  },
  "subtitles": {
   "english": {
-   "position": "top",
+   "position": "lower-middle",
    "direction": "ltr",
-   "style": "karaoke word-by-word"
-  },
-  "persian": {
-   "position": "bottom",
-   "direction": "rtl",
-   "style": "clean pill, max two rows"
+   "style": "karaoke word-by-word, max 2-3 short lines, big font, high contrast, inside safe zone, above caption and IG buttons"
   }
  },
  "layout": {
   "width": 1080,
   "height": 1920,
-  "safe_top": 270,
-  "safe_bottom": 1520,
+  "safe_top": 200,
+  "safe_bottom": 1450,
   "right_button_column_x": 960,
-  "right_button_column_y": [
-   1100,
-   1700
-  ],
-  "en_top": 270,
-  "en_row_height": 80,
+  "right_button_column_y": [1100, 1700],
+  "en_top": 200,
+  "en_row_height": 78,
   "en_max_rows": 3,
-  "en_max_width": 950,
-  "en_font_size": 50,
-  "fa_bottom": 1520,
-  "fa_max_width": 820,
-  "fa_max_rows": 2,
-  "fa_font_max": 50,
-  "fa_font_min": 36,
-  "scene_zone": [
-   560,
-   1340
-  ],
-  "min_contrast_ratio": 4.5
+  "en_max_width": 980,
+  "en_font_size": 54,
+  "scene_zone": [500, 1300],
+  "min_contrast_ratio": 4.5,
+  "note": "FA layer removed, space used for bigger diagram, code visual, evidence card, confidence meter, decision tree, prediction graph, human-AI network"
  },
  "visual": {
-  "style": "network / node-edge diagrams, gold on dark marble, animated, episode-aware",
+  "style": "network / node-edge diagrams, gold on dark marble, animated, episode-aware, technology-relevant",
   "rules": [
    "nodes and edges must come from the episode (no reel-01 leftovers)",
    "every scene animates; no static picture longer than 4 seconds",
-   "diagram never covers subtitles; subtitles never leave the safe zone",
-   "logo is a procedural stand-in until the official file exists"
+   "diagram never covers subtitles; subtitles never leave safe zone",
+   "logo is procedural stand-in until official file exists",
+   "visual must be relevant to technology angle: code-like, confidence meter, decision tree, prediction-vs-result, human-AI network"
   ],
-  "logo_status": "stand-in (procedural emblem, not the official logo)"
+  "logo_status": "stand-in"
  },
  "tts": {
   "engine": "edge-tts",
@@ -351,169 +202,90 @@
    "@metacognition.hq": "at metacognition H Q",
    "metacognition.hq": "metacognition H Q",
    "HQ": "H Q"
-  },
-  "_comment": "measured en-US-ChristopherNeural ≈ 1.9 words/s at +0%; +5% keeps 180-word scripts ≈ 95 s and still sounds conversational"
+  }
  },
  "source_policy": {
   "tiers": {
    "A": [
-    "doi.org",
-    "dx.doi.org",
-    "pubmed.ncbi.nlm.nih.gov",
-    "ncbi.nlm.nih.gov",
-    "arxiv.org",
-    "psycnet.apa.org",
-    "journals.sagepub.com",
-    "onlinelibrary.wiley.com",
-    "link.springer.com",
-    "sciencedirect.com",
-    "nature.com",
-    "science.org",
-    "pnas.org",
-    "frontiersin.org",
-    "journals.plos.org",
-    "cell.com",
-    "academic.oup.com",
-    "cambridge.org",
-    "tandfonline.com",
-    "annualreviews.org",
-    "jstor.org",
-    "journals.physiology.org",
-    "psychologicalscience.org",
-    "aeaweb.org",
-    "pubsonline.informs.org",
-    "journals.uchicago.edu",
-    "apps.dtic.mil",
-    ".edu",
-    ".ac.uk"
+    "doi.org", "dx.doi.org", "pubmed.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov", "arxiv.org",
+    "psycnet.apa.org", "journals.sagepub.com", "onlinelibrary.wiley.com", "link.springer.com",
+    "sciencedirect.com", "nature.com", "science.org", "pnas.org", "frontiersin.org",
+    "journals.plos.org", "cell.com", "academic.oup.com", "cambridge.org", "tandfonline.com",
+    "annualreviews.org", "jstor.org", ".edu", ".ac.uk"
    ],
    "B": [
-    "hbr.org",
-    "apa.org",
-    "learningscientists.org",
-    "retrievalpractice.org",
-    "edutopia.org",
-    "britannica.com",
-    "plato.stanford.edu",
-    "nobelprize.org",
-    "ted.com",
-    "bbc.co.uk/future",
-    "scientificamerican.com",
-    "theconversation.com"
+    "hbr.org", "apa.org", "learningscientists.org", "retrievalpractice.org", "edutopia.org",
+    "britannica.com", "plato.stanford.edu", "nobelprize.org", "ted.com", "bbc.co.uk/future",
+    "scientificamerican.com", "theconversation.com",
+    "github.blog", "engineering.fb.com", "netflixtechblog.com", "openai.com/blog",
+    "deepmind.google/blog", "ai.googleblog.com", "microsoft.com/en-us/research/blog"
    ],
    "C": [
-    "news.ycombinator.com",
-    "trends.google.com",
-    "reddit.com",
-    "wikipedia.org",
-    "medium.com",
-    "substack.com",
-    "nytimes.com",
-    "theguardian.com",
-    "bbc.com",
-    "cnn.com"
+    "news.ycombinator.com", "trends.google.com", "github.com", "reddit.com", "wikipedia.org",
+    "medium.com", "substack.com", "nytimes.com", "theguardian.com", "bbc.com", "cnn.com"
+   ],
+   "TECH_DISCOVERY": [
+    "news.ycombinator.com", "github.com", "trends.google.com", "arxiv.org",
+    "github.blog", "engineering blogs", "research lab RSS", "open-access original sources"
    ]
   },
   "min_evidence_tier_for_claims": "B",
   "require_evidence_for_claim_words": [
-   "studies show",
-   "study shows",
-   "one study",
-   "studies found",
-   "study found",
-   "research shows",
-   "research found",
-   "research says",
-   "according to research",
-   "researchers",
-   "scientists",
-   "science says",
-   "science shows",
-   "experiment showed",
-   "experiments show",
-   "in an experiment",
-   "meta-analysis",
-   "peer-reviewed",
-   "the data shows",
-   "data show",
-   "proven",
-   "proves",
-   "clinically",
-   "psychologists found",
-   "neuroscience shows",
-   "brain scans",
-   "the evidence shows",
-   "evidence suggests",
-   "studies suggest",
-   "published in",
-   "journal"
+   "studies show", "study shows", "one study", "studies found", "study found",
+   "research shows", "research found", "research says", "according to research",
+   "researchers", "scientists", "science says", "science shows",
+   "experiment showed", "experiments show", "in an experiment", "meta-analysis",
+   "peer-reviewed", "the data shows", "data show", "proven", "proves", "clinically",
+   "psychologists found", "neuroscience shows", "brain scans", "the evidence shows",
+   "evidence suggests", "studies suggest", "published in", "journal"
   ],
   "forbidden": [
-   "fabricated url",
-   "fabricated citation",
-   "quote not in source",
-   "causal claim from correlation",
-   "generalizing a small study",
-   "hiding limitations",
-   "preprint stated as settled fact"
+   "fabricated url", "fabricated citation", "quote not in source",
+   "causal claim from correlation", "generalizing a small study",
+   "hiding limitations", "preprint stated as settled fact", "fake citation"
+  ]
+ },
+ "trend_policy": {
+  "allowed_domains": ["AI", "software", "coding", "product", "digital behavior", "future of work"],
+  "requires": [
+   "related to AI, software, coding, product, digital behavior or future of work",
+   "real metacognitive lesson extractable",
+   "discovery source and evidence source specified",
+   "not pure advertisement, rumor or hype",
+   "no scientific content without evidence",
+   "not similar to recent posts"
   ],
-  "_claim_words_comment": "Phrases that assert empirical backing. Bare verbs like 'study' (a study session), 'found' (you've found the gap) or 'shows' (the gap shows up) are everyday English and are not claims."
+  "discovery_is_not_evidence": "HN and Google Trends are discovery only, not scientific evidence",
+  "redesign_example": {
+   "raw": "New AI coding agent released",
+   "angle": "When does an AI coding agent improve your thinking — and when does it replace it?"
+  },
+  "fallback": "If no valid angle, go to evergreen technology topic",
+  "free_sources": [
+   "Hacker News Algolia", "GitHub Search/Releases", "arXiv AI/HCI",
+   "Google Trends RSS", "official company engineering blogs",
+   "university and research lab RSS", "open-access original sources"
+  ]
  },
  "cta_policy": {
-  "allowed_types": [
-   "question",
-   "try-it",
-   "share-experience",
-   "save"
-  ],
-  "banned_phrases": [
-   "follow for more",
-   "like and share",
-   "like, comment",
-   "smash",
-   "tag 3 friends",
-   "double tap",
-   "comment below if you agree",
-   "share this now"
-  ],
+  "allowed_types": ["question", "try-it", "share-experience", "save"],
+  "banned_phrases": ["follow for more", "like and share", "like, comment", "smash", "tag 3 friends", "double tap", "comment below if you agree", "share this now"],
   "max_words": 40,
   "avoid_same_type_consecutive": true
  },
  "hashtag_policy": {
   "min": 3,
   "max": 8,
-  "always": [
-   "#metacognition",
-   "#metacognitionhq"
-  ],
-  "banned": [
-   "#follow4follow",
-   "#like4like",
-   "#f4f",
-   "#l4l",
-   "#followme",
-   "#viral",
-   "#fyp",
-   "#foryou",
-   "#trending",
-   "#explorepage"
-  ]
+  "always": ["#metacognition", "#metacognitionhq"],
+  "banned": ["#follow4follow", "#like4like", "#f4f", "#l4l", "#followme", "#viral", "#fyp", "#foryou", "#trending", "#explorepage"]
  },
- "caption_policy": {
-  "max_chars": 2200,
-  "min_chars": 150,
-  "language": "en",
-  "place_hashtags_in_first_comment": true
- },
+ "caption_policy": {"max_chars": 2200, "min_chars": 150, "language": "en", "place_hashtags_in_first_comment": true},
  "video_policy": {
   "width": 1080,
   "height": 1920,
   "aspect": "9:16",
   "aspect_tolerance": 0.01,
-  "fps": [
-   24,
-   60
-  ],
+  "fps": [24, 60],
   "video_codec": "h264",
   "audio_codec": "aac",
   "max_av_duration_diff_seconds": 1.0,
@@ -522,55 +294,14 @@
   "max_silence_seconds": 2.5,
   "max_lead_silence_seconds": 1.6,
   "max_tail_silence_seconds": 2.6,
-  "mean_volume_db": [
-   -32,
-   -8
-  ],
+  "mean_volume_db": [-32, -8],
   "max_peak_db": -0.3,
-  "bitrate_kbps": [
-   800,
-   14000
-  ],
-  "file_size_mb": [
-   1,
-   90
-  ],
-  "poster_sizes": {
-   "9x16": [
-    1080,
-    1920
-   ],
-   "4x5": [
-    1080,
-    1350
-   ]
-  }
+  "bitrate_kbps": [800, 14000],
+  "file_size_mb": [1, 90],
+  "poster_sizes": {"9x16": [1080, 1920], "4x5": [1080, 1350]}
  },
- "qa_thresholds": {
-  "min_score": 85,
-  "min_score_floor": 80,
-  "blocking_always_blocks": true
- },
- "duplicates": {
-  "window_posts": 30,
-  "title_similarity_block": 0.6,
-  "title_similarity_warn": 0.45,
-  "tag_cooldown_posts": 10,
-  "pillar_repeat_warn_consecutive": 2
- },
- "retention": {
-  "draft_branch_days": 14,
-  "keep_if_status": [
-   "queued",
-   "scheduled",
-   "unknown"
-  ]
- },
- "buffer": {
-  "queue_limit_free_plan": 10,
-  "mode": "addToQueue",
-  "scheduling_type": "automatic",
-  "instagram_post_type": "reel",
-  "share_to_feed": true
- }
+ "qa_thresholds": {"min_score": 85, "min_score_floor": 80, "blocking_always_blocks": true},
+ "duplicates": {"window_posts": 30, "title_similarity_block": 0.6, "title_similarity_warn": 0.45, "tag_cooldown_posts": 10, "pillar_repeat_warn_consecutive": 2},
+ "retention": {"draft_branch_days": 14, "keep_if_status": ["queued", "scheduled", "unknown"]},
+ "buffer": {"queue_limit_free_plan": 10, "mode": "addToQueue", "scheduling_type": "automatic", "instagram_post_type": "reel", "share_to_feed": true}
 }

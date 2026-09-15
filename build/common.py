@@ -1,8 +1,13 @@
-"""Shared helpers for the @metacognition.hq reel factory.
+"""Shared helpers for the @metacognition.hq reel factory — English-only production.
 
 Policy loading, editorial memory, text normalisation, hashing, safe JSON I/O.
-No network access, no secrets. Every agent (trend_scout, content_producer,
-qa_supervisor, buffer_publish, performance_analyst) imports from here.
+No network access, no secrets. Every agent imports from here.
+
+New in this version:
+- CONTENT_LANGUAGE=en explicit fail-closed (English-only)
+- Quarantine for Issue #14 (reel-2026-09-15)
+- English-only script_hash (no FA)
+- Generation mode tracking (github-models vs static-fallback)
 """
 import datetime
 import hashlib
@@ -18,12 +23,10 @@ MEMORY_PATH = os.path.join(CONTENT, "editorial_memory.json")
 CALENDAR_PATH = os.path.join(CONTENT, "calendar.json")
 PERF_PATH = os.path.join(CONTENT, "performance_history.json")
 QUARANTINE_PATH = os.path.join(CONTENT, "quarantine.json")
-FA_CATALOG_PATH = os.path.join(CONTENT, "fa_catalog.json")
-FA_TREND_TEMPLATES_PATH = os.path.join(CONTENT, "fa_trend_templates.json")
-FA_GLOSSARY_PATH = os.path.join(CONTENT, "fa_glossary.json")
 
 TEHRAN_OFFSET = datetime.timedelta(hours=3, minutes=30)
 
+# Legacy Persian detection (kept for quarantine doc, not used in production)
 PERSIAN_LETTER_RE = re.compile(
     r"[\u0621-\u063A\u0641-\u064A\u067E\u0686\u0698\u06A9\u06AF\u06CC\u06C0\u06BE\u0629]")
 ARABIC_ONLY_RE = re.compile(r"[\u064A\u0643]")
@@ -34,7 +37,15 @@ PLACEHOLDER_RE = re.compile(
     re.IGNORECASE)
 
 PUBLISHED_LIKE = {"queued", "queued-in-buffer", "scheduled", "sent", "sending", "published-manual",
-                  "approved-dry-run", "legacy-not-published"}
+                  "approved-dry-run", "legacy-not-published", "translation-rejected", "qa-failed"}
+
+# Content language — fail-closed English-only
+CONTENT_LANGUAGE = os.environ.get("CONTENT_LANGUAGE", "en").strip().lower()
+if CONTENT_LANGUAGE not in ("en", "english"):
+    # In production, only en is allowed. Any other value fails closed.
+    # For local tests, allow override via ALLOW_NON_EN=1
+    if os.environ.get("ALLOW_NON_EN") != "1":
+        raise RuntimeError(f"CONTENT_LANGUAGE must be 'en' in production, got '{CONTENT_LANGUAGE}' — fail-closed English-only")
 
 def load_json(path, default=None):
     try:
@@ -115,6 +126,7 @@ def title_similarity(a, b):
     return len(ta & tb) / len(ta | tb)
 
 def persian_ratio(s):
+    # Legacy, kept for quarantine doc but not used in English-only production
     letters = [c for c in s if c.isalpha()]
     if not letters:
         return 0.0
@@ -140,7 +152,8 @@ def sha256_file(path, chunk=1 << 20):
     return h.hexdigest()
 
 def script_hash(script):
-    core = [[(l["t"], f) for l, f in zip(ch["en"], ch["fa"])] for ch in script.get("chunks", [])]
+    """Hash of English narration only (English-only production)."""
+    core = [l["t"] for ch in script.get("chunks", []) for l in ch.get("en", [])]
     return sha256_text(json.dumps(core, ensure_ascii=False, sort_keys=True))
 
 def utc_now():
@@ -200,7 +213,7 @@ def min_qa_score(pol=None):
         return default
     return max(val, floor)
 
-# ------------------------------------------------------------------ quarantine & FA catalog
+# ------------------------------------------------------------------ quarantine (preserved from PR #15)
 def load_quarantine(path=None):
     return load_json(path or QUARANTINE_PATH, default={}) or {}
 
@@ -216,16 +229,15 @@ def is_quarantined(content_id, date_tag=None):
         return True
     return False
 
-def load_fa_catalog(path=None):
-    return load_json(path or FA_CATALOG_PATH, default=None)
-
-def load_fa_trend_templates(path=None):
-    return load_json(path or FA_TREND_TEMPLATES_PATH, default=None)
-
-def load_fa_glossary(path=None):
-    return load_json(path or FA_GLOSSARY_PATH, default=None)
+def assert_content_language_en():
+    """Fail-closed English-only check, callable from agents."""
+    import os
+    lang = os.environ.get("CONTENT_LANGUAGE", "en").strip().lower()
+    if lang not in ("en", "english"):
+        if os.environ.get("ALLOW_NON_EN") != "1":
+            raise SystemExit(f"CONTENT_LANGUAGE must be 'en' in production, got '{lang}' — fail-closed")
 
 def en_hash(text):
-    """Stable hash for English line -> used to bind curated FA translation."""
+    """Stable hash for English line."""
     norm = re.sub(r"\s+", " ", (text or "").strip())
     return sha256_text(norm)[:16]
