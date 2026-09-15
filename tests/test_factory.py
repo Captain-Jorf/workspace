@@ -781,6 +781,8 @@ class HangProtectionTests(unittest.TestCase):
             allow_reuse_address = True
         srv = Srv(("127.0.0.1", 0), Stall)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
+        import socket
+        prev_default = socket.getdefaulttimeout()
         try:
             cp.install_http_timeout(1)
             t0 = time.time()
@@ -788,6 +790,7 @@ class HangProtectionTests(unittest.TestCase):
                 requests.get(f"http://127.0.0.1:{srv.server_address[1]}/translate")   # no timeout= given on purpose
             self.assertLess(time.time() - t0, 10)
         finally:
+            socket.setdefaulttimeout(prev_default)           # process-global: do not leak into other tests
             srv.shutdown()
             srv.server_close()
 
