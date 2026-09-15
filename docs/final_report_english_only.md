@@ -36,7 +36,7 @@ If Persian files exist on main/history, they are not executed — `common.assert
 - **Quarantine reel-2026-09-15:** `content/quarantine.json` lists `reel-2026-09-15` as rejected, reason translation-rejected
 - **Issue #14 editorial_memory rejected:** `content/editorial_memory.json` marks Issue #14 as rejected
 - **Block quarantined publish even AUTO_PUBLISH_ENABLED=true:** `build/buffer_publish.py` checks `is_quarantined()` before publish, returns block
-- **Test quarantine block:** `tests/test_issue14.py` covers quarantine block
+- **Test quarantine block:** `tests/test_english_llm.py` (quarantine Issue #14) + `tests/test_buffer_publish.py` (quarantined cannot publish) cover quarantine block — old `tests/test_issue14.py` removed because it tested Persian FA wrap/curated translator which no longer exists in English-only production
 - **Dry-run safety:** `pipeline.py --dry-run` never calls `createPost`, QA supervisor blocks publish without public URL, buffer_publish refuses if BUFFER_TOKEN not set
 - **Buffer idempotency:** duplicate check via script_hash, title_similarity, tag cooldown
 - **Source validation:** tier check, fake URL/example.com block, no scientific claim without evidence, HN/Google Trends only discovery not evidence
