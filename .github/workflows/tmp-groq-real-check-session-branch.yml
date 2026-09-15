@@ -87,16 +87,29 @@ jobs:
             --producer-model "$PRODUCER_MODEL" \
             --reviewer-model "$REVIEWER_MODEL" >check.out 2>&1
           code=$?
+          echo "----- step output (exit=$code) -----"
           cat check.out
-          # Re-emit ONLY the safe summary lines as annotations. The runner log
-          # archive is not reachable from this session's network, but
-          # annotations are readable through the REST API. groq_check.py never
-          # prints a credential, so these lines are safe to surface.
-          enc() { python3 -c "import sys;print(sys.stdin.read().replace('%','%25').replace(chr(13),'%0D').replace(chr(10),'%0A'))"; }
-          DIAG=$(grep -E '^(Client User-Agent|Endpoint hostname|GROQ_API_KEY present|DNS resolution|HTTPS probe|Model discovery|Model selection|Producer probe|Reviewer probe)' check.out | enc)
-          SUMMARY=$(sed -n '/^Groq connection: OK$/,$p' check.out | enc)
-          FAILS=$(grep -E '^(Groq connection: FAILED|Hint:)' check.out | enc)
-          if [ -n "$DIAG" ]; then echo "::notice title=groq diagnostics::$DIAG"; fi
-          if [ -n "$SUMMARY" ]; then echo "::notice title=groq REAL success summary::$SUMMARY"; fi
-          if [ -n "$FAILS" ]; then echo "::error title=groq check FAILED::$FAILS"; fi
+          echo "----- end -----"
+          # The runner log archive host is unreachable from this session, but
+          # check-run annotations are readable through the REST API. Re-emit the
+          # WHOLE output as one annotation, after running it through the central
+          # scrubber plus an explicit credential guard.
+          python3 - "$code" << 'PY'
+          import os, sys
+          sys.path.insert(0, "build")
+          import common
+          code = sys.argv[1]
+          try:
+              with open("check.out", encoding="utf-8", errors="replace") as f:
+                  txt = f.read()
+          except Exception as e:
+              txt = "<unreadable output: %s>" % type(e).__name__
+          txt = common.scrub_secrets(txt) or "<empty output>"
+          enc = txt.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          key = (os.environ.get("GROQ_API_KEY") or "").strip()
+          if key and (key in enc or key in txt):
+              enc = "<withheld: the scrubber did not clear the credential>"
+          level = "notice" if code == "0" else "error"
+          print("::%s title=groq-check safe output (exit=%s)::%s" % (level, code, enc[:6000]))
+          PY
           exit $code
