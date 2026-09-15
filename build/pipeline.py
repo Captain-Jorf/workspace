@@ -1,4 +1,4 @@
-"""Daily reel factory — English-only, Technology × Metacognition, GitHub Models + Static Fallback.
+"""Daily reel factory — English-only, Technology × Metacognition, Groq + Static Fallback.
 
   python3 build/pipeline.py produce --tag 2026-09-16 [--fixture fixtures/trends_sample.json]
          [--calendar-only] [--synthetic-tts] [--skip-network]
@@ -42,11 +42,11 @@ class Stage(Exception):
 def assert_no_mock_in_ci():
     """Mock LLM fixtures are forbidden in CI/production (cron or dispatch).
 
-    Raises Stage('script', ...) when GITHUB_ACTIONS=true and MOCK_GITHUB_MODELS=1.
+    Raises Stage('script', ...) when GITHUB_ACTIONS=true and MOCK_GROQ=1.
     Local runs (no GITHUB_ACTIONS) may use the explicit mock for tests.
     """
-    if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("MOCK_GITHUB_MODELS") == "1":
-        raise Stage("script", "MOCK_GITHUB_MODELS=1 is forbidden in CI/production — refusing mock content")
+    if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("MOCK_GROQ") == "1":
+        raise Stage("script", "MOCK_GROQ=1 is forbidden in CI/production — refusing mock content")
 
 def state_path(tag):
     return os.path.join(common.ROOT, "output", f"auto-{tag}_state.json")
@@ -207,8 +207,8 @@ def produce(a):
             # 2. script via GitHub Models + static fallback
             st["stage"] = "script"
             env = {}
-            if os.environ.get("MOCK_GITHUB_MODELS"):
-                env["MOCK_GITHUB_MODELS"] = "1"
+            if os.environ.get("MOCK_GROQ"):
+                env["MOCK_GROQ"] = "1"
             cmd = [PY, os.path.join(B, "content_producer.py"), "--topic", topic_path, "--out", ep, "--variant", str(variant)]
             try:
                 run(cmd, "script", env=env, timeout=600)

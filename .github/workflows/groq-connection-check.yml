@@ -1,18 +1,19 @@
-# GitHub Models connection check — FAIL-CLOSED, manual only.
-# Run from: GitHub → Actions → "github-models-connection-check" → Run workflow
+# Groq connection check — FAIL-CLOSED, manual only.
+# Run from: GitHub → Actions → "groq-connection-check" → Run workflow
 #
 # Real mode is the default and the ONLY mode that can print
-# "GitHub Models connection: OK". Any failure (missing token, DNS, HTTP,
-# invalid model, malformed JSON, reviewer failure) exits nonzero — the run
-# goes RED. There is NO automatic mock fallback.
+# "Groq connection: OK". Any failure (missing key, DNS, HTTP/auth, discovery,
+# unavailable model, malformed JSON, reviewer failure) exits nonzero — the run
+# goes RED. There is NO automatic mock or static fallback in this check.
 #
 # Mock exists ONLY for explicit plumbing tests: dispatch with mock=true.
 # It prints an unambiguous "MOCK MODE" banner and never the real-success line.
 #
-# No Buffer, no createPost, no publish. Secrets: GITHUB_TOKEN only (boolean
-# presence is logged; the value is never printed).
+# No Buffer, no publishing, no Instagram, no real user content.
+# Secrets: GROQ_API_KEY in exactly one step (boolean presence is logged; the
+# value is never printed). Groq needs no `models: read` permission.
 # Timeout 5 min. Safe logs: hostname, model IDs, HTTP status, attempt numbers.
-name: github-models-connection-check
+name: groq-connection-check
 on:
   workflow_dispatch:
     inputs:
@@ -29,7 +30,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      models: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -44,11 +44,11 @@ jobs:
       - name: DNS diagnostic for the official endpoint (no credentials)
         run: |
           set -euo pipefail
-          getent hosts models.github.ai || echo "getent: no record (python check below is authoritative)"
+          getent hosts api.groq.com || echo "getent: no record (python check below is authoritative)"
           python3 - << 'PY'
           import socket, sys, time
-          host = "models.github.ai"
-          print(f"endpoint hostname: {host}")
+          host = "api.groq.com"
+          print(f"Endpoint hostname: {host}")
           ok = False
           for attempt in (1, 2, 3):
               try:
@@ -60,38 +60,27 @@ jobs:
                   print(f"DNS attempt {attempt} failed: {type(e).__name__}")
                   time.sleep(attempt)
           if not ok:
-              print("::error::DNS resolution failed for models.github.ai after 3 attempts")
+              print("::error::DNS resolution failed for api.groq.com after 3 attempts")
               sys.exit(1)
           PY
 
-      - name: Token presence gate (boolean only, value never logged)
+      - name: Groq connection check (fail-closed, no mock or static fallback)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GITHUB_TOKEN:-}" ]; then
-            echo "::error::GITHUB_TOKEN is missing — real connection check cannot run"
-            exit 1
-          fi
-          echo "GITHUB_TOKEN present: true"
-
-      - name: GitHub Models connection check (fail-closed, no mock fallback)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CONTENT_LANGUAGE: en
-          CONTENT_PRODUCER: github-models
-          PRODUCER_MODEL: ${{ vars.PRODUCER_MODEL || 'openai/gpt-4o-mini' }}
-          REVIEWER_MODEL: ${{ vars.REVIEWER_MODEL || 'meta/llama-3.3-70b-instruct' }}
+          CONTENT_PRODUCER: groq
+          PRODUCER_MODEL: ${{ vars.PRODUCER_MODEL || 'auto' }}
+          REVIEWER_MODEL: ${{ vars.REVIEWER_MODEL || 'auto' }}
           MOCK_INPUT: ${{ inputs.mock }}
         run: |
           set -euo pipefail
-          # NOTE: MOCK_GITHUB_MODELS is deliberately NEVER set in this workflow.
+          # NOTE: MOCK_GROQ is deliberately NEVER set in this workflow.
           # Mock runs only when the dispatcher explicitly chose mock=true.
           ARGS=""
           if [ "${MOCK_INPUT:-false}" = "true" ]; then
             echo "::warning::explicit mock requested — this run CANNOT validate the real connection"
             ARGS="--mock"
           fi
-          python3 build/github_models_check.py \
+          python3 build/groq_check.py \
             --producer-model "$PRODUCER_MODEL" \
             --reviewer-model "$REVIEWER_MODEL" $ARGS
