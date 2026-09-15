@@ -22,6 +22,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+common.assert_content_language_en()  # fail-closed EN-only
 
 # Supported models in GitHub Models (as of 2025-2026)
 # Checked via https://github.com/marketplace/models/catalog

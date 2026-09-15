@@ -21,6 +21,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import common
+common.assert_content_language_en()
 W, H, FPS = 1080, 1920, 30
 GOLD = (233, 180, 74)
 GOLD_HI = (255, 228, 158)

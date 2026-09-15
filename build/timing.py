@@ -15,6 +15,10 @@ import subprocess
 import sys
 import tempfile
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import common
+common.assert_content_language_en()
 import imageio_ffmpeg
 
 FF = imageio_ffmpeg.get_ffmpeg_exe()

@@ -17,7 +17,8 @@ import imageio_ffmpeg
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import common  # noqa: E402
+import common
+common.assert_content_language_en()  # fail-closed EN-only  # noqa: E402
 from reel_engine import Reel, W, H, FPS, font  # noqa: E402
 
 

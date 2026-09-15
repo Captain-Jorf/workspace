@@ -47,7 +47,9 @@ import urllib.request
 
 # Import common for quarantine check (safe, no network)
 try:
-    import common as _common
+    import common
+    common.assert_content_language_en()  # fail-closed EN-only
+    _common = common
 except Exception:
     _common = None
 
