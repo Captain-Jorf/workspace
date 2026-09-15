@@ -4,7 +4,7 @@
          [--calendar-only] [--synthetic-tts] [--skip-network]
       → topic → script (LLM + fallback) → TTS → timing → render → posters → caption → QA (pre-publish)
         with mandated retries: script rejected → regenerate ONCE;
-        render rejected → ONE safer re-render; second failure → qa-failed.
+        render rejected → ONE safer re-render (temp file + validation + atomic replace); second failure → qa-failed.
       Writes output/auto-<tag>_state.json and exits 0 when APPROVED, 10 otherwise.
 
   python3 build/pipeline.py verify --tag T --public-url URL [--skip-network]
@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -96,6 +97,56 @@ def script_summary(script):
             parts.append(" ".join(beats[b][:2]))
     return " ".join(parts)[:700]
 
+def validate_mp4(path):
+    """Validate MP4 for safe retry: video+audio, 1080x1920, 60-120s, decode few frames."""
+    if not os.path.exists(path) or os.path.getsize(path) < 1024:
+        return False, "missing or too small"
+    try:
+        import shutil, json, subprocess
+        try:
+            import imageio_ffmpeg
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
+        ffprobe = shutil.which("ffprobe")
+        info = None
+        if ffprobe:
+            r = subprocess.run([ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
+                               capture_output=True, text=True, timeout=20)
+            if r.returncode == 0:
+                info = json.loads(r.stdout)
+        if not info:
+            r = subprocess.run([ffmpeg, "-hide_banner", "-i", path], capture_output=True, text=True, timeout=20)
+            txt = r.stderr
+            if "Video:" not in txt:
+                return False, "no video stream in probe"
+            if "Audio:" not in txt:
+                return False, "no audio stream in probe"
+            # fallback minimal
+            return True, "fallback probe ok"
+        vs = [s for s in info.get("streams", []) if s.get("codec_type") == "video"]
+        au = [s for s in info.get("streams", []) if s.get("codec_type") == "audio"]
+        if not vs:
+            return False, "no video stream"
+        if not au:
+            return False, "no audio stream"
+        v = vs[0]
+        w, h = int(v.get("width", 0)), int(v.get("height", 0))
+        if (w, h) != (1080, 1920):
+            return False, f"resolution {w}x{h} not 1080x1920"
+        dur = float(info.get("format", {}).get("duration") or v.get("duration") or 0)
+        if not (60 <= dur <= 120):
+            return False, f"duration {dur:.1f}s outside 60-120"
+        # decode few frames at start, middle, end
+        for ss in ("0", f"{dur*0.5:.2f}", f"{max(0, dur-1):.2f}"):
+            r = subprocess.run([ffmpeg, "-v", "error", "-xerror", "-ss", ss, "-i", path, "-vframes", "1", "-f", "null", "-"],
+                               capture_output=True, text=True, timeout=20)
+            if r.returncode != 0:
+                return False, f"decode error at {ss}s: {r.stderr[-200:]}"
+        return True, f"valid {w}x{h} {dur:.1f}s"
+    except Exception as e:
+        return False, f"validation exception {type(e).__name__}: {e}"
+
 # produce
 def produce(a):
     common.assert_content_language_en()
@@ -110,8 +161,23 @@ def produce(a):
           "content_language": "en", "generation_mode": "unknown"}
     save_state(tag, st)
     topic_path = os.path.join(ep, "topic.json")
+    lock_path = os.path.join(os.path.dirname(paths["mp4"]), f"auto-{tag}.render.lock")
+    tmp_retry_path = os.path.join(os.path.dirname(paths["mp4"]), f"auto-{tag}.safe.tmp.mp4")
     try:
-        # 1. trend scout (+ source validation + dedupe)
+        # Prevent two renders simultaneous for same tag
+        if os.path.exists(lock_path):
+            try:
+                age = os.path.getmtime(lock_path)
+                if time.time() - age < 600:
+                    raise Stage("render", f"another render for {tag} is running (lock {lock_path}) — refusing concurrent render")
+                else:
+                    os.remove(lock_path)
+            except FileNotFoundError:
+                pass
+        with open(lock_path, "w") as lf:
+            lf.write(f"{os.getpid()} {common.utc_now()}\n")
+
+        # 1. trend scout
         st["stage"] = "trend"
         cmd = [PY, os.path.join(B, "trend_scout.py"), "--date", tag, "--out", topic_path]
         if a.fixture:
@@ -128,17 +194,15 @@ def produce(a):
         approved = False
         variant = 0
         while True:
-            # 2. script via GitHub Models + static fallback (English-only)
+            # 2. script via GitHub Models + static fallback
             st["stage"] = "script"
             env = {}
-            # Mock flag for local tests without GITHUB_TOKEN
             if os.environ.get("MOCK_GITHUB_MODELS"):
                 env["MOCK_GITHUB_MODELS"] = "1"
             cmd = [PY, os.path.join(B, "content_producer.py"), "--topic", topic_path, "--out", ep, "--variant", str(variant)]
             try:
                 run(cmd, "script", env=env, timeout=600)
             except Stage as e:
-                # On script error, try once more with variant 1 or static fallback is inside producer
                 if st["retries"]["script"] == 0:
                     print(f"[pipeline] script failed ({e}) → retry variant 1", flush=True)
                     st["retries"]["script"] = 1
@@ -148,7 +212,6 @@ def produce(a):
             script = common.load_json(os.path.join(ep, "script.json"))
             if not script:
                 raise Stage("script", "script.json missing")
-            # Validate English-only
             if script.get("meta", {}).get("language") != "en":
                 raise Stage("script", f"language {script.get('meta',{}).get('language')} != en")
             st["script"] = {"summary": script_summary(script), "sources": script.get("sources", []),
@@ -175,19 +238,72 @@ def produce(a):
             st["stage"] = "caption"
             run([PY, os.path.join(B, "caption.py"), ep, paths["caption"]], "caption")
 
-            # 5. render + posters + QA with one safer retry
+            # 5. render + posters + QA with one safer retry using temp file + validation
             safe = False
+            original_mp4_valid = False
             while True:
                 st["stage"] = "render"
-                cmd = [PY, os.path.join(B, "render_auto.py"), "--ep", ep, "--out", paths["mp4"]]
-                if safe:
-                    cmd.append("--safe")
-                run(cmd, "render", timeout=2400)
+                if not safe:
+                    render_out = paths["mp4"]
+                    cmd = [PY, os.path.join(B, "render_auto.py"), "--ep", ep, "--out", render_out]
+                else:
+                    render_out = tmp_retry_path
+                    cmd = [PY, os.path.join(B, "render_auto.py"), "--ep", ep, "--out", render_out, "--safe"]
+                try:
+                    run(cmd, "render", timeout=2400)
+                except Stage as e_render:
+                    if safe:
+                        # Clean temp, keep original
+                        try:
+                            if os.path.exists(render_out):
+                                os.remove(render_out)
+                        except Exception:
+                            pass
+                        raise Stage("render", f"safe re-render failed/timed out: {e_render} — keeping original valid file, fail-closed, no Buffer createPost")
+                    else:
+                        raise
+                if not safe:
+                    valid, why = validate_mp4(paths["mp4"])
+                    original_mp4_valid = valid
+                    print(f"[pipeline] first render {'valid' if valid else 'invalid'}: {why}", flush=True)
+                else:
+                    # Validate temp before atomic replace
+                    valid, why = validate_mp4(render_out)
+                    if not valid:
+                        print(f"[pipeline] safe retry produced invalid file: {why} — keeping original {paths['mp4']}", flush=True)
+                        try:
+                            if os.path.exists(render_out):
+                                os.remove(render_out)
+                        except Exception:
+                            pass
+                        st["stage"] = "render"
+                        st["error"] = f"safe re-render invalid: {why} — original preserved, no publish"
+                        save_state(tag, st)
+                        raise Stage("render", f"safe re-render invalid ({why}) — original preserved, fail-closed")
+                    try:
+                        os.replace(render_out, paths["mp4"])
+                        print(f"[pipeline] safe retry valid ({why}) → atomic replace {paths['mp4']}", flush=True)
+                    except Exception as e_replace:
+                        raise Stage("render", f"atomic replace failed: {e_replace}")
+                    finally:
+                        try:
+                            if os.path.exists(render_out):
+                                os.remove(render_out)
+                        except Exception:
+                            pass
+
                 st["stage"] = "poster"
                 run([PY, os.path.join(B, "poster_auto.py"), "--ep", ep, "--out-dir", os.path.dirname(paths["mp4"])], "poster")
                 st["stage"] = "qa"
                 approved = run_qa(qa_cmd(tag, ep, paths, topic_path, skip_network=a.skip_network))
                 qa = common.load_json(paths["qa_json"], {})
+                # Test hook: force render reject for integration test of safe retry path
+                if os.environ.get("FORCE_RENDER_REJECT") == "1" and not safe and st["retries"]["render"] == 0:
+                    print("[pipeline] FORCE_RENDER_REJECT=1 → forcing render-related QA rejection to test safe retry path", flush=True)
+                    approved = False
+                    qa["blocking_errors"] = qa.get("blocking_errors", []) + ["[video_quality] forced render reject for safe retry integration test"]
+                    qa["approved"] = False
+                    common.save_json(paths["qa_json"], qa)
                 st["qa"] = qa
                 save_state(tag, st)
                 if approved:
@@ -196,7 +312,7 @@ def produce(a):
                 render_related = any(k in blocking for k in ("video_quality", "audio_quality", "subtitle_layout"))
                 content_related = any(k in blocking for k in ("script_quality", "english_quality", "technology_relevance", "metacognition_relevance", "topic_relevance", "source_quality", "caption_quality", "duplicate_check", "reviewer_check", "english_only", "content_language"))
                 if render_related and not content_related and not safe and st["retries"]["render"] == 0:
-                    print("[pipeline] render/audio/layout rejected → ONE safer re-render", flush=True)
+                    print("[pipeline] render/audio/layout rejected → ONE safer re-render (temp file + validation)", flush=True)
                     st["retries"]["render"] = 1
                     safe = True
                     continue
@@ -237,6 +353,18 @@ def produce(a):
         save_state(tag, st)
         traceback.print_exc()
         return 10
+    finally:
+        # Clean lock and temp file
+        try:
+            if os.path.exists(lock_path):
+                os.remove(lock_path)
+        except Exception:
+            pass
+        try:
+            if os.path.exists(tmp_retry_path):
+                os.remove(tmp_retry_path)
+        except Exception:
+            pass
 
 def verify(a):
     common.assert_content_language_en()

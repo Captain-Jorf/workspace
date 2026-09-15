@@ -245,6 +245,16 @@
       "beats": ["first explanation feels like answer", "anchoring + confirmation", "name two alternatives", "evidence that separates"],
       "sources": ["Kahneman (2011)", "Nickerson (1998)"],
       "cta": "What was your last first-answer mistake?"
+    },
+    {
+      "id": 32,
+      "pillar": "ATTENTION",
+      "technology_angle": "attention residue from Slack and IDE notifications for developers",
+      "title": "You closed Slack, but your brain didn't. Attention residue",
+      "hook": "You closed Slack, but your brain didn't. Why?",
+      "beats": ["close Slack, thought stays", "attention residue diagram", "Leroy 2009 study card", "shutdown ritual: write next step"],
+      "sources": ["Leroy (2009), Why is it so hard to do my work? Attention residue", "Mark, Gudith & Klocke (2008), Cost of interrupted work"],
+      "cta": "What tab is still open in your head right now?"
     }
   ]
 }
