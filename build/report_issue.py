@@ -157,7 +157,7 @@ def render_body(tag, st, repo, run_url):
         else:
             due = buf.get("due_at")
             L.append(f"Queued via official API → post id `{buf.get('buffer_post_id', '?')}` · status `{buf.get('status', '?')}`"
-                     + (f" · due {due} UTC = {common.to_tehran(due)} Tehran" if due else " · due: next queue slot (19:30 Tehran)"))
+                     + (f" · due {due} UTC = {common.to_tehran(due)}" if due else " · due: next queue slot (19:30 Asia/Tehran)"))
             if buf.get("adopted"):
                 L.append("(existing post adopted — no duplicate created)")
             if buf.get("first_comment_used") is False:
