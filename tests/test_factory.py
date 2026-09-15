@@ -790,3 +790,40 @@ class HangProtectionTests(unittest.TestCase):
         finally:
             srv.shutdown()
             srv.server_close()
+
+
+class IssueDedupTests(unittest.TestCase):
+    """The daily issue is found by its body marker through a plain listing (no search-index lag)."""
+
+    def _run(self, listing, search=None):
+        import report_issue as ri
+        calls = []
+
+        def fake_gh(args, check=True, input_text=None):
+            calls.append(args)
+            if "--search" in args:
+                if search is None:
+                    raise RuntimeError("search unavailable")
+                return json.dumps(search)
+            return json.dumps(listing)
+        with mock.patch.object(ri, "gh", fake_gh):
+            return ri.find_existing_issue("o/r", "reel-2026-09-30", "2026-09-30"), calls
+
+    def test_marker_in_body_matches_even_when_title_changed(self):
+        listing = [{"number": 41, "title": "Daily reel 2026-09-29 — qa-failed — x", "state": "open", "labels": [],
+                    "body": "… content_id: `reel-2026-09-29` …"},
+                   {"number": 42, "title": "renamed by a human", "state": "open", "labels": [],
+                    "body": "… content_id: `reel-2026-09-30` …"}]
+        found, calls = self._run(listing)
+        self.assertEqual(found["number"], 42)
+        self.assertNotIn("body", found)
+        self.assertEqual(len(calls), 1)                      # no search call needed
+
+    def test_no_match_falls_back_to_search_then_none(self):
+        found, calls = self._run([{"number": 1, "title": "other", "state": "open", "labels": [], "body": "nothing"}], search=[])
+        self.assertIsNone(found)
+        self.assertEqual(len(calls), 2)
+
+    def test_search_failure_is_not_fatal(self):
+        found, _ = self._run([], search=None)
+        self.assertIsNone(found)

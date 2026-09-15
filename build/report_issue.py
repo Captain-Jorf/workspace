@@ -213,10 +213,22 @@ def render_body(tag, st, repo, run_url):
     return "\n".join(L)
 
 
-def find_existing_issue(repo, cid):
-    """ONE issue per content id: search the body marker, never the title."""
+def find_existing_issue(repo, cid, tag=None):
+    """ONE issue per content id. Two lookups, both keyed on the body marker (never the title alone):
+    1. a plain listing of recent `daily-reel` issues (GraphQL listing — real time, no search-index lag),
+    2. the search API as a fallback for very old issues."""
+    marker = f"content_id: `{cid}`"
     try:
-        out = gh(["issue", "list", "-R", repo, "--state", "all", "--search", f'"content_id: `{cid}`" in:body',
+        out = gh(["issue", "list", "-R", repo, "--state", "all", "--label", "daily-reel",
+                  "--json", "number,title,state,labels,body", "--limit", "60"])
+        for it in json.loads(out or "[]"):
+            if marker in (it.get("body") or "") or (tag and it.get("title", "").startswith(f"Daily reel {tag} ")):
+                it.pop("body", None)
+                return it
+    except Exception as e:                                    # noqa: BLE001
+        print(f"[report] issue listing failed: {e}")
+    try:
+        out = gh(["issue", "list", "-R", repo, "--state", "all", "--search", f'"{marker}" in:body',
                   "--json", "number,title,state,labels", "--limit", "20"])
         for it in json.loads(out or "[]"):
             return it
@@ -253,7 +265,7 @@ def main():
         return
     ensure_labels(a.repo)
     cid = st.get("content_id") or common.content_id(a.tag)
-    existing = find_existing_issue(a.repo, cid)
+    existing = find_existing_issue(a.repo, cid, a.tag)
     if existing:
         num = str(existing["number"])
         old_labels = [l["name"] for l in existing.get("labels", []) if l["name"] in ALL_LABELS and l["name"] != "daily-reel"]
