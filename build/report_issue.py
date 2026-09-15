@@ -87,6 +87,38 @@ def checks_table(qa):
     return "\n".join(rows)
 
 
+def bilingual_table(tag, limit=40):
+    """EN line / translator input (when an idiom was simplified) / FA subtitle — so the owner can review
+    the Persian without opening the video. Read from the episode's script.json; empty when absent."""
+    ep = os.path.join(common.ROOT, "content", "episodes", f"auto-{tag}", "script.json")
+    sc = common.load_json(ep, {})
+    if not sc or not sc.get("chunks"):
+        return []
+    try:
+        from content_producer import translation_source
+    except Exception:                                         # noqa: BLE001
+        def translation_source(x):
+            return x
+    rows = []
+    for ch in sc["chunks"]:
+        for en, fa in zip(ch.get("en", []), ch.get("fa", [])):
+            t = en["t"]
+            g = translation_source(t)
+            rows.append((t, "" if g == t else g, fa))
+    n_gloss = sum(1 for r in rows if r[1])
+    esc = lambda x: str(x).replace("|", "\\|")             # noqa: E731
+    L = [f"<details><summary>Subtitles EN ⇄ FA ({len(rows)} lines · {n_gloss} idiom(s) simplified for the "
+         f"translator · engine: {sc.get('meta', {}).get('translation_engine', '?')})</summary>\n",
+         "| # | English (as spoken and shown) | translator input (if simplified) | Persian subtitle |",
+         "|---|---|---|---|"]
+    for i, (t, g, fa) in enumerate(rows[:limit], 1):
+        L.append(f"| {i} | {esc(t)} | {esc(g) if g else '—'} | {esc(fa)} |")
+    if len(rows) > limit:
+        L.append(f"| … | {len(rows) - limit} more line(s) in `content/episodes/auto-{tag}/script.json` | | |")
+    L += ["\n</details>", ""]
+    return L
+
+
 def render_body(tag, st, repo, run_url):
     status = st.get("status", "automation-error")
     topic = st.get("topic") or {}
@@ -145,6 +177,7 @@ def render_body(tag, st, repo, run_url):
             L.append("```")
             L.append("</details>")
             L.append("")
+        L += bilingual_table(tag)
         L.append(f"### Quality Supervisor — score {qa.get('score', '?')}/100 (min {qa.get('min_score', '?')}) · "
                  f"{'approved' if qa.get('approved') else 'rejected'}")
         L.append(checks_table(qa))

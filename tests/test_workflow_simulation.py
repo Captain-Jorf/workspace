@@ -93,7 +93,8 @@ class WorkflowSimulationTests(unittest.TestCase):
                 shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
             else:
                 shutil.copy(src, dst)
-        subprocess.run(["git", "-C", cls.ws, "-c", "user.name=sim", "-c", "user.email=sim@x", "commit", "-q", "-am",
+        subprocess.run(["git", "-C", cls.ws, "add", "-A", "build", "content"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", cls.ws, "-c", "user.name=sim", "-c", "user.email=sim@x", "commit", "-q", "-m",
                         "sim: working-tree sources"], capture_output=True)
         subprocess.run(["git", "-C", cls.ws, "push", "-q", "origin", "sim-branch"], check=True, capture_output=True)
         cls.site = os.path.join(cls.tmp, "site")

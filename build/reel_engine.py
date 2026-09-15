@@ -315,6 +315,8 @@ class Reel:
             d.ellipse([x - r, y - r, x + r, y + r], fill=GOLD if hot else (130, 110, 74))
             lab = nd["lab_on"] if hot else nd["lab"]
             ly = y + 14 if nd["below"] else y - 14 - lab.height
+            if cur_beat == "ending" and i == 3:
+                continue                       # the loop widget's PLAN station sits exactly here → no label overlap
             fr.alpha_composite(with_alpha(lab, a * (1.0 if hot else 0.8)), (int(x - lab.width / 2), int(ly)))
 
     def _cached(self, key, fn):
@@ -463,7 +465,7 @@ class Reel:
         if i < 0:
             return
         ln = self.fa_lines[i]
-        if t > ln["end"] + 0.3:
+        if t > ln["end"] + 0.3 and i + 1 < len(self.fa_lines):      # the last FA line holds to the end, like EN
             return
         a = ease((t - ln["start"]) / 0.22)
         img = with_alpha(ln["img"], a)
