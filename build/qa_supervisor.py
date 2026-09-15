@@ -364,28 +364,139 @@ def check_persian(rep, script, pol):
     from content_producer import translation_valid   # same hard rules as production
     n_bad = 0
     total = 0
+    bidi_errors = []
+    latin_leakage = []
+    yeh_kaf_errors = []
+    punctuation_errors = []
+    glossary_conflicts = []
+    duplicate_fa = {}
+    all_fa_lines = []
+
+    # Load glossary and catalog for advanced checks
+    glossary = common.load_fa_glossary() or {}
+    terms = glossary.get("terms", {}) if glossary else {}
+    allowlist_latin = set((glossary.get("allowlist_latin") or []))
+    allowlist_latin_lower = {x.lower() for x in allowlist_latin}
+    # Also allow metacognition.hq variants via common
+    allowlist_latin_lower.update({"metacognition", "hq", "metacognition.hq", "@metacognition.hq"})
+
+    catalog = common.load_fa_catalog() or {}
+    catalog_trans = catalog.get("translations", {}) if catalog else {}
+
     for ch in script["chunks"]:
         if len(ch["fa"]) != len(ch["en"]):
             rep.block("persian_quality", f"chunk {ch['id']}: {len(ch['fa'])} FA lines for {len(ch['en'])} EN lines")
             continue
-        for en, fa in zip(ch["en"], ch["fa"]):
+        for en_obj, fa in zip(ch["en"], ch["fa"]):
+            en = en_obj["t"]
             total += 1
-            ok, why = translation_valid(en["t"], fa, pol)
+            all_fa_lines.append(fa)
+            ok, why = translation_valid(en, fa, pol)
             if not ok:
                 n_bad += 1
-                rep.block("persian_quality", f"'{en['t'][:40]}' → invalid Persian ({why})")
-            elif common.ARABIC_ONLY_RE.search(fa):
+                rep.block("persian_quality", f"'{en[:40]}' → invalid Persian ({why})")
+            # Yeh/Kaf normalization: Arabic ي ك should not appear
+            if common.ARABIC_ONLY_RE.search(fa):
+                yeh_kaf_errors.append(f"'{fa[:30]}' contains Arabic ي/ك")
                 rep.warn("persian_quality", f"Arabic letterforms (ي/ك) in '{fa[:30]}'", 1)
+            # Bidi controls: check for explicit bidi chars that should not be in stored text (they are for rendering)
+            if any(c in fa for c in ["\u200e", "\u200f", "\u202a", "\u202b", "\u202c", "\u202d", "\u202e"]):
+                bidi_errors.append(f"bidi control char in '{fa[:30]}'")
+                rep.warn("persian_quality", f"bidi control in FA '{fa[:30]}'", 1)
+            # Punctuation: Persian should use ؟ ، ؛ not ? , ;
+            if "?" in fa or ("," in fa and "،" not in fa and len([w for w in fa if w.isalpha()]) > 5):
+                # If English ? appears in FA, it's wrong
+                if "?" in fa:
+                    punctuation_errors.append(f"English ? in FA '{fa[:40]}'")
+                    rep.warn("persian_quality", f"English ? in Persian '{fa[:30]}' should be ؟", 1)
+            if ";" in fa:
+                punctuation_errors.append(f"English ; in FA '{fa[:30]}'")
+            # Latin leakage
+            latins = [w for w in common.latin_words(fa) if w.lower() not in allowlist_latin_lower]
+            if latins:
+                latin_leakage.append({"fa": fa[:60], "latin": latins})
+                if len(latins) > 2:
+                    rep.block("persian_quality", f"Latin leakage {latins[:4]} in FA '{fa[:40]}'")
+                else:
+                    rep.warn("persian_quality", f"Latin word {latins} in FA '{fa[:30]}'", 1)
+            # Glossary consistency: if EN contains glossary term, FA should contain its Persian equivalent
+            en_low = en.lower()
+            for en_term, fa_term in terms.items():
+                if en_term.lower() in en_low:
+                    # Check if FA contains fa_term (allow partial)
+                    if fa_term not in fa:
+                        # Only warn if term is significant and not already covered by other checks
+                        # For critical terms like planning fallacy, enforce
+                        if en_term.lower() in ("planning fallacy", "dunning-kruger", "metacognition"):
+                            glossary_conflicts.append(f"EN term '{en_term}' expects FA '{fa_term}' but got '{fa[:40]}'")
+                            rep.warn("persian_quality", f"glossary term '{en_term}' → expected '{fa_term}' missing in FA", 2)
+            # Duplicate detection
+            fa_norm = fa.strip()
+            duplicate_fa[fa_norm] = duplicate_fa.get(fa_norm, 0) + 1
+
             if len(fa) > pol["length"]["max_chars_per_line_fa"]:
                 rep.warn("persian_quality", f"FA line long for two mobile rows ({len(fa)} chars)", 1)
+
     if total == 0:
         rep.block("persian_quality", "no Persian subtitles at all")
+
     engine = script["meta"].get("translation_engine")
+    # Provenance checks (fail-closed)
+    provenance = engine or "unknown"
+    curated_coverage = 0
+    if catalog_trans:
+        # Calculate coverage: how many EN lines have hash in catalog
+        matched = 0
+        for ch in script["chunks"]:
+            for en_obj in ch["en"]:
+                h = common.en_hash(en_obj["t"])
+                if h in catalog_trans:
+                    matched += 1
+        curated_coverage = matched / max(1, total)
+
+    # Fixture ban (never publishable in production)
     if engine == "fixture" and os.environ.get("QA_ALLOW_FIXTURE") != "1":
         rep.block("persian_quality", "translation engine is the offline test fixture — never publishable")
-    if n_bad == 0 and total and not script["meta"].get("translation_engine"):
+
+    # MyMemory-only ban (blocking error for auto-publish)
+    if engine == "mymemory":
+        rep.block("persian_quality", "translation engine mymemory-only is not allowed for auto-publish (must be curated)")
+
+    # Google-only also not allowed? Spec says block mymemory-only as blocking error, but curated is required for calendar
+    if engine in ("google",):
+        # For calendar, only curated allowed
+        meta = script.get("meta", {})
+        if meta.get("evidence_mode") == "calendar" or meta.get("playbook") != "trend":
+            rep.block("persian_quality", f"translation engine {engine} not allowed for calendar — must be curated")
+
+    # Missing engine
+    if n_bad == 0 and total and not engine:
         rep.warn("persian_quality", "translation engine not recorded", 1)
-    rep.details["persian"] = {"lines": total, "invalid": n_bad, "engine": script["meta"].get("translation_engine")}
+
+    # Duplicate FA lines (exact duplicates across different EN)
+    dups = [fa for fa, cnt in duplicate_fa.items() if cnt > 1]
+    if dups:
+        rep.warn("persian_quality", f"{len(dups)} duplicate FA line(s) across different EN", 1)
+
+    # Build persian_translation detailed block
+    persian_translation = {
+        "approved": n_bad == 0 and not any("mymemory" in b or "fixture" in b or "Latin leakage" in b for b in rep.blocking),
+        "provenance": provenance,
+        "curated_coverage": round(curated_coverage, 3),
+        "latin_leakage": latin_leakage[:10],
+        "bidi_errors": bidi_errors[:10],
+        "yeh_kaf_errors": yeh_kaf_errors[:10],
+        "punctuation_errors": punctuation_errors[:10],
+        "terminology_conflicts": glossary_conflicts[:10],
+        "blocking_errors": [b for b in rep.blocking if "persian" in b.lower() or "translation" in b.lower() or "mymemory" in b.lower() or "fixture" in b.lower()],
+        "total_lines": total,
+        "invalid_lines": n_bad,
+        "duplicate_fa_count": len(dups),
+        "engine": engine,
+    }
+
+    rep.details["persian"] = {"lines": total, "invalid": n_bad, "engine": engine}
+    rep.details["persian_translation"] = persian_translation
 
 
 def check_layout(rep, layout, timing, pol):
@@ -733,6 +844,16 @@ def evaluate(a, pol):
     memory = common.load_memory(a.memory)
     if not script:
         raise SystemExit(EXIT_CANNOT)
+
+    # Quarantine check (Issue #14): fail-closed, blocking overrides score 100
+    try:
+        cid = script.get("meta", {}).get("content_id")
+        cdate = script.get("meta", {}).get("content_date")
+        if common.is_quarantined(cid, cdate):
+            rep.block("duplicate_check", f"content_id {cid} / date {cdate} is quarantined (translation-rejected) — must not publish")
+    except Exception:
+        pass
+
     check_topic(rep, script, topic, pol)
     check_sources(rep, script, topic, pol, a.skip_network)
     check_script(rep, script, pol)

@@ -1,0 +1,13 @@
+{
+  "_comment": "Quarantined reels that must never be published, even if AUTO_PUBLISH_ENABLED=true. Added after owner review of Issue #14 Persian quality.",
+  "quarantined_content_ids": [
+    "reel-2026-09-15"
+  ],
+  "quarantined_dates": [
+    "2026-09-15"
+  ],
+  "reasons": {
+    "reel-2026-09-15": "Owner rejected: Persian subtitles garbled and unnatural (MyMemory-only, renderer bidi bug). See Issue #14. Must not publish."
+  },
+  "updated_utc": "2026-09-15T18:00:00+00:00"
+}

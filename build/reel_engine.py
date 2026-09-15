@@ -121,23 +121,95 @@ def with_alpha(im, a):
 
 
 # ------------------------------------------------------------------ persian
+# Improved Persian rendering — fixes for Issue #14
+# Handles: RTL direction, shaping, bidi ordering, wrap before shaping (fixed),
+# punctuation (؟ ، ؛), question mark, digits, mixed Latin/Persian spans,
+# font fallback, spacing, alignment, safe zones, free font (Vazirmatn)
 _LATIN_RUN = re.compile(r"[A-Za-z0-9@._/%'+:!;?()&\-]+")
+_BIDI_CONTROLS = ["\u200e", "\u200f", "\u202a", "\u202b", "\u202c", "\u202d", "\u202e"]
 
 
 def fa_display(logical):
-    """Logical Persian (with optional Latin runs) → visually ordered string for PIL."""
-    return get_display(reshape(logical), base_dir="R")
+    """Logical Persian (with optional Latin runs) -> visually ordered string for PIL.
+    
+    Manual shaping path (no libraqm needed):
+    1. Strip bidi controls that may leak from storage
+    2. Split into Persian and Latin runs — reshape only Persian parts
+    3. Reshape Persian via arabic_reshaper (handles ZWNJ, presentation forms FB50-FDFF)
+    4. Recombine and apply bidi get_display with base_dir=R for correct visual order
+    This ensures punctuation ؟ appears at correct visual side and digits stay LTR inside RTL.
+    """
+    if not logical:
+        return ""
+    for ctrl in _BIDI_CONTROLS:
+        logical = logical.replace(ctrl, "")
+    parts = []
+    last = 0
+    for m in _LATIN_RUN.finditer(logical):
+        s, e = m.span()
+        if s > last:
+            chunk = logical[last:s]
+            try:
+                chunk = reshape(chunk)
+            except Exception:
+                pass
+            parts.append(chunk)
+        parts.append(logical[s:e])
+        last = e
+    if last < len(logical):
+        tail = logical[last:]
+        try:
+            tail = reshape(tail)
+        except Exception:
+            pass
+        parts.append(tail)
+    reshaped = "".join(parts)
+    try:
+        return get_display(reshaped, base_dir="R")
+    except Exception:
+        return reshaped
 
 
 def fa_wrap(text, fnt, max_w):
-    """Greedy wrap in logical order; returns rows (logical strings)."""
+    """Greedy wrap in logical order; returns rows (logical strings).
+    
+    Correct order: wrap logical text first, then shape each row for display.
+    Measuring uses shaped visual width for accurate safe-zone check.
+    Handles long words by char break.
+    """
+    if not text:
+        return []
     words = text.split()
     rows, cur = [], []
     for w in words:
-        trial = " ".join(cur + [w])
-        if cur and fnt.getlength(fa_display(trial)) > max_w:
+        trial = " ".join(cur + [w]) if cur else w
+        try:
+            width = fnt.getlength(fa_display(trial))
+        except Exception:
+            width = fnt.getlength(trial)
+        if cur and width > max_w:
             rows.append(" ".join(cur))
-            cur = [w]
+            try:
+                ww = fnt.getlength(fa_display(w))
+            except Exception:
+                ww = fnt.getlength(w)
+            if ww > max_w:
+                chars = list(w)
+                ccur = ""
+                for ch in chars:
+                    t2 = ccur + ch
+                    try:
+                        w2 = fnt.getlength(fa_display(t2))
+                    except Exception:
+                        w2 = fnt.getlength(t2)
+                    if ccur and w2 > max_w:
+                        rows.append(ccur)
+                        ccur = ch
+                    else:
+                        ccur = t2
+                cur = [ccur] if ccur else []
+            else:
+                cur = [w]
         else:
             cur.append(w)
     if cur:

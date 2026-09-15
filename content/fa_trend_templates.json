@@ -1,0 +1,116 @@
+{
+  "_comment": "Curated bilingual templates for dynamic trend topics. English template is from code, Persian is curated. {short} placeholder is kept. Fail-closed: if Persian template missing, trend is blocked for auto-publish.",
+  "version": 1,
+  "templates": {
+    "BIAS": {
+      "en": {
+        "hook": "{short} is everywhere right now. But how sure should anyone actually be?",
+        "problem": ["When a topic gets loud, confidence goes up faster than knowledge does.", "You hear strong opinions all day and start to feel you have one too."],
+        "explain": ["Your brain reads familiarity as truth. Hear a claim often enough and it feels obvious.", "That feeling is fluency, not knowledge.", "So the loudest week is exactly when your judgement is least reliable."],
+        "example": ["Take {short}. Ask yourself: what would I have said about this a month ago?", "If the answer is nothing, your new certainty came from repetition, not from checking."],
+        "technique": ["Try this before you repeat any hot take: give it a confidence number out loud.", "Then name one thing that would change your mind.", "If you can't name it, you don't have an opinion yet. You have a headline."],
+        "bridge": "The topic isn't the problem. The speed of your certainty is.",
+        "recap": ["So: repetition makes things feel true, and a loud week is when that feeling peaks.", "Ask how sure you are before you repeat anything."],
+        "ending": "What's the last strong opinion you picked up without checking? Be honest."
+      },
+      "fa": {
+        "hook": "{short} این روزها همه‌جا هست. اما واقعاً چقدر باید مطمئن بود؟",
+        "problem": ["وقتی موضوعی شلوغ می‌شود، اطمینان سریع‌تر از دانش بالا می‌رود.", "تمام روز نظرهای محکم می‌شنوی و کم‌کم فکر می‌کنی تو هم نظر داری."],
+        "explain": ["مغز آشنایی را با درستی اشتباه می‌گیرد. چیزی را زیاد بشنوی، بدیهی به نظر می‌رسد.", "این حس، روانی است، نه دانش.", "پس شلوغ‌ترین هفته دقیقاً وقتی است که قضاوتت کمترین اعتبار را دارد."],
+        "example": ["{short} را در نظر بگیر. از خودت بپرس: یک ماه پیش درباره‌اش چه می‌گفتم؟", "اگر جواب هیچ است، اطمینانِ جدیدت از تکرار آمده، نه از بررسی."],
+        "technique": ["قبل از تکرارِ هر نظرِ داغ، با صدای بلند به آن نمره‌ی اطمینان بده.", "بعد یک چیز بگو که نظرت را عوض کند.", "اگر نتوانستی، هنوز نظر نداری؛ فقط تیتر داری."],
+        "bridge": "مشکل موضوع نیست؛ سرعتِ مطمئن شدنت است.",
+        "recap": ["پس تکرار چیزها را درست جلوه می‌دهد و در هفته‌ی شلوغ این حس به اوج می‌رسد.", "قبل از تکرار، از خودت بپرس چقدر مطمئنی."],
+        "ending": "آخرین نظرِ محکمی که بدونِ بررسی قبول کردی چه بود؟ صادق باش."
+      }
+    },
+    "LEARN": {
+      "en": {
+        "hook": "Everyone's suddenly learning about {short}. Most of them will forget it by Friday.",
+        "problem": ["Reading about a hot topic feels like learning it.", "But recognising an idea and being able to use it are two different skills."],
+        "explain": ["When you read, the words are in front of you, so everything feels clear.", "Close the tab and that clarity disappears, because you never had to produce it.", "Understanding appears when you explain, not when you nod."],
+        "example": ["Try it with {short}. Close this video and explain it to an imaginary friend in three sentences.", "Notice exactly where you stall. That gap was invisible one minute ago."],
+        "technique": ["Try this whenever a topic is trending: read, close, explain out loud, then reopen.", "Fix only the part you got wrong.", "One round of that beats ten more articles."],
+        "bridge": "That's not a memory problem. It's a testing problem: you never checked.",
+        "recap": ["So: read, close, explain, fix. One round.", "The gap you find is worth more than the next article."],
+        "ending": "Which trending topic could you actually explain right now? Try it before you answer."
+      },
+      "fa": {
+        "hook": "همه ناگهان درباره‌ی {short} می‌خوانند. بیشترشان تا جمعه فراموشش می‌کنند.",
+        "problem": ["خواندن درباره‌ی موضوعِ داغ حسِ یاد گرفتن می‌دهد.", "اما بازشناختنِ یک ایده با به‌کار بردنش دو مهارتِ متفاوت است."],
+        "explain": ["وقتی می‌خوانی، کلمات جلویت هستند و همه‌چیز واضح به نظر می‌رسد.", "تب را ببند و این وضوح می‌پرد، چون هیچ‌وقت مجبور نبودی خودت بسازی‌اش.", "فهم وقتی می‌آید که توضیح می‌دهی، نه وقتی سر تکان می‌دهی."],
+        "example": ["همین را با {short} امتحان کن. ویدئو را ببند و در سه جمله برای یک دوستِ خیالی توضیح بده.", "دقیق ببین کجا گیر می‌کنی. همین شکاف یک دقیقه پیش نامرئی بود."],
+        "technique": ["هر وقت موضوعی ترند شد: بخوان، ببند، بلند توضیح بده، بعد دوباره باز کن.", "فقط همان قسمتی را درست کن که اشتباه گفتی.", "یک دورِ همین، از ده مقاله بیشتر می‌ارزد."],
+        "bridge": "این مشکلِ حافظه نیست؛ مشکلِ امتحان نکردن است.",
+        "recap": ["پس بخوان، ببند، توضیح بده، درست کن. یک دور.", "شکافی که پیدا می‌کنی از مقاله‌ی بعدی ارزشمندتر است."],
+        "ending": "کدام موضوعِ ترند را همین الان می‌توانی توضیح بدهی؟ قبل از جواب، امتحان کن."
+      }
+    },
+    "ATTENTION": {
+      "en": {
+        "hook": "{short} just ate an hour of your attention. Did you decide to give it?",
+        "problem": ["Trending topics don't ask for your attention. They take it, one small tap at a time.", "And each tap feels tiny, so you never notice the total."],
+        "explain": ["Your attention runs on cues, not on plans.", "A notification, a headline, a thumbnail: each one restarts your focus from zero.", "The cost isn't the look. It's the minutes it takes to get back."],
+        "example": ["Say {short} pops up while you're working.", "You check it for a minute, and twenty minutes later you're still reading about it."],
+        "technique": ["Try this: when a topic pulls at you, write it on a note instead of opening it.", "Give it a time: I'll read this at six.", "Half the time, by six you won't care. That's your attention choosing on purpose."],
+        "bridge": "That's how a small tap becomes a lost hour, without a single decision being made.",
+        "recap": ["So: write it down, give it a time, and let your attention choose later, on purpose.", "Most of what pulls at you can wait."],
+        "ending": "What pulled your focus today that you never actually chose? Name it."
+      },
+      "fa": {
+        "hook": "{short} همین الان یک ساعت از توجهت را خورد. خودت تصمیم گرفتی؟",
+        "problem": ["موضوعاتِ ترند برای توجهت اجازه نمی‌گیرند؛ ذره‌ذره می‌دزدندش.", "هر تپ کوچک به نظر می‌رسد و جمعش را نمی‌بینی."],
+        "explain": ["توجهت با نشانه کار می‌کند، نه با برنامه.", "یک نوتیف، یک تیتر، یک کاور: هر کدام تمرکزت را از صفر ریست می‌کند.", "هزینه نگاه نیست؛ دقایقی است که تا برگردی طول می‌کشد."],
+        "example": ["فرض کن وسطِ کار {short} می‌پرد جلو.", "یک دقیقه چک می‌کنی و بیست دقیقه بعد هنوز داری درباره‌اش می‌خوانی."],
+        "technique": ["این را امتحان کن: وقتی موضوعی قلقلکت می‌دهد، به‌جای باز کردن، روی یادداشت بنویسش.", "برایش زمان بگذار: ساعت شش می‌خوانمش.", "نصفِ وقت‌ها ساعت شش دیگر برایت مهم نیست. یعنی توجهت خودش انتخاب کرده."],
+        "bridge": "این‌طوری یک تپِ کوچک بدونِ هیچ تصمیمی یک ساعت را می‌بلعد.",
+        "recap": ["پس بنویسش، زمان بده و بگذار توجهت بعداً عمداً انتخاب کند.", "بیشترِ چیزهایی که قلقلکت می‌دهد صبر می‌کند."],
+        "ending": "امروز چه چیزی توجهت را دزدید که خودت انتخابش نکرده بودی؟ اسمش را بگو."
+      }
+    },
+    "DECIDE": {
+      "en": {
+        "hook": "Everyone has a take on {short}. Almost nobody has written down what they expect to happen.",
+        "problem": ["A take is cheap. A prediction you can be wrong about is expensive.", "So we make takes, and later we remember them as predictions."],
+        "explain": ["Your memory quietly edits your past opinions to match what actually happened.", "That's why everyone feels like they saw it coming.", "The only defence is a record you can't edit."],
+        "example": ["Take {short}. Write one sentence about where you think it ends up, and a date.", "Put it somewhere you'll see again. That's it."],
+        "technique": ["Try this for a month: every time you have a strong take, write the prediction and the date.", "When the date arrives, score it honestly.", "The scoreboard teaches you more than any article."],
+        "bridge": "So the confidence keeps growing, and the judgement behind it never gets tested.",
+        "recap": ["So: write the prediction, add the date, and score it later.", "A record you can't edit is the only honest mirror for your judgement."],
+        "ending": "What's your prediction on this one? Write it down before you scroll on."
+      },
+      "fa": {
+        "hook": "همه درباره‌ی {short} نظر دارند. تقریباً هیچ‌کس ننوشته چه انتظاری دارد.",
+        "problem": ["نظر دادن ارزان است؛ پیش‌بینی‌ای که ممکن است اشتباه از آب دربیاید گران.", "برای همین نظر می‌دهیم و بعد یادمان می‌آید که پیش‌بینی کرده بودیم."],
+        "explain": ["حافظه‌ات بی‌صدا نظرهای قبلی‌ات را طوری ویرایش می‌کند که با واقعیت جور شود.", "برای همین همه حس می‌کنند از قبل می‌دانستند.", "تنها دفاع، سندی است که نتوانی ویرایشش کنی."],
+        "example": ["{short} را بگیر. یک جمله بنویس که فکر می‌کنی آخرش چه می‌شود و یک تاریخ.", "جایی بگذار که دوباره ببینی‌اش. همین."],
+        "technique": ["یک ماه این را امتحان کن: هر وقت نظرِ محکمی داری، پیش‌بینی و تاریخش را بنویس.", "وقتی تاریخ رسید، صادقانه نمره بده.", "جدولِ امتیاز از هر مقاله‌ای بیشتر یادت می‌دهد."],
+        "bridge": "این‌طوری اطمینان بزرگ می‌شود و قضاوتِ پشتش هیچ‌وقت امتحان نمی‌شود.",
+        "recap": ["پس پیش‌بینی را بنویس، تاریخ بگذار و بعداً نمره بده.", "سندی که نشود ویرایش کرد تنها آینه‌ی صادقِ قضاوتت است."],
+        "ending": "پیش‌بینی‌ات درباره‌ی این یکی چیست؟ قبل از اسکرول بنویسش."
+      }
+    },
+    "GENERIC": {
+      "en": {
+        "hook": "Everyone's talking about {short}. But how do you know what's actually true?",
+        "problem": ["A story spreads because it's interesting, not because it's checked.", "By the time you've formed an opinion, you rarely remember where it came from."],
+        "explain": ["Your brain treats a familiar claim as a true claim.", "Hear it three times and it starts to feel obvious.", "That feeling is fluency, not knowledge."],
+        "example": ["Take {short}. Ask who measured it, who benefits from you believing it, and what would change their mind.", "Usually at least one of those answers is missing, and that's the part worth noticing."],
+        "technique": ["Try this before you share anything: pause for ten seconds.", "Name the source out loud. Then name one reason it could be wrong.", "If you can't do either, you don't have an opinion yet. You have a headline."],
+        "bridge": "That's how a headline quietly becomes your opinion.",
+        "recap": ["So: pause, name the source, name one way it could be wrong.", "If you can't, you're holding a headline, not a view."],
+        "ending": "What's the last thing you shared without checking? Be honest."
+      },
+      "fa": {
+        "hook": "همه درباره‌ی {short} حرف می‌زنند. از کجا می‌فهمی چه چیزی واقعاً درست است؟",
+        "problem": ["یک داستان چون جذاب است پخش می‌شود، نه چون بررسی شده.", "وقتی نظرت شکل می‌گیرد، معمولاً یادت نیست از کجا آمده."],
+        "explain": ["مغز ادعای آشنا را ادعای درست می‌خواند.", "سه بار بشنوی، بدیهی به نظر می‌رسد.", "این حس روانی است، نه دانش."],
+        "example": ["{short} را بگیر. بپرس چه کسی اندازه گرفته، چه کسی از باورِ تو سود می‌برد و چه چیزی نظرش را عوض می‌کند.", "معمولاً حداقل یکی از این جواب‌ها نیست و همان قسمتِ قابل توجه است."],
+        "technique": ["قبل از به‌اشتراک گذاشتنِ هر چیزی ده ثانیه مکث کن.", "منبع را بلند بگو. بعد یک دلیل بگو که ممکن است اشتباه باشد.", "اگر هیچ‌کدام را نتوانستی، هنوز نظر نداری؛ تیتر داری."],
+        "bridge": "این‌طوری یک تیتر بی‌صدا می‌شود نظرِ تو.",
+        "recap": ["پس مکث کن، منبع را بگو و یک راهِ اشتباه بودنش را بگو.", "اگر نتوانستی، تیتر دستت است، نه دیدگاه."],
+        "ending": "آخرین چیزی که بدونِ بررسی به اشتراک گذاشتی چه بود؟ صادق باش."
+      }
+    }
+  }
+}

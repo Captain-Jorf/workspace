@@ -138,6 +138,7 @@ def produce(a):
 
         approved = False
         variant = 0
+        calendar_fallback_tried = False
         while True:
             # 2. script + translation
             st["stage"] = "script"
@@ -149,6 +150,27 @@ def produce(a):
             except Stage as e:
                 if "translation" in str(e).lower():
                     e.stage = "translate"
+                    # Fail-closed for trends: if curated FA not available, fallback to calendar (better than bad translation)
+                    if topic.get("evidence_mode") == "limited-claims" and not calendar_fallback_tried:
+                        print(f"[pipeline] trend translation failed ({e}) — falling back to calendar (fail-closed)", flush=True)
+                        calendar_fallback_tried = True
+                        # Re-scout calendar-only
+                        cmd2 = [PY, os.path.join(B, "trend_scout.py"), "--date", tag, "--out", topic_path, "--calendar-only"]
+                        if a.fixture:
+                            cmd2 += ["--fixture", a.fixture]
+                        try:
+                            run(cmd2, "trend")
+                            topic = common.load_json(topic_path)
+                            if not topic:
+                                raise Stage("trend", "calendar fallback produced no topic")
+                            st["topic"] = {k: topic.get(k) for k in ("title", "pillar", "evidence_mode", "discovery_source",
+                                                                     "normalized_topic", "fallback_reason")}
+                            st["topic"]["fallback_reason"] = (st["topic"].get("fallback_reason","") + " | trend translation failed, fallback to calendar").strip(" | ")
+                            save_state(tag, st)
+                            continue
+                        except Stage as e2:
+                            # If calendar fallback also fails, propagate original translation error
+                            raise e
                 raise
             script = common.load_json(os.path.join(ep, "script.json"))
             st["script"] = {"summary": script_summary(script), "sources": script.get("sources", []),

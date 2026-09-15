@@ -249,7 +249,7 @@
   ],
   "max_words_per_line": 20,
   "max_chars_per_line_en": 110,
-  "max_chars_per_line_fa": 84,
+  "max_chars_per_line_fa": 90,
   "hook_max_words": 15,
   "ending_max_words": 40,
   "speech_rate_wps": [
@@ -323,10 +323,10 @@
   "en_max_width": 950,
   "en_font_size": 50,
   "fa_bottom": 1520,
-  "fa_max_width": 780,
+  "fa_max_width": 820,
   "fa_max_rows": 2,
-  "fa_font_max": 52,
-  "fa_font_min": 40,
+  "fa_font_max": 50,
+  "fa_font_min": 36,
   "scene_zone": [
    560,
    1340

@@ -1,0 +1,2434 @@
+{
+  "version": 1,
+  "translations": {
+    "138f64f463d460dc": {
+      "en": "Why do the least skilled people often feel the most confident?",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "37280bce81085ef6": {
+      "en": "You just learned something new, and suddenly it feels simple.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "4fdb3378a6e56c5e": {
+      "en": "That feeling is the trap. Not the skill. The feeling.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "14dac9d2c35940a0": {
+      "en": "Here's the catch: the skill you need to do a task well",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "0b9fac5b3683b297": {
+      "en": "is the same skill you need to judge how well you did it.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "d62450e006c75f24": {
+      "en": "Beginners lack both, so their guess about themselves runs high.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "4683458d017cae01": {
+      "en": "Think of your first week driving. Smooth, easy, nailed it.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "11b8343603ec2b94": {
+      "en": "Then a truck merges, it rains, and you realise how much you didn't see.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "92c23e027474a43f": {
+      "en": "So try this: before you rate yourself, find one hard test of the skill.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "91ef692a8840f1ca": {
+      "en": "A real question, a real task, a real person who does it better.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "8d447764cf6c807d": {
+      "en": "Then compare your guess with the result, and update the guess.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "c45544e2ac7fe8a5": {
+      "en": "Where did you last feel sure, and turn out wrong? Be honest.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "bd0b8152b76dca58": {
+      "en": "And the less you know about something, the louder that feeling of 'simple' gets.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "683fe6c31304b852": {
+      "en": "So: confidence is not a measurement. It's a guess your brain makes before the test.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "1902e21a4e09c42c": {
+      "en": "Find the test first. Then let the confidence follow.",
+      "fa": "",
+      "playbooks": [
+        "dunning-kruger"
+      ]
+    },
+    "91c3dbf037d2ad91": {
+      "en": "You studied for three hours. So why is it gone by Friday?",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "a566b45bec883549": {
+      "en": "Nothing feels more productive than a long cram session.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "76fd7b15f9e7dbde": {
+      "en": "But most of it quietly leaks out over the next few days.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "7a86b65b27bd565b": {
+      "en": "Memories fade fastest right after you learn them.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "0dfffe3ab3a4a882": {
+      "en": "Each time you pull one back before it's gone, the fade slows down.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "5805cd68c499c42b": {
+      "en": "That's the whole idea behind spacing: review later, not longer.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "98b3d186c1c5d48c": {
+      "en": "Say you learn ten words tonight.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "2e3865f1b0019487": {
+      "en": "Reviewing them once tomorrow beats reviewing them five more times tonight.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "3e2aed7b9fce195b": {
+      "en": "Same number of reviews, different timing, and the memory lasts weeks instead of days.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "e3544a95b039f131": {
+      "en": "Try this: after any study session, set three reminders.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "c3e7b2f782a29b2c": {
+      "en": "Tomorrow, in three days, and in a week.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "57a4323b79651b04": {
+      "en": "Each time, recall first, then check. Don't just reread.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "879cb47284b881ff": {
+      "en": "What's one thing you'd love to still remember next month? Space it.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "0e92fca9ea73131a": {
+      "en": "It's not that you're bad at remembering. You're just reviewing at the wrong time.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "73f69359de9fb24e": {
+      "en": "So the rule is simple: don't study longer. Come back sooner, then later, then later again.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "90d4590a43a4eef2": {
+      "en": "Every return is a deposit.",
+      "fa": "",
+      "playbooks": [
+        "forgetting-curve"
+      ]
+    },
+    "8a21b39f7df29252": {
+      "en": "What if the test was the best study tool you own?",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "5cd44aa618786235": {
+      "en": "Most of us treat tests as the judgement at the end.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "d4ec7e9be8873cd3": {
+      "en": "So we spend our time reading, and dread the quiz.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "13c2710be9061be7": {
+      "en": "But pulling an answer out of your head changes the memory itself.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "5847b31d3edec458": {
+      "en": "Every successful recall makes the next one easier.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "258c411c26b8de1f": {
+      "en": "Reading feels smoother, yet the effort of recall is what sticks.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "0db9d3585bfe751c": {
+      "en": "Close the book and explain the chapter to an empty chair.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "1cd4d06e0bc8e1a1": {
+      "en": "The parts you stumble on are exactly the parts you hadn't learned yet.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "eec4592dde18924e": {
+      "en": "That stumble feels bad, but it's the most useful feedback of the whole evening.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "868f99c6c6f5b00a": {
+      "en": "Try this tonight: turn every heading in your notes into a question.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "280ce9dba138c144": {
+      "en": "Answer from memory, out loud, then check.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "ed7284616a495ee3": {
+      "en": "Mark what you missed, and quiz that again tomorrow.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "f8155f3ecad830f4": {
+      "en": "Try it once this week and tell me what surprised you.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "e5c13dba010f946b": {
+      "en": "That's backwards, because the quiz isn't the measurement. The quiz is the workout.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "e976b8b170860856": {
+      "en": "So flip it: test first, read second.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "3525d5db2734fcc4": {
+      "en": "The stumble you feel when you recall is the memory getting stronger, not weaker.",
+      "fa": "",
+      "playbooks": [
+        "testing-effect"
+      ]
+    },
+    "1c7fb1c2d06f10bf": {
+      "en": "Do you actually know how a zipper works? Explain it. Right now.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "ab625a74d043a62d": {
+      "en": "Most people feel they understand everyday things quite well.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "31bd1542cc8e90d7": {
+      "en": "Until someone asks them to explain step by step.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "1d6202f7e63cccda": {
+      "en": "Familiarity feels like understanding.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "39dd90320057bacc": {
+      "en": "You've seen the thing a thousand times, so the brain files it under 'known'.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "80ee466854f6cafe": {
+      "en": "The gap only shows up when you have to produce the explanation yourself.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "320f3827e4a5475e": {
+      "en": "Try a toilet, a bicycle, or the app you use every day.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "5cfe3bb35f95c89d": {
+      "en": "Start explaining, and notice the exact sentence where the words run out.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "e6f308e3008ecabb": {
+      "en": "Before a decision or an exam, do the explain test.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "62b0121210ad71c7": {
+      "en": "Say the mechanism out loud, step by step, as if to a curious kid.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "8b98bd0b201a1cb2": {
+      "en": "Wherever you get vague, that's your next thing to learn.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "e03303893e8e7518": {
+      "en": "Which everyday object would you fail to explain? Try it.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "619e52f7650b72be": {
+      "en": "That gap between feeling and knowing has a name: the illusion of explanatory depth.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "bece5233812d7e64": {
+      "en": "So the next time something feels obvious, treat that as a question, not an answer.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "1cc20c717c836636": {
+      "en": "Explain it. If the words run out, you've just found where to look.",
+      "fa": "",
+      "playbooks": [
+        "explanatory-depth"
+      ]
+    },
+    "9b800595bedeeb47": {
+      "en": "The study session that felt easy probably taught you the least.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "f97295e832a3a754": {
+      "en": "We pick the methods that feel good: rereading, highlighting, clean notes.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "086f53120ecf4c6a": {
+      "en": "They feel smooth, and smooth feels like learning.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "93d87ab30b2da398": {
+      "en": "But some difficulty during practice helps memory later.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "23868fc73947204c": {
+      "en": "Struggling to recall, mixing topics, waiting before you review.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "b14caa35baa86902": {
+      "en": "The effort is not a bug. It's the signal that something is being built.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "215d63fbc95c3484": {
+      "en": "Two students, same chapter. One rereads it three times.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "1a34c045d069b076": {
+      "en": "The other closes it and tries to rebuild the chapter from memory, and fails a bit.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "ac6d6f560038dbec": {
+      "en": "Next week, guess who explains it better.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "7324e5fd16047044": {
+      "en": "Try this: add one deliberate difficulty to your next session.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "f5faadbfe0659ceb": {
+      "en": "Recall before you reread, or mix two topics, or wait a day.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "62fdec693aa8d41f": {
+      "en": "If it feels harder, you're probably doing it right.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "268db7216e50e3d8": {
+      "en": "What's the hardest study method you keep avoiding?",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "2dd2e6ec9fce28ef": {
+      "en": "So the method that feels best is often the one teaching you least.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "b0e0959f264539d2": {
+      "en": "Remember: smooth practice feels like progress. Rough practice usually is progress.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "b6be550061b62f5b": {
+      "en": "Pick a little difficulty on purpose, and let the struggle be your signal.",
+      "fa": "",
+      "playbooks": [
+        "desirable-difficulties"
+      ]
+    },
+    "50e1bcf2d0a5b8a3": {
+      "en": "Why does everything take twice as long as you promised yourself?",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "8e3df3ee29cf3067": {
+      "en": "You plan the week, and it looks doable. Even relaxed.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "de19a9cc852e14f2": {
+      "en": "Then Thursday arrives and half the list is untouched.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "76fc3f3d75b00de0": {
+      "en": "When we plan, we imagine the best-case version of the task.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "a2fe60999e1fd8af": {
+      "en": "We picture ourselves focused, healthy, and uninterrupted.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "d99a5007527c235e": {
+      "en": "We forget the interruptions, because they are not part of the story we tell.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "e1d9f5482d573f58": {
+      "en": "Think about the last essay, tax form, or apartment move.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "37816c4795cb2f67": {
+      "en": "Your guess before, and the real time after. Notice the gap.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "20a75493fc196d5a": {
+      "en": "The gap is rarely small, and it almost always points the same way.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "bb41f7d25e2e3506": {
+      "en": "Try this: before you estimate, ask how long similar tasks took last time.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "a566d6d0051e2848": {
+      "en": "Use that number, not the hopeful one.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "b15c0e4c64727af6": {
+      "en": "Then add the interruptions you already know will come.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "4ce0eb89363bf284": {
+      "en": "What did you finish on time this month? Anything?",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "26e0c777d1ff32ee": {
+      "en": "It's not laziness. It's a bias so reliable it has a name: the planning fallacy.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "117b3e94a2234de2": {
+      "en": "So: your gut plans the movie version. Your history knows the real one.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "262f2cc378160b98": {
+      "en": "Estimate from history, not from hope, and pad for the interruptions you already know about.",
+      "fa": "",
+      "playbooks": [
+        "planning-fallacy"
+      ]
+    },
+    "974974cdfe161bfe": {
+      "en": "Studying one topic all day feels great, and it teaches you less.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "758ed70c8ef3e9fb": {
+      "en": "Blocked practice, one skill at a time, feels organised and fluent.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "7da5b1281798bfd4": {
+      "en": "The fluency is real. The learning is smaller than it feels.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "1ca9345dab7706d8": {
+      "en": "When topics are mixed, you have to choose the method each time.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "e528461027282b85": {
+      "en": "That choice is exactly what exams and real life demand.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "fb79a68c5ff56d4b": {
+      "en": "Blocked practice hands you the method for free, so you never practise choosing.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "5222bc4587712c6c": {
+      "en": "A math set with only fractions is easy: every answer uses fractions.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "e69f0082825eef0e": {
+      "en": "Mix fractions, ratios and percentages, and now you must notice which is which.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "a5153d325486228d": {
+      "en": "Try this: split your session into three topics instead of one.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "29e98efc3766655b": {
+      "en": "Rotate every fifteen minutes, and finish with a mixed quiz.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "3f1f72b858d7f416": {
+      "en": "Expect it to feel messier. That's the point.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "92876ebc54c6fb16": {
+      "en": "Which two subjects would you mix first?",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "a2f05ad0f2ee3411": {
+      "en": "The problem is that fluency during practice and skill during the test are two different things.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "d29761ea649f4173": {
+      "en": "So mix it up. Rotate topics, expect a bit of mess, and finish with a mixed quiz.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "3580d85f08271847": {
+      "en": "Harder now, easier when it counts.",
+      "fa": "",
+      "playbooks": [
+        "interleaving"
+      ]
+    },
+    "8920c04247f232c8": {
+      "en": "How can you feel a word you can't say?",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "8b09a6ae07b1f11e": {
+      "en": "It's right there. You know the first letter, the shape, the rhythm.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "dfc359a0d5a70672": {
+      "en": "And still it won't come.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "7979f89b4c098feb": {
+      "en": "That feeling of knowing is your brain's own progress bar.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "a6d53e3a110df28e": {
+      "en": "It monitors memory even when retrieval fails.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "acc8371119e5da57": {
+      "en": "That's metacognition: a judgement about your own mind, from the inside.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "88a4c663c07613a2": {
+      "en": "You blank on an actor's name, walk away, and it pops up in the shower.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "9ef5127c29d629c4": {
+      "en": "The search kept running quietly after you stopped forcing it.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "ef53a49b6a67a46b": {
+      "en": "You weren't trying anymore, and that's exactly why it worked.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "2f6554ed420e7888": {
+      "en": "Try this: when a word is stuck, say the first letter and the number of syllables.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "c2049dab83a99d27": {
+      "en": "Then stop trying for a minute.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "e22f504240438d2b": {
+      "en": "Give the background search room instead of blocking it.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "b80e75609e51560d": {
+      "en": "What's the last word that got stuck for you?",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "09994485ee09f541": {
+      "en": "That stuck feeling is annoying, but it's also a window into how your mind watches itself.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "f83cf3bc1ed64634": {
+      "en": "So the feeling of knowing is real information, even when the word isn't there yet.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "3906af68ffcdcb9e": {
+      "en": "Give it a cue, then give it room.",
+      "fa": "",
+      "playbooks": [
+        "tip-of-tongue"
+      ]
+    },
+    "ef7d566d3350da7a": {
+      "en": "You're sure they understood you. They didn't.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "b9cd57468bf85510": {
+      "en": "You explained the plan clearly. In your head it was obvious.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "a6dcdd461ff37102": {
+      "en": "Then the work comes back, and it's not what you meant.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "f4da223ecbfd1bfc": {
+      "en": "We overestimate how much of our inner state leaks out.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "e355f4847fb7642a": {
+      "en": "You know the context, so your words feel complete.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "0c08bcb3f2d15e20": {
+      "en": "The listener only has the words.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "82e9c91ba04be2ad": {
+      "en": "Send a text with a joke and no emoji. Watch how often it lands wrong.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "fa45dcb021addb3e": {
+      "en": "Your tone was in your head, not in the message.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "8433655cfb1026b8": {
+      "en": "The same thing happens at work: you said 'soon', they heard 'next month'.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "4312f48d07c91232": {
+      "en": "Try this: after you explain something important, ask for it back.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "3db9af3b6e0a3785": {
+      "en": "Not 'did you get it?' but 'what will you do first?'",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "773ac3ac1122d19f": {
+      "en": "The answer shows you what actually arrived.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "5c86be64509ae2d2": {
+      "en": "When did a message of yours land completely wrong?",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "ba3ddf8ff97ed2e7": {
+      "en": "It's not that they weren't listening. It's that you heard more than you actually said.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "d73e3c4a8e95a252": {
+      "en": "So: your message is not what you meant. It's what arrived.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "54f3c2e606549474": {
+      "en": "Ask for it back, and let their answer be the real test.",
+      "fa": "",
+      "playbooks": [
+        "illusion-of-transparency"
+      ]
+    },
+    "fc86429cc16dd4c1": {
+      "en": "Your highlighter remembers more than you do.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "3b5343c8b1762fee": {
+      "en": "A page full of yellow feels like work done.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "52119031c4c56b2e": {
+      "en": "But marking a sentence is not the same as learning it.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "d444c509f58cfb62": {
+      "en": "Highlighting is passive: your eyes move, your memory doesn't.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "852bd996bb9d92ee": {
+      "en": "It also fools you, because the marked text feels familiar next time.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "83528462a5c36013": {
+      "en": "Familiar is not the same as retrievable.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "154f45a83b76dcd0": {
+      "en": "Open an old textbook. Cover the highlights. Try to say what was under them.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "7ee25de303341f66": {
+      "en": "That silence is the real test result.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "d13a15037f28c68b": {
+      "en": "Most people manage a word or two, and then a long pause.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "48c54c85912559bc": {
+      "en": "Try this instead: read a section, close it, write two lines from memory.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "e931c2406c14e52c": {
+      "en": "Then compare and fix.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "985508c1d3899894": {
+      "en": "Slower per page. Faster per thing actually learned.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "706ab3350c24c78d": {
+      "en": "Two lines, not a summary. Just what you remember.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "abdcf0231dc0e2a8": {
+      "en": "Save this for your next study session and try the two-line rule.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "ce0d4e4239904f20": {
+      "en": "Here's why it fails: your memory only grows when it has to do the work.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "4dfc0d7a1885f728": {
+      "en": "So put the highlighter down. Read, close, write two lines, then check.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "39f4216b70ead9de": {
+      "en": "Learning is what survives when the page is out of sight.",
+      "fa": "",
+      "playbooks": [
+        "highlighting"
+      ]
+    },
+    "386e97df80eb489c": {
+      "en": "Being ninety percent sure, and right sixty percent of the time. What does that cost you?",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "440deee672859e0c": {
+      "en": "Confidence feels like information. Often it's just a mood.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "845c45e551215b9a": {
+      "en": "And the mood is usually higher than the evidence.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "898d1ba741b47eba": {
+      "en": "Calibration means your confidence matches your hit rate.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "5fe3d02a18883180": {
+      "en": "Most of us are miscalibrated in one direction: too sure.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "52e5e83f86b920da": {
+      "en": "The fix is not less confidence. It's confidence that is tested.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "756dd96ad8115e76": {
+      "en": "Before you send the estimate, the answer, or the hot take,",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "ee28f04a3a2d21ec": {
+      "en": "write a number: how sure am I? Then check later. Keep score.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "85674192367d705e": {
+      "en": "Not to punish yourself. Just to see what your 'sure' is actually worth.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "ccba2643a52049ae": {
+      "en": "Try this for a week: add a confidence number to ten small predictions.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "e64096e02d3dbb31": {
+      "en": "Weather, arrival times, quiz answers.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "c6db85cf795dd894": {
+      "en": "Then compare. The gap is where your judgement needs work.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "cfcbddf9ba004069": {
+      "en": "How sure are you that you're well calibrated? Write the number.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "90a629919da4f645": {
+      "en": "And the cost isn't feeling wrong. It's all the decisions you made while feeling right.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "4d6c2eb5d40ab33a": {
+      "en": "So: don't aim for less confidence. Aim for confidence you can check.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "062e2e4076fde2c5": {
+      "en": "Ten small predictions this week will tell you more than any pep talk.",
+      "fa": "",
+      "playbooks": [
+        "overconfidence"
+      ]
+    },
+    "ba1077c63bddc170": {
+      "en": "What if you planned your project's funeral before it started?",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "f80ddff756f90619": {
+      "en": "Most plans get reviewed in a mood of optimism.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "e0ea18eac6a13896": {
+      "en": "Everyone nods, and the doubts stay quiet.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "7ef39a0b61f52e94": {
+      "en": "A pre-mortem flips the frame: imagine it is a year later and the plan failed.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "ea71196127166f0e": {
+      "en": "Now write down why.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "80d01c424fdd55ce": {
+      "en": "Imagined failure makes hidden risks easier to say out loud.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "1c641bd3002c2aaf": {
+      "en": "Before a launch, the team spends ten minutes writing failure stories.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "899c96be40f1c808": {
+      "en": "Suddenly the missing budget line and the vague deadline show up.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "093e04b129246968": {
+      "en": "Nobody had lied. The optimism had simply kept those sentences from being spoken.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "2a5b4f6384066e56": {
+      "en": "Try this on any decision: set a timer for five minutes.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "9c72838c2c09ce96": {
+      "en": "Write 'it failed because...' and list every reason you can.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "7e97dfaed5618978": {
+      "en": "Then fix the two you can actually control.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "762c0496496be6d9": {
+      "en": "Try a five-minute pre-mortem on your next plan and tell me what showed up.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "86a645a19de08b19": {
+      "en": "So the risks stay hidden right up to the moment they can't be fixed.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "b5a23c407e45ac09": {
+      "en": "So: imagine the failure first, on paper, while it's still cheap.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "708e09c6b8491b66": {
+      "en": "Five minutes of pretend hindsight can save you months of the real thing.",
+      "fa": "",
+      "playbooks": [
+        "pre-mortem"
+      ]
+    },
+    "8a4779d0c169b09a": {
+      "en": "Explain it out loud, and you'll find the hole in your own understanding.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "27863b56435dce4f": {
+      "en": "Reading nods along with the author. Everything seems to follow.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "4d051fcc855e9300": {
+      "en": "Then you try to say it yourself and the chain breaks.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "cbb87069ebb0e223": {
+      "en": "Self-explanation forces you to connect each step to the one before.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "46e5fe5c20f59da4": {
+      "en": "The connections are what understanding is made of.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "dd6cec17914b88a7": {
+      "en": "Silent reading lets you skip them without noticing.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "b8e39c36c9253f7e": {
+      "en": "Read one paragraph. Then say: 'this matters because... and that leads to...'",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "55f1b2a08cd591c6": {
+      "en": "Where the sentence stalls is where the learning starts.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "929f4d77d79e8047": {
+      "en": "Try it with this very reel: why would saying it out loud change anything?",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "1c5cc8d60852610f": {
+      "en": "Try this: after each section, teach it to your phone's voice recorder.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "69f747fd671bbd2c": {
+      "en": "Listen back once.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "e7b50554643ff511": {
+      "en": "Every 'um' marks a place to reread.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "f285292840de760f": {
+      "en": "Which topic would you struggle to teach right now?",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "c50fe64090d7cc30": {
+      "en": "It's not that you weren't paying attention. It's that reading lets you borrow the author's thinking.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "503372a8cce4df9d": {
+      "en": "So make yourself say it: this matters because, and that leads to.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "4ba5aacf3cef1937": {
+      "en": "Where your own words stall, the understanding hasn't been built yet.",
+      "fa": "",
+      "playbooks": [
+        "self-explanation"
+      ]
+    },
+    "1fb2ab32537c43a1": {
+      "en": "There's a watcher in your head, and someone gave it a name in 1979.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "187b4aa5c226fe4a": {
+      "en": "You plan, you study, you decide, and something quietly rates how it's going.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "97ab41dbe4e52408": {
+      "en": "Most of us never train that part.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "ed0df1e56947457d": {
+      "en": "Flavell called it metacognition: knowing about your own thinking, and steering it.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "aefab4e30814bcba": {
+      "en": "Two halves: what you know about how your mind works,",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "5ff83dfc8c25593f": {
+      "en": "and what you do with that knowledge in the moment.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "f8463054ebef1283": {
+      "en": "You feel a chapter is 'done'. The watcher asks: could I explain it?",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "703fc604713d36cc": {
+      "en": "That one question is the whole skill in miniature.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "36a48bff2e0c0c66": {
+      "en": "Try this loop today: before a task, say what 'done' will look like.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "0aa8e26d0a5ba8e6": {
+      "en": "During it, pause once and ask how it's actually going.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "b8e145a36ef3a927": {
+      "en": "After it, write one line about what you'd change.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "b57c5d3c7932b961": {
+      "en": "Plan, monitor, evaluate. Which step do you usually skip?",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "46546173f2a45909": {
+      "en": "That quiet rater is why two people can study the same hour and learn very different amounts.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "b0d5022d3d464ab7": {
+      "en": "So: plan, monitor, evaluate. Three small questions, once each.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "05f19b407f180a02": {
+      "en": "Train the watcher, and everything else you do gets a little smarter.",
+      "fa": "",
+      "playbooks": [
+        "flavell-1979"
+      ]
+    },
+    "6e2f043597be79be": {
+      "en": "Why do expert pilots still read a checklist they know by heart?",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "9299cde8efadd43f": {
+      "en": "Expertise makes steps automatic. Automatic steps are the easiest to skip.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "e8df008d42ce88d8": {
+      "en": "And skipping feels exactly like doing.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "e7966ea760fd255d": {
+      "en": "A checklist is memory you don't have to trust.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "329a28184e286ee6": {
+      "en": "It moves the watcher outside your head, onto paper,",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "1fa5ed3b4a76a9ff": {
+      "en": "where fatigue and confidence can't edit it.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "61fe535e004ef83c": {
+      "en": "Before sending a big email: names right, attachment in, tone read once.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "7468ff01345ef3c3": {
+      "en": "Three lines. They catch the mistakes you make when you're sure.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "b6e231c6220b643e": {
+      "en": "Surgeons and pilots do the same thing, and not because they forgot how.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "c99c8f1d9f6c189e": {
+      "en": "Try this: pick one task you do weekly and have messed up before.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "a0ae4b08b6c14d05": {
+      "en": "Write the five steps you tend to skip.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "807c5892497100f3": {
+      "en": "Read it before the task, every time, especially when you feel confident.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "0bee8512f7cdb905": {
+      "en": "What's the task that deserves your first checklist?",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "fbe434efa5c7bfa1": {
+      "en": "That's the trap of expertise: the better you get, the less you check.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "0c4f0339c67b1e99": {
+      "en": "So don't trust your memory when you feel most confident. That's exactly when it edits.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "1d2e574aa625ae72": {
+      "en": "Put the steps on paper, and let the paper be the watcher.",
+      "fa": "",
+      "playbooks": [
+        "checklists"
+      ]
+    },
+    "2bdcdc4945b70dc2": {
+      "en": "When did you last notice you had stopped listening?",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "213a4505d7b914aa": {
+      "en": "Someone talks, you nod, and your mind is already drafting a reply.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "4f1734db0b809c21": {
+      "en": "You hear the words and miss the point.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "08ae07fa8ab1b7bd": {
+      "en": "Attention drifts on its own. That's normal.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "1fcceb42578ee619": {
+      "en": "Metacognition is noticing the drift, early, and coming back.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "194b89911c772cbe": {
+      "en": "The skill isn't perfect focus. It's fast return.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "3e16985e21d7eed1": {
+      "en": "In a meeting, try to summarise the last sentence in your head.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "ffe02f71e727b363": {
+      "en": "If you can't, you had already left.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "67f09c10225fbb7a": {
+      "en": "Or a podcast: you look up and realise you have no idea what the last two minutes were about.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "29cc65c80c51d391": {
+      "en": "Try this: in your next conversation, set one silent check-in.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "9c947c8dcf84ef71": {
+      "en": "Halfway through, ask yourself: what did they just say?",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "aa9b35c9ffbfc38d": {
+      "en": "If you can't answer, ask them. Nobody minds.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "b73a6c0322ab2752": {
+      "en": "Try one check-in today and notice where your mind went.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "aae231ea8844fce9": {
+      "en": "It's not rudeness. Attention wanders by default, and nobody taught us to catch it.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "496efa42c3e988fd": {
+      "en": "So the goal isn't never drifting. It's noticing sooner and coming back faster.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "fe08e5676de1a47c": {
+      "en": "One silent check-in per conversation is enough to start.",
+      "fa": "",
+      "playbooks": [
+        "listening"
+      ]
+    },
+    "aef9ae9376b4ab76": {
+      "en": "Why does yesterday's impossible problem look easy this morning?",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "fd26f9907c757d2e": {
+      "en": "You fought with it all evening and got nowhere.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "9d025cd926e7f392": {
+      "en": "Then you slept, and the answer was just sitting there.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "2fb3b933f9f75cb9": {
+      "en": "While you sleep, the brain replays and reorganises what you learned.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "e9693e4da894a9b7": {
+      "en": "Weak links get pruned, useful ones get stronger.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "7e0ceb5745944a2b": {
+      "en": "So the work continues, without you pushing.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "43e16cf0d2195db4": {
+      "en": "Cramming until three in the morning trades the replay for a few extra pages.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "6ac4a66b27450dd0": {
+      "en": "Often a bad trade.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "63584945eb160756": {
+      "en": "Same with a piano piece or a new language: the messy evening practice often sounds cleaner the next day.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "5f4234f3f851a645": {
+      "en": "Try this: study, then do a quick recall test right before bed.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "9c7cd5065a489636": {
+      "en": "Sleep on it.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "5b9461db1fa8aebb": {
+      "en": "Test again in the morning and compare.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "4126be90b888deb1": {
+      "en": "Keep the test short. Five questions is plenty.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "8532df19758a4dc8": {
+      "en": "What problem would you like to hand to your sleeping brain tonight?",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "2ee56ab554438e23": {
+      "en": "That's not luck. Your brain kept working on it while you were off duty.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "2daf978b7892d219": {
+      "en": "So: learn, test, sleep, test again.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "28cf1c75f855d33d": {
+      "en": "The night is part of the study session, not a break from it.",
+      "fa": "",
+      "playbooks": [
+        "sleep-memory"
+      ]
+    },
+    "9b132b30f46b431f": {
+      "en": "Visual learner, auditory learner. Sure? The evidence is thinner than you think.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "8d4fc47878e92912": {
+      "en": "Most of us were sorted into a learning style at school.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "c2eead318813e230": {
+      "en": "It feels true, because we all have preferences.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "197d4641e7582ae8": {
+      "en": "Preference is real. But matching teaching to a style hasn't shown clear benefits in careful tests.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "bb3e170000abc2b5": {
+      "en": "What matters more is matching the method to the material.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "ca8609995341e948": {
+      "en": "Maps for geography. Sound for language. Practice for everything.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "e5e8db466dbc14fc": {
+      "en": "You may love diagrams, but you still learn pronunciation by listening and speaking.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "faac0edf00e236d3": {
+      "en": "The task picks the channel, not the label.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "001814754bbf8f59": {
+      "en": "Try this: for your next topic, ask what form the knowledge naturally takes.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "de06ef0009efef00": {
+      "en": "Then study it in that form, and test yourself in the form the exam uses.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "6c120612e24d9f1f": {
+      "en": "Were you labelled a learning style at school? Which one?",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "3d7701bff38447b9": {
+      "en": "But a preference for how you like to study isn't the same as a rule for how you learn best.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "53eef0ba61ff1d4f": {
+      "en": "So drop the label and look at the material.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "67f1694f258997b0": {
+      "en": "Match the method to what you're learning, and test yourself the way you'll be tested.",
+      "fa": "",
+      "playbooks": [
+        "learning-styles"
+      ]
+    },
+    "326c6c1952158c80": {
+      "en": "Some ordinary people predict world events better than experts. What's their trick?",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "8024b03038b93a94": {
+      "en": "Most predictions are vague: 'probably', 'likely', 'I think so'.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "212ff0ec4b710d80": {
+      "en": "Vague predictions can never be wrong, so they never teach you anything.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "7af2cb0eabc020a2": {
+      "en": "Good forecasters put numbers on their beliefs, then keep score.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "ce5a77aa68317baf": {
+      "en": "They start from base rates, how often things like this usually happen,",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "22ec353260acb8eb": {
+      "en": "and update in small steps when new facts arrive.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "8634141e2f5089f8": {
+      "en": "Will the project ship on time? Instead of 'probably', say seventy percent.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "9029881067245ded": {
+      "en": "Then track ten such calls. Your real hit rate will surprise you.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "5efc701ae2fdcc06": {
+      "en": "Ten calls is small, but it's enough to see whether your seventy percent is really a fifty.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "60463f28654ea907": {
+      "en": "Try this: keep a tiny forecast log for two weeks.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "b7d55ec6a2f78d20": {
+      "en": "Question, probability, outcome.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "50c54b9a935c6a45": {
+      "en": "Nothing improves judgement faster than seeing your own numbers.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "1a8dc6156ec506c7": {
+      "en": "What's one prediction you'd put a number on today?",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "2bc8f1ab25de5f96": {
+      "en": "It's not that they know more. It's that they can be wrong in a way they can measure.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "b8d5a2c41ce78fc6": {
+      "en": "So: put a number on it, start from how often it usually happens, then update slowly.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "792aca7a78e0bb67": {
+      "en": "Vague beliefs never learn. Numbers do.",
+      "fa": "",
+      "playbooks": [
+        "superforecasters"
+      ]
+    },
+    "7565ea5a69335354": {
+      "en": "At what age do you first notice your own thinking?",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "9e43ee7d3dff46f4": {
+      "en": "Young children often believe they will remember everything.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "fe8e6b79028b1379": {
+      "en": "Ask a five-year-old how many pictures they can recall, and the answer is 'all of them'.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "9463f8c9a72a917e": {
+      "en": "Knowing the limits of your own memory develops slowly.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "261bc5eeb54927ba": {
+      "en": "It grows through feedback: trying, missing, and noticing the miss.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "3d5cbab2aad6be38": {
+      "en": "Adults are not finished either. We just get better at hiding the misses.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "888e6fc9959ad35d": {
+      "en": "A child who says 'I need to write this down' has just used metacognition.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "343212a28425d957": {
+      "en": "That sentence is a small monitoring miracle.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "1c990053f4c1c26c": {
+      "en": "So is the adult who says 'let me check that before I answer'.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "516f78079f0f7cfe": {
+      "en": "Try this with a kid, or with yourself: before a task, guess the result.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "bfcfc9617441b20a": {
+      "en": "After it, compare, gently.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "5594014686459f7e": {
+      "en": "The comparison, not the score, is what builds the watcher.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "589aa4a7bf16924a": {
+      "en": "What's the first time you remember catching your own mistake?",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "52c71bea16fdd9b5": {
+      "en": "That confidence isn't a flaw. It's the starting point every one of us began from.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "ae3b6b50aaded5ed": {
+      "en": "So: guess first, check after, and compare gently.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "e9bd98725f00b1ff": {
+      "en": "The watcher grows from noticing the gap, at five years old or fifty.",
+      "fa": "",
+      "playbooks": [
+        "kids-metacognition"
+      ]
+    },
+    "95a3484d408d8bc1": {
+      "en": "Even experts fall for the first answer that fits. Here's the habit that catches it.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "2d426b58831b79a0": {
+      "en": "The first explanation that fits feels like the answer.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "fd642467b70c4b63": {
+      "en": "After that, new facts get sorted into 'supports it' or 'ignore it'.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "d4611ecd254cfb04": {
+      "en": "That's anchoring plus confirmation: the first idea sets the frame,",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "daf8c5aed412a67e": {
+      "en": "and the frame decides what you notice.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "cdb1046cfd4a4161": {
+      "en": "The fix isn't more knowledge. It's a pause that asks what else this could be.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "878b3e2baed62186": {
+      "en": "A mechanic hears a rattle, blames the exhaust, and stops looking.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "131319bc64065af9": {
+      "en": "The loose heat shield goes unnoticed for weeks.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "24c0a8e75541b62f": {
+      "en": "Try this before you commit to any explanation: name two alternatives out loud.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "b9fd6180ce75e600": {
+      "en": "Then ask what evidence would separate them.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "7108d5caa8ed609c": {
+      "en": "One minute. It catches the errors that confidence hides.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "32b8f4b0f40a03e8": {
+      "en": "Nothing here is medical advice, just a thinking habit. What was your last first-answer mistake?",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "71171a39aca2533b": {
+      "en": "It happens to experienced people precisely because their first guess is usually good.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "b2ee6cbda63f3ff6": {
+      "en": "So: the first fit is a hypothesis, not a verdict.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "aec7ec3f3733aa62": {
+      "en": "Name two alternatives, ask what would separate them, and give the truth a chance to show up.",
+      "fa": "",
+      "playbooks": [
+        "diagnosis-bias"
+      ]
+    },
+    "2c66ddcdfc80df2d": {
+      "en": "How sure are you, really? Let's measure it in one minute.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "a26934b30cce4966": {
+      "en": "We say 'I'm sure' all day. Almost nobody checks the hit rate.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "ca45568644f1dd75": {
+      "en": "So the word 'sure' never learns anything.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "1aafb8bd0355f1a4": {
+      "en": "Calibration is simple: when you say ninety percent, you should be right about nine times in ten.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "448f13a881472500": {
+      "en": "Most people are right far less often than their confidence suggests.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "9384a150397575be": {
+      "en": "You can't fix a number you never measure.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "6d427fffbe44733d": {
+      "en": "Guess the year the first email was sent. Now say how confident you are.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "673463c763d0dd1f": {
+      "en": "Do that for ten questions, and a pattern appears fast.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "465929edf7ba559c": {
+      "en": "If you were sure five times and right twice, that's the whole lesson right there.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "26e02af2f725720a": {
+      "en": "Try this: write five factual questions with a friend.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "0885775b2a4e9441": {
+      "en": "Answer each with a confidence number, then check together.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "342e87c9e423afe1": {
+      "en": "Whoever's numbers match their hits best is the better calibrated, not the smarter one.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "668a6e30ec10531f": {
+      "en": "Save this and run the five-question game tonight.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "8ea78dbd9de819f7": {
+      "en": "That's a problem, because a confidence you never test can't improve.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "b5d519804ef0019e": {
+      "en": "So: a number, a check, a pattern. That's all calibration is.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    },
+    "09cb8c76f0829267": {
+      "en": "Do it once and 'I'm sure' starts to mean something.",
+      "fa": "",
+      "playbooks": [
+        "calibration-quiz"
+      ]
+    }
+  }
+}
