@@ -1,129 +1,241 @@
-# Daily reel factory: trend → script → TTS → timing → render → caption → previews
-# → public draft branch → review issue.
+# Autonomous daily reel factory for @metacognition.hq
 #
-# This workflow NEVER touches Buffer and NEVER publishes anything.
-# Publishing happens only via publish-approved-draft.yml, after the repo owner
-# comments exactly `/publish` on the daily draft issue.
+#   trend scout → source validation → EN script → FA translation → Edge-TTS → timing
+#   → 9:16 render → posters → caption → Quality Supervisor (independent, measurable)
+#   → publish public files (drafts/<date> branch) → verify URL + MIME → re-supervise
+#   → Buffer queue (official API, addToQueue, automatic) ONLY IF approved
+#   → exactly ONE GitHub issue per day.
+#
+# Real publishing needs ALL of:
+#   * repo variable AUTO_PUBLISH_ENABLED == "true"  (exact string; missing/True/1 → disabled)
+#   * dispatch input dry_run == false                (default true; cron runs use DRY_RUN_CRON var, default false)
+#   * Supervisor approved && score >= MIN_QA_SCORE (>= 80 floor) && no blocking errors
+# Anything else → status "approved-dry-run": everything is built and reported, createPost is never called.
+#
+# Security: least-privilege permissions, pinned actions, BUFFER_TOKEN exposed to exactly two
+# steps (Buffer queue, read-only metrics sync), never printed. No Meta/Instagram credentials.
 name: daily-trend-draft
 on:
   schedule:
-    - cron: "0 6 * * *"          # 09:30 Asia/Tehran — leaves time before the 19:30 slot
+    - cron: "0 6 * * *"          # 09:30 Asia/Tehran → finishes hours before the 19:30 Buffer slot
   workflow_dispatch:
     inputs:
-      selftest:
-        description: "silent audio instead of edge-tts (dry run)"
+      dry_run:
+        description: "dry run: build + supervise + issue, but never call Buffer createPost"
+        type: boolean
+        default: true
+      calendar_only:
+        description: "skip live trend sources, use the evergreen calendar"
         type: boolean
         default: false
+      date_tag:
+        description: "content date (YYYY-MM-DD); empty = today (UTC)"
+        type: string
+        default: ""
+
+permissions: {}
 
 concurrency:
-  group: daily-trend-draft       # one draft run at a time → no duplicate issues
+  group: daily-reel-${{ inputs.date_tag || 'today' }}
   cancel-in-progress: false
 
+env:
+  PYTHONUNBUFFERED: "1"
+  TARGET_BUFFER_CHANNEL: ${{ vars.TARGET_BUFFER_CHANNEL || 'metacognition.hq' }}
+  MIN_QA_SCORE: ${{ vars.MIN_QA_SCORE || '85' }}
+
 jobs:
-  draft:
+  reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 150
     permissions:
-      contents: write            # push the drafts/<date> branch
-      issues: write              # open/update the daily review issue
+      contents: write            # push drafts/<date> (public video + previews) and the memory/manifest commit
+      issues: write              # the single daily report issue
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
 
-      - name: deps
+      - name: resolve date + mode
+        id: mode
+        env:
+          IN_DRY: ${{ inputs.dry_run }}
+          IN_CAL: ${{ inputs.calendar_only }}
+          IN_TAG: ${{ inputs.date_tag }}
+          EVENT: ${{ github.event_name }}
+          DRY_RUN_CRON: ${{ vars.DRY_RUN_CRON }}
         run: |
-          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator
+          set -euo pipefail
+          TAG="${IN_TAG:-$(date -u +%F)}"
+          echo "$TAG" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "::error::bad date_tag"; exit 1; }
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            DRY="${IN_DRY:-true}"
+          else
+            DRY="${DRY_RUN_CRON:-false}"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "DRY=$DRY" >> "$GITHUB_ENV"
+          echo "CAL=${IN_CAL:-false}" >> "$GITHUB_ENV"
+          echo "date=$TAG dry_run=$DRY calendar_only=${IN_CAL:-false}"
+
+      - name: dependencies, fonts, stand-in logo
+        run: |
+          set -euo pipefail
+          sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
+          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
           bash build/fetch_fonts.sh
           python3 build/logo_make.py
+          python3 -m unittest discover -s tests -q 2>&1 | tail -3
 
-      - name: trend radar
-        run: python3 build/trend_radar.py --out content/trends.json
-
-      - name: draft episode
+      - name: produce + supervise (controlled retries inside)
+        id: produce
         run: |
-          TAG=$(date -u +%F)
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
-          python3 build/episode_from_trend.py --top 1 --date "$TAG"
+          set +e
+          ARGS=""
+          [ "$CAL" = "true" ] && ARGS="--calendar-only"
+          python3 build/pipeline.py produce --tag "$TAG" $ARGS
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "produce exit=$code (0 = approved candidate, 10 = no post today)"
 
-      - name: voice + timing + caption + previews
+      - name: publish public files (drafts/<date> orphan branch, working tree untouched)
+        id: push
+        if: steps.produce.outputs.code == '0'
         run: |
-          EP="content/episodes/auto-$TAG"
-          if [ "${{ inputs.selftest }}" = "true" ]; then
-            python3 - "$EP" <<'PY'
-          import json, subprocess, sys
-          from imageio_ffmpeg import get_ffmpeg_exe
-          ep = sys.argv[1]; ff = get_ffmpeg_exe()
-          n = len(json.load(open(ep + "/script.json"))["chunks"])
-          for i in range(1, n + 1):
-              subprocess.run([ff, "-y", "-loglevel", "error", "-f", "lavfi", "-i",
-                              "anullsrc=r=24000:cl=mono", "-t", "5", "-c:a", "libmp3lame",
-                              f"{ep}/c{i:02d}.mp3"], check=True)
-          print("selftest silent clips ok")
-          PY
-          else
-            python3 build/tts_edge.py "$EP"
-          fi
-          EP_DIR="$EP" python3 build/timing.py
-          python3 build/caption.py "$EP"
-          EP_DIR="$EP" python3 build/preview_stills.py
-
-      - name: render full reel (9:16 mp4)
-        run: |
-          EP_DIR="content/episodes/auto-$TAG" python3 build/render.py "out=output/auto-${TAG}.mp4"
-          ls -la "output/auto-${TAG}.mp4"
-
-      - name: push draft branch (public video + previews)
-        run: |
-          git config user.name "trend-factory"
+          set -euo pipefail
+          git config user.name "reel-factory"
           git config user.email "factory@metacognition.hq"
-          git add -A
-          git add -f "output/auto-${TAG}.mp4"
-          git commit -q -m "auto draft $TAG (rendered reel)" || echo "nothing to commit"
-          git push -qf origin "HEAD:refs/heads/drafts/$TAG" || echo "::warning::draft branch push failed"
-
-      - name: verify public video URL
-        run: |
-          REPO="${{ github.repository }}"
-          RAW="https://raw.githubusercontent.com/$REPO/drafts/$TAG/output/auto-${TAG}.mp4"
+          # build a single-commit orphan branch from a temporary index: only today's public files,
+          # no history, no secrets, and the checked-out working tree is never modified.
+          export GIT_INDEX_FILE="$(mktemp)"
+          rm -f "$GIT_INDEX_FILE"
+          git add -f "output/auto-${TAG}.mp4" "output/auto-${TAG}_poster.jpg" "output/auto-${TAG}_poster_4x5.jpg" \
+                     "output/auto-${TAG}_caption.txt" "output/auto-${TAG}_qa.json" "output/auto-${TAG}_qa.md" \
+                     "output/drafts/auto-${TAG}/preview_start.jpg" "output/drafts/auto-${TAG}/preview_middle.jpg" \
+                     "output/drafts/auto-${TAG}/preview_end.jpg" "output/drafts/auto-${TAG}/qa_contact_sheet.jpg" \
+                     "content/episodes/auto-${TAG}/script.json" "content/episodes/auto-${TAG}/timing.json" \
+                     "content/episodes/auto-${TAG}/layout.json" "content/episodes/auto-${TAG}/topic.json"
+          TREE=$(git write-tree)
+          COMMIT=$(git commit-tree "$TREE" -m "public files for reel $TAG (run $GITHUB_RUN_ID)")
+          unset GIT_INDEX_FILE
+          git push -qf origin "$COMMIT:refs/heads/drafts/$TAG"
+          RAW="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/drafts/$TAG/output/auto-${TAG}.mp4"
           echo "RAW_URL=$RAW" >> "$GITHUB_ENV"
-          VIDEO_OK=no
-          for i in $(seq 1 12); do
+          ok=no
+          for i in $(seq 1 18); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -I "$RAW" || true)
-            if [ "$code" = "200" ]; then VIDEO_OK=yes; echo "video URL public (HTTP 200) after $i attempt(s)"; break; fi
-            echo "attempt $i: HTTP $code — waiting for GitHub CDN…"; sleep 10
+            if [ "$code" = "200" ]; then ok=yes; echo "public URL live after $i attempt(s)"; break; fi
+            echo "attempt $i: HTTP $code — waiting for GitHub CDN"; sleep 10
           done
-          echo "VIDEO_OK=$VIDEO_OK" >> "$GITHUB_ENV"
-          if [ "$VIDEO_OK" != "yes" ]; then
-            echo "::warning::video URL not reachable yet: $RAW"
-          fi
+          [ "$ok" = "yes" ] || { echo "::error::public video URL not reachable"; exit 1; }
 
-      - name: daily review issue (exactly one per date)
+      - name: final supervision against the public URL
+        id: verify
+        if: steps.produce.outputs.code == '0' && steps.push.outcome == 'success'
+        run: |
+          set +e
+          python3 build/pipeline.py verify --tag "$TAG" --public-url "$RAW_URL"
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Buffer queue (official API; only when approved AND enabled AND not dry run)
+        id: buffer
+        if: steps.verify.outputs.code == '0'
         env:
-          GH_TOKEN: "${{ github.token }}"
+          BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
+          AUTO_PUBLISH_ENABLED: ${{ vars.AUTO_PUBLISH_ENABLED }}
         run: |
-          REPO="${{ github.repository }}"
-          TITLE="trend reel draft $TAG"
-          python3 build/make_issue_body.py --tag "$TAG" --repo "$REPO" \
-            --raw-url "$RAW_URL" --video-ok "$VIDEO_OK" > /tmp/body.md
+          set +e
+          ARGS="--yes"
+          [ "$DRY" = "true" ] && ARGS="--dry-run"
+          python3 build/buffer_publish.py publish --tag "$TAG" --content-id "reel-$TAG" \
+            --video "$RAW_URL" --caption "output/auto-${TAG}_caption.txt" \
+            --marker "output/auto-${TAG}.buffer.json" --thumbnail-ms 1600 $ARGS
+          code=$?
+          set -e
+          case "$code" in
+            0) if [ -s "output/auto-${TAG}.buffer.json" ]; then st=queued-in-buffer; else st=approved-dry-run; fi ;;
+            8) st=approved-dry-run ;;
+            7) st=queue-full ;;
+            2|5|6) st=buffer-error ;;
+            *) st=buffer-error ;;
+          esac
+          echo "status=$st" >> "$GITHUB_OUTPUT"
+          echo "buffer step exit=$code → $st"
+          unset BUFFER_TOKEN
 
-          gh label create auto-draft --color 0E8A16 --description "auto trend draft" 2>/dev/null || true
-          # dedupe: exact title match over ALL issues (search-index free)
-          EXISTING=$(gh issue list --state all --label auto-draft --limit 200 \
-                       --json number,title | jq -r --arg t "$TITLE" \
-                       '.[] | select(.title == $t) | .number' | head -1)
-          if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body-file /tmp/body.md
-            echo "draft regenerated — updated existing issue #$EXISTING (no duplicate created)"
-          else
-            gh issue create --title "$TITLE" --body-file /tmp/body.md --label auto-draft
-          fi
-
-      - name: confirm no Buffer access happened
+      - name: Buffer metrics sync + retention (read-only API; never fails the run)
+        if: always()
+        env:
+          BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
         run: |
-          # hard guarantee: this job never even receives the Buffer token
-          if [ -n "${BUFFER_TOKEN:-}" ]; then
-            echo "::error::BUFFER_TOKEN unexpectedly present in daily draft job"; exit 1
+          python3 build/performance_analyst.py collect || true
+          python3 build/retention.py --apply || true
+
+      - name: record outcome (manifest + editorial memory)
+        if: always()
+        env:
+          P: ${{ steps.produce.outputs.code }}
+          V: ${{ steps.verify.outputs.code }}
+          BST: ${{ steps.buffer.outputs.status }}
+          PUSH: ${{ steps.push.outcome }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BST" ]; then STATUS="$BST"
+          elif [ "$P" = "0" ] && [ "$PUSH" = "failure" ]; then STATUS="automation-error"
+          elif [ "$P" = "0" ] && [ "$V" != "0" ]; then STATUS="qa-failed"
+          elif [ "$P" = "0" ]; then STATUS="automation-error"
+          else STATUS=$(python3 -c "import json,sys;print(json.load(open('output/auto-${TAG}_state.json')).get('status','automation-error'))" 2>/dev/null || echo automation-error)
           fi
-          echo "daily draft finished with zero Buffer credentials and zero Buffer API calls."
+          echo "FINAL_STATUS=$STATUS" >> "$GITHUB_ENV"
+          python3 build/pipeline.py record --tag "$TAG" --status "$STATUS"
+          python3 build/performance_analyst.py report >/dev/null || true
+          # persist memory + manifest on the default branch (small JSON only)
+          git config user.name "reel-factory"
+          git config user.email "factory@metacognition.hq"
+          git add content/editorial_memory.json content/performance_history.json
+          git add -f "output/auto-${TAG}_manifest.json" 2>/dev/null || true
+          git commit -q -m "memory: reel $TAG → $STATUS" || echo "nothing to commit"
+          for i in 1 2 3; do
+            if git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "memory pushed"; break
+            fi
+            echo "push attempt $i failed — retrying"; sleep 5
+          done
+
+      - name: daily report issue (exactly one per content id)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 build/report_issue.py --tag "$TAG" --state "output/auto-${TAG}_state.json" \
+            --repo "$GITHUB_REPOSITORY" --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: QA artifacts (contact sheet, reports, logs — internal only)
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: reel-${{ env.TAG }}-qa
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            output/auto-${{ env.TAG }}_qa.json
+            output/auto-${{ env.TAG }}_qa.md
+            output/auto-${{ env.TAG }}_state.json
+            output/auto-${{ env.TAG }}_issue.md
+            output/drafts/auto-${{ env.TAG }}/qa_contact_sheet.jpg
+            output/drafts/auto-${{ env.TAG }}/qa_frames/
+            content/episodes/auto-${{ env.TAG }}/layout.json
+
+      - name: fail the run when there is no post today
+        if: always()
+        run: |
+          case "${FINAL_STATUS:-}" in
+            queued-in-buffer|approved-dry-run) echo "OK: $FINAL_STATUS" ;;
+            *) echo "::error::no post today ($FINAL_STATUS) — see the daily issue"; exit 1 ;;
+          esac

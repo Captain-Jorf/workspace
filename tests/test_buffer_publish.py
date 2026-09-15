@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(ROOT, "build"))
 import buffer_publish as bp  # noqa: E402
 
 FAKE_TOKEN = "buffr_SUPER_SECRET_TEST_TOKEN_xyz"
+LIVE = {"BUFFER_TOKEN": FAKE_TOKEN, "AUTO_PUBLISH_ENABLED": "true"}
 VIDEO_URL = "https://raw.githubusercontent.com/o/r/drafts/2026-09-14/output/auto-2026-09-14.mp4"
 
 ORG_RESP = {"data": {"account": {"id": "a1", "organizations": [
@@ -54,12 +55,16 @@ class MockBuffer:
     """Routes fake urlopen calls: GraphQL by query content, HEAD by method."""
     def __init__(self, head_status=200, createpost_responses=None,
                  channels_error_first=False, http_error_body=None,
-                 channels_resp=None):
+                 channels_resp=None, scheduled_posts=None, posts_error=False,
+                 head_ctype="video/mp4"):
         self.head_status = head_status
+        self.head_ctype = head_ctype
         self.createpost_responses = list(createpost_responses or [POST_OK])
         self.channels_error_first = channels_error_first
         self.http_error_body = http_error_body
         self.channels_resp = channels_resp
+        self.scheduled_posts = list(scheduled_posts or [])
+        self.posts_error = posts_error
         self.calls = []          # list of (kind, payload-or-url)
 
     def urlopen(self, req, timeout=None):
@@ -71,7 +76,7 @@ class MockBuffer:
                                              io.BytesIO(self.http_error_body.encode()))
             if self.head_status != 200:
                 raise urllib.error.HTTPError(url, self.head_status, "err", {}, None)
-            return FakeResp(status=200)
+            return FakeResp(status=200, headers={"Content-Length": "12345", "Content-Type": self.head_ctype})
         payload = json.loads(req.data.decode())
         query = payload.get("query", "")
         # auth header sanity — the fake server demands the bearer token
@@ -87,18 +92,29 @@ class MockBuffer:
             self.calls.append(("channels", query))
             if self.channels_resp is not None:
                 return FakeResp(self.channels_resp)
-            if self.channels_error_first and "name" in query and "displayName" not in query:
-                return FakeResp({"errors": [{"message": "Cannot query field \"name\" on type \"Channel\"."}]})
-            if "displayName" in query:      # fallback variant response
+            if self.channels_error_first and "isQueuePaused" in query:
+                return FakeResp({"errors": [{"message": "Cannot query field \"isQueuePaused\" on type \"Channel\"."}]})
+            if "displayName" in query and "name" not in query.replace("displayName", ""):   # 2nd fallback
                 return FakeResp({"data": {"channels": [
                     {"id": "ch1", "displayName": "metacognition.hq",
                      "service": "instagram", "descriptor": "Instagram Account"}]}})
             return FakeResp(CH_RESP)
+        if "posts(" in query:
+            self.calls.append(("posts", payload))
+            if self.posts_error:
+                return FakeResp({"errors": [{"message": "Cannot query field \"posts\""}]})
+            return FakeResp({"data": {"posts": {"edges": [{"node": p} for p in self.scheduled_posts],
+                                                "pageInfo": {"hasNextPage": False, "endCursor": None}}}})
         if "createPost" in query:
             self.calls.append(("createPost", payload))
             resp = self.createpost_responses.pop(0) if self.createpost_responses else POST_OK
             if isinstance(resp, Exception):
                 raise resp
+            # simulate the server side effect: a successful create shows up in the queue
+            if isinstance(resp, dict) and (resp.get("data") or {}).get("createPost", {}).get("post"):
+                post = dict(resp["data"]["createPost"]["post"])
+                post["text"] = payload["variables"]["input"]["text"]
+                self.scheduled_posts.append(post)
             return FakeResp(resp)
         raise AssertionError(f"unexpected query: {query[:80]}")
 
@@ -178,7 +194,7 @@ class PublishGuardTests(unittest.TestCase):
                 "--caption", caption_path, "--marker", marker or "", "--yes", *extra_args]
         argv = [a for a in argv if a != ""]
         out = io.StringIO()
-        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+        with mock.patch.dict(os.environ, LIVE), \
              mock.patch("urllib.request.urlopen", m.urlopen), \
              mock.patch("sys.stdout", out):
             code = bp.cmd_publish(argv)
@@ -200,7 +216,7 @@ class PublishGuardTests(unittest.TestCase):
             cap = write_caption(d)
             argv = ["--video", "http://example.com/x.mp4", "--caption", cap,
                     "--marker", os.path.join(d, "m.json"), "--yes"]
-            with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+            with mock.patch.dict(os.environ, LIVE), \
                  mock.patch("urllib.request.urlopen", m.urlopen):
                 code = bp.cmd_publish(argv)
         self.assertEqual(code, bp.EXIT_URL)
@@ -211,7 +227,7 @@ class PublishGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             cap = write_caption(d)
             argv = ["--video", "https://localhost:8080/x.mp4", "--caption", cap, "--yes"]
-            with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+            with mock.patch.dict(os.environ, LIVE), \
                  mock.patch("urllib.request.urlopen", m.urlopen):
                 code = bp.cmd_publish(argv)
         self.assertEqual(code, bp.EXIT_URL)
@@ -260,7 +276,7 @@ class CreatePostTests(unittest.TestCase):
         argv = ["--tag", "2026-09-14", "--video", VIDEO_URL, "--caption", cap,
                 "--marker", marker, *args_extra]
         out = io.StringIO()
-        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+        with mock.patch.dict(os.environ, LIVE), \
              mock.patch("urllib.request.urlopen", m.urlopen), \
              mock.patch("sys.stdout", out):
             code = bp.cmd_publish(argv)
@@ -280,8 +296,9 @@ class CreatePostTests(unittest.TestCase):
         self.assertEqual(inp["channelId"], "ch1")
         self.assertEqual(inp["schedulingType"], "automatic")
         self.assertEqual(inp["mode"], "addToQueue")
-        self.assertEqual(inp["assets"], [{"video": {"url": VIDEO_URL}}])
-        self.assertEqual(inp["text"], "Hello caption body.\nSecond line.")
+        self.assertEqual(inp["assets"][0]["video"]["url"], VIDEO_URL)
+        self.assertTrue(inp["text"].startswith("Hello caption body.\nSecond line."))
+        self.assertIn("reel-id: reel-2026-09-14", inp["text"])   # idempotency marker line
         self.assertNotIn("#", inp["text"])                     # hashtags not in caption
         self.assertEqual(inp["metadata"]["instagram"]["type"], "reel")
         self.assertTrue(inp["metadata"]["instagram"]["shouldShareToFeed"])
@@ -330,7 +347,7 @@ class CreatePostTests(unittest.TestCase):
         self.assertNotIn("metadata", inputs[2])
 
     def test_all_variants_fail(self):
-        err = {"data": {"createPost": {"message": "Invalid input: queue is full"}}}
+        err = {"data": {"createPost": {"message": "Invalid input: unsupported asset"}}}
         m = MockBuffer(createpost_responses=[err, err, err])
         with tempfile.TemporaryDirectory() as d:
             code, text, cap, marker = self._run(m, d, ["--yes"])
@@ -345,6 +362,172 @@ class CreatePostTests(unittest.TestCase):
         self.assertEqual(code, bp.EXIT_API)
         self.assertIn("HTTP 500", text)
         self.assertFalse(os.path.exists(marker))
+
+
+class ChannelResolutionTests(unittest.TestCase):
+    def test_exact_match_required(self):
+        m = MockBuffer(channels_resp={"data": {"channels": [
+            {"id": "c1", "name": "metacognition.hq.backup", "service": "instagram", "descriptor": ""},
+            {"id": "c2", "name": "other", "service": "instagram", "descriptor": ""}]}})
+        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN, "TARGET_BUFFER_CHANNEL": "metacognition.hq"}), \
+             mock.patch("urllib.request.urlopen", m.urlopen):
+            with self.assertRaises(bp.BufferError) as ctx:
+                bp.find_instagram_channel(FAKE_TOKEN)
+        self.assertIn("exactly", str(ctx.exception))
+
+    def test_wrong_service_rejected_even_if_name_matches(self):
+        m = MockBuffer(channels_resp={"data": {"channels": [
+            {"id": "c1", "name": "metacognition.hq", "service": "facebook", "descriptor": ""}]}})
+        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+             mock.patch("urllib.request.urlopen", m.urlopen):
+            with self.assertRaises(bp.BufferError):
+                bp.find_instagram_channel(FAKE_TOKEN)
+
+    def test_target_from_repo_variable_and_at_sign(self):
+        m = MockBuffer(channels_resp={"data": {"channels": [
+            {"id": "c9", "name": "@Brand.Page", "service": "instagram", "descriptor": ""}]}})
+        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN, "TARGET_BUFFER_CHANNEL": "brand.page"}), \
+             mock.patch("urllib.request.urlopen", m.urlopen):
+            ch = bp.find_instagram_channel(FAKE_TOKEN)
+        self.assertEqual(ch["id"], "c9")
+
+    def test_paused_or_disconnected_channel_refused(self):
+        for flag in ("isQueuePaused", "isLocked", "isDisconnected"):
+            m = MockBuffer(channels_resp={"data": {"channels": [
+                {"id": "c1", "name": "metacognition.hq", "service": "instagram", "descriptor": "", flag: True}]}})
+            with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+                 mock.patch("urllib.request.urlopen", m.urlopen):
+                with self.assertRaises(bp.BufferError, msg=flag):
+                    bp.find_instagram_channel(FAKE_TOKEN)
+
+    def test_ambiguous_duplicate_names_refused(self):
+        m = MockBuffer(channels_resp={"data": {"channels": [
+            {"id": "c1", "name": "metacognition.hq", "service": "instagram", "descriptor": ""},
+            {"id": "c2", "displayName": "metacognition.hq", "service": "instagram", "descriptor": ""}]}})
+        with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN}), \
+             mock.patch("urllib.request.urlopen", m.urlopen):
+            with self.assertRaises(bp.BufferError) as ctx:
+                bp.find_instagram_channel(FAKE_TOKEN)
+        self.assertIn("ambiguous", str(ctx.exception))
+
+
+class PublishFlagTests(unittest.TestCase):
+    def _run(self, env, extra=("--yes",)):
+        m = MockBuffer()
+        with tempfile.TemporaryDirectory() as d:
+            cap = write_caption(d)
+            marker = os.path.join(d, "m.json")
+            argv = ["--tag", "2026-09-14", "--video", VIDEO_URL, "--caption", cap, "--marker", marker, *extra]
+            out = io.StringIO()
+            with mock.patch.dict(os.environ, {"BUFFER_TOKEN": FAKE_TOKEN, **env}), \
+                 mock.patch("urllib.request.urlopen", m.urlopen), mock.patch("sys.stdout", out):
+                code = bp.cmd_publish(argv)
+            existed = os.path.exists(marker)
+        return code, out.getvalue(), m, existed
+
+    def test_flag_missing_means_dry_run(self):
+        env = {k: v for k, v in os.environ.items() if k != "AUTO_PUBLISH_ENABLED"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            code, text, m, existed = self._run({})
+        self.assertEqual(code, bp.EXIT_DISABLED)
+        self.assertNotIn("createPost", m.kinds())
+        self.assertIn("DRY RUN", text)
+        self.assertFalse(existed)
+
+    def test_flag_variants_do_not_enable(self):
+        for v in ("True", "1", "yes", "TRUE", " true"):
+            code, text, m, _ = self._run({"AUTO_PUBLISH_ENABLED": v})
+            self.assertNotIn("createPost", m.kinds(), v)
+            self.assertEqual(code, bp.EXIT_DISABLED, v)
+
+    def test_dry_run_flag_overrides_enabled(self):
+        code, text, m, existed = self._run({"AUTO_PUBLISH_ENABLED": "true"}, extra=("--yes", "--dry-run"))
+        self.assertEqual(code, 0)
+        self.assertNotIn("createPost", m.kinds())
+        self.assertFalse(existed)
+
+    def test_exact_true_enables(self):
+        code, text, m, existed = self._run({"AUTO_PUBLISH_ENABLED": "true"})
+        self.assertEqual(code, 0)
+        self.assertIn("createPost", m.kinds())
+        self.assertTrue(existed)
+
+
+class QueueTests(unittest.TestCase):
+    def _publish(self, m, tmpdir, extra=("--yes",)):
+        cap = write_caption(tmpdir)
+        marker = os.path.join(tmpdir, "m.json")
+        argv = ["--tag", "2026-09-14", "--video", VIDEO_URL, "--caption", cap, "--marker", marker, *extra]
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, LIVE), mock.patch("urllib.request.urlopen", m.urlopen), \
+             mock.patch("sys.stdout", out):
+            code = bp.cmd_publish(argv)
+        return code, out.getvalue(), marker
+
+    def test_queue_full_blocks_before_create(self):
+        posts = [{"id": f"p{i}", "text": f"post {i}", "status": "scheduled", "dueAt": None} for i in range(10)]
+        m = MockBuffer(scheduled_posts=posts)
+        with tempfile.TemporaryDirectory() as d:
+            code, text, marker = self._publish(m, d)
+            self.assertFalse(os.path.exists(marker))
+        self.assertEqual(code, bp.EXIT_QUEUE_FULL)
+        self.assertNotIn("createPost", m.kinds())
+        self.assertIn("queue is full", text)
+
+    def test_queue_full_api_message_maps_to_exit_7(self):
+        m = MockBuffer(createpost_responses=[{"data": {"createPost": {"message": "Your queue is full for this channel"}}}])
+        with tempfile.TemporaryDirectory() as d:
+            code, text, marker = self._publish(m, d)
+        self.assertEqual(code, bp.EXIT_QUEUE_FULL)
+
+    def test_existing_post_with_same_content_id_is_adopted(self):
+        posts = [{"id": "pX", "text": "older caption\n\nreel-id: reel-2026-09-14", "status": "scheduled",
+                  "dueAt": "2026-09-14T16:00:00.000Z"}]
+        m = MockBuffer(scheduled_posts=posts)
+        with tempfile.TemporaryDirectory() as d:
+            code, text, marker = self._publish(m, d)
+            data = json.load(open(marker))
+        self.assertEqual(code, 0)
+        self.assertNotIn("createPost", m.kinds())
+        self.assertEqual(data["buffer_post_id"], "pX")
+        self.assertTrue(data["adopted"])
+
+    def test_ambiguous_error_then_post_exists_no_duplicate(self):
+        # createPost raises a transport error, but the post was actually created server-side
+        class FlakyMock(MockBuffer):
+            def urlopen(self, req, timeout=None):
+                if req.get_method() != "HEAD" and "createPost" in json.loads(req.data.decode()).get("query", ""):
+                    payload = json.loads(req.data.decode())
+                    self.calls.append(("createPost", payload))
+                    self.scheduled_posts.append({"id": "pNew", "text": payload["variables"]["input"]["text"],
+                                                 "status": "scheduled", "dueAt": None})
+                    raise urllib.error.HTTPError(bp.API, 504, "gateway timeout", {}, io.BytesIO(b""))
+                return super().urlopen(req, timeout)
+        m = FlakyMock()
+        with tempfile.TemporaryDirectory() as d:
+            code, text, marker = self._publish(m, d)
+            data = json.load(open(marker))
+        self.assertEqual(code, 0)
+        self.assertEqual(m.kinds().count("createPost"), 1)      # no blind retry
+        self.assertEqual(data["buffer_post_id"], "pNew")
+        self.assertIn("adopting", text)
+
+    def test_rerun_after_success_is_idempotent_even_without_marker(self):
+        m = MockBuffer()
+        with tempfile.TemporaryDirectory() as d:
+            code1, _, marker = self._publish(m, d)
+            os.remove(marker)                                   # simulate a fresh runner without the marker
+            code2, text2, marker2 = self._publish(m, d)
+            self.assertEqual(code2, 0)
+        self.assertEqual(m.kinds().count("createPost"), 1)
+        self.assertIn("already scheduled", text2)
+
+    def test_posts_query_unavailable_does_not_block_but_is_reported(self):
+        m = MockBuffer(posts_error=True)
+        with tempfile.TemporaryDirectory() as d:
+            code, text, marker = self._publish(m, d)
+        self.assertEqual(code, 0)
+        self.assertIn("queue lookup unavailable", text)
 
 
 class CaptionSplitTests(unittest.TestCase):

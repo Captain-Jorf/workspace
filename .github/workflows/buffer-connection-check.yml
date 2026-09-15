@@ -1,25 +1,32 @@
 # Read-only Buffer connection test. NEVER creates a post.
 # Run it from: GitHub → Actions → "buffer-connection-check" → Run workflow
 # (the workflow file must exist on the default branch to be dispatchable).
+#
+# What it prints (safe): organizations count, the exact Instagram channel that
+# matches TARGET_BUFFER_CHANNEL, the number of scheduled posts in the queue,
+# and whether AUTO_PUBLISH_ENABLED is exactly "true". The token is never printed.
 name: buffer-connection-check
 on:
   workflow_dispatch:
+
+permissions: {}
 
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
-      - name: read-only Buffer check (account → organizations → Instagram channel)
+      - name: read-only Buffer check (account → organizations → exact Instagram channel → queue)
         env:
-          BUFFER_TOKEN: "${{ secrets.BUFFER_TOKEN }}"
-        run: |
-          python3 build/buffer_publish.py check
-          # expected safe output:
-          #   Buffer connection: OK
-          #   Instagram channel found: metacognition.hq
-          # the token itself is never printed.
+          BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
+          TARGET_BUFFER_CHANNEL: ${{ vars.TARGET_BUFFER_CHANNEL || 'metacognition.hq' }}
+          AUTO_PUBLISH_ENABLED: ${{ vars.AUTO_PUBLISH_ENABLED }}
+        run: python3 build/buffer_publish.py check
