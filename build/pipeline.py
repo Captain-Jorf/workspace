@@ -59,7 +59,14 @@ def run(cmd, stage, env=None, timeout=1800):
     e = dict(os.environ)
     e.update(env or {})
     print(f"[pipeline:{stage}] $ {' '.join(os.path.relpath(c, common.ROOT) if c.startswith('/') else c for c in cmd)}", flush=True)
-    r = subprocess.run(cmd, env=e, cwd=common.ROOT, text=True, capture_output=True, timeout=timeout)
+    try:
+        r = subprocess.run(cmd, env=e, cwd=common.ROOT, text=True, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as ex:                   # a hung TTS/translation call is a stage error, not a crash
+        out = ex.stdout or ""
+        if isinstance(out, bytes):
+            out = out.decode("utf-8", "replace")
+        print(common.scrub_secrets(out[-1500:]), flush=True)
+        raise Stage(stage, f"timed out after {timeout} s")
     tail = (r.stdout[-3000:] + "\n" + r.stderr[-3000:]).strip()
     print(tail, flush=True)
     if r.returncode != 0:
@@ -138,7 +145,7 @@ def produce(a):
             cmd = [PY, os.path.join(B, "content_producer.py"), "--topic", topic_path, "--out", ep,
                    "--variant", str(variant)]
             try:
-                run(cmd, "script", env=env)
+                run(cmd, "script", env=env, timeout=600)
             except Stage as e:
                 if "translation" in str(e).lower():
                     e.stage = "translate"

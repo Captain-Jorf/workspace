@@ -181,7 +181,8 @@ def render_body(tag, st, repo, run_url):
             L.append("```")
         if qa:
             L.append("")
-            L.append(f"### Quality Supervisor — score {qa.get('score', '?')}/100 · rejected")
+            verdict = "rejected" if not qa.get("approved") else "approved, but the run did not complete"
+            L.append(f"### Quality Supervisor — score {qa.get('score', '?')}/100 · {verdict}")
             if qa.get("blocking_errors"):
                 L.append("**Blocking errors**")
                 L += [f"- {b}" for b in qa["blocking_errors"]]

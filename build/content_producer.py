@@ -1024,7 +1024,29 @@ def build_script(topic, pol, variant=0, translate=True, translator=None):
     return script
 
 
+def install_http_timeout(seconds=25):
+    """deep_translator calls requests without a timeout; a stalled free endpoint must not hang the run
+    (the pipeline also has a subprocess timeout as the outer backstop)."""
+    import socket
+    socket.setdefaulttimeout(seconds)
+    try:
+        import requests.adapters as ra
+    except Exception:                                         # noqa: BLE001
+        return
+    if getattr(ra.HTTPAdapter.send, "_mc_timeout", False):
+        return
+    orig = ra.HTTPAdapter.send
+
+    def send(self, request, *args, **kw):
+        if kw.get("timeout") is None:
+            kw["timeout"] = seconds
+        return orig(self, request, *args, **kw)
+    send._mc_timeout = True
+    ra.HTTPAdapter.send = send
+
+
 def main():
+    install_http_timeout(25)
     ap = argparse.ArgumentParser()
     ap.add_argument("--topic", required=True)
     ap.add_argument("--out", required=True, help="episode dir")

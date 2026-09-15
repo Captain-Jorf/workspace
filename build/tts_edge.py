@@ -74,7 +74,7 @@ def main():
         last = None
         for attempt in range(4):
             try:
-                asyncio.run(synth(txt, out, voice, rate))
+                asyncio.run(asyncio.wait_for(synth(txt, out, voice, rate), timeout=120))   # a stalled socket ≠ a hung run
                 if os.path.getsize(out) > 2000:
                     break
                 last = "empty audio"

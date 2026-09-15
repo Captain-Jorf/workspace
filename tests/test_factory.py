@@ -749,3 +749,44 @@ class SpeakableTopicTests(unittest.TestCase):
         pick, ranked, rejected = ts.choose(items, POL, common.empty_memory(), __import__("datetime").date(2026, 9, 16))
         self.assertEqual(pick["title"], "The Dunning-Kruger effect is autocorrelation")
         self.assertTrue(any("not speakable" in r["why"] for r in rejected), rejected)
+
+
+class HangProtectionTests(unittest.TestCase):
+    def test_pipeline_stage_timeout_becomes_stage_error(self):
+        import pipeline
+        with self.assertRaises(pipeline.Stage) as cm:
+            pipeline.run([sys.executable, "-c", "import time; time.sleep(5)"], "tts", timeout=1)
+        self.assertEqual(cm.exception.stage, "tts")
+        self.assertIn("timed out", str(cm.exception))
+
+    def test_translator_http_calls_get_a_timeout(self):
+        try:
+            import requests
+        except Exception:                                     # noqa: BLE001
+            self.skipTest("requests not installed")
+        import http.server
+        import socketserver
+        import threading
+        import time
+
+        class Stall(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                time.sleep(4)
+
+            def log_message(self, *a):
+                pass
+
+        class Srv(socketserver.ThreadingTCPServer):
+            daemon_threads = True
+            allow_reuse_address = True
+        srv = Srv(("127.0.0.1", 0), Stall)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            cp.install_http_timeout(1)
+            t0 = time.time()
+            with self.assertRaises(requests.exceptions.RequestException):
+                requests.get(f"http://127.0.0.1:{srv.server_address[1]}/translate")   # no timeout= given on purpose
+            self.assertLess(time.time() - t0, 10)
+        finally:
+            srv.shutdown()
+            srv.server_close()

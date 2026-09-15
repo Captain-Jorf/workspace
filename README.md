@@ -53,7 +53,7 @@ no paid services. A bad or unverifiable reel simply **cancels that day's post**.
 
 | مرحله | کار | پیش‌نیاز |
 | --- | --- | --- |
-| **0** | تست‌های محلی: `python3 -m unittest discover -s tests` (۱۲۹ تست، همه mock) | هیچ |
+| **0** | تست‌های محلی: `python3 -m unittest discover -s tests` (۱۳۱ تست، همه mock) | هیچ |
 | **1** | **Actions → buffer-connection-check → Run workflow** — فقط خواندن: حساب، سازمان، کانال دقیق، وضعیت صف. هیچ پستی ساخته نمی‌شود | Secret `BUFFER_TOKEN` |
 | **2** | **Actions → daily-trend-draft → Run workflow** با `dry_run = true` (پیش‌فرض): ریل کامل + ناظر + Issue با پیش‌نمایش؛ `createPost` صدا زده نمی‌شود | مرحلهٔ ۱ سبز |
 | **3** | یک تست کنترل‌شدهٔ صف — فقط با تأیید صریح مالک: `AUTO_PUBLISH_ENABLED=true` + اجرای دستی با `dry_run = false` | Issue مرحلهٔ ۲ بازبینی شده |
@@ -133,7 +133,7 @@ Issue با `qa-failed`. آستانه‌ها هرگز پایین نمی‌آین�
 ```bash
 pip install pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
 bash build/fetch_fonts.sh && python3 build/logo_make.py
-python3 -m unittest discover -s tests                      # 129 tests, all mocked (Buffer + GitHub + CDN mocked; local bare git origin)
+python3 -m unittest discover -s tests                      # 131 tests, all mocked (Buffer + GitHub + CDN mocked; local bare git origin)
 python3 build/pipeline.py produce --tag 2026-09-16 --calendar-only --synthetic-tts --fixture-translation --skip-network
 python3 build/report_issue.py --tag 2026-09-16 --state output/auto-2026-09-16_state.json --repo o/r --run-url x --dry-run
 ```
