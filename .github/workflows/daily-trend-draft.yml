@@ -82,6 +82,19 @@ jobs:
           echo "CAL=${IN_CAL:-false}" >> "$GITHUB_ENV"
           echo "date=$TAG dry_run=$DRY calendar_only=${IN_CAL:-false}"
 
+      - name: forbid mock LLM in production (fail closed)
+        run: |
+          set -euo pipefail
+          # MOCK_GITHUB_MODELS=1 is forbidden in cron AND manual dispatch of the
+          # daily workflow. Mock fixtures must never become production content.
+          # If GitHub Models fails, the pipeline falls back to the curated
+          # static English playbooks with generation_mode=static-fallback.
+          if [ "${MOCK_GITHUB_MODELS:-}" = "1" ]; then
+            echo "::error::mock LLM is forbidden in daily production (MOCK_GITHUB_MODELS must not be enabled)"
+            exit 1
+          fi
+          echo "mock guard: OK (MOCK_GITHUB_MODELS not enabled)"
+
       - name: dependencies, fonts, stand-in logo, self-test
         run: |
           set -euo pipefail
@@ -97,6 +110,7 @@ jobs:
         id: produce
         run: |
           set +e
+          unset MOCK_GITHUB_MODELS || true
           ARGS=""
           [ "$CAL" = "true" ] && ARGS="--calendar-only"
           python3 build/pipeline.py produce --tag "$TAG" $ARGS

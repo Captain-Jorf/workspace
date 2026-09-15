@@ -590,6 +590,11 @@ def main():
         try:
             prod = llm_provider.GitHubModelsProducer()
             llm_out, raw = prod.produce(evidence_packet)
+            # Honesty gate: mock/fixture output must NEVER be recorded as
+            # generation_mode=github-models. That label is reserved for genuine
+            # API responses. Mock in the daily path falls back to static.
+            if isinstance(raw, dict) and raw.get("mock"):
+                raise ValueError("mock output rejected in daily path — explicit mock is test-only")
             producer_report = {"model": prod.model, "raw": raw, "output": llm_out, "mode": "github-models"}
             # Validate and build script
             script = build_script_from_llm(topic, pol, llm_out, generation_mode="github-models")
@@ -609,7 +614,11 @@ def main():
                             evidence_packet["revision_request"] = review_out["required_changes"]
                             try:
                                 llm_out2, raw2 = prod.produce(evidence_packet)
+                                if isinstance(raw2, dict) and raw2.get("mock"):
+                                    raise ValueError("mock revision rejected in daily path")
                                 review_out2, review_raw2 = rev.review(llm_out2, evidence_packet)
+                                if isinstance(review_raw2, dict) and review_raw2.get("mock"):
+                                    raise ValueError("mock reviewer output rejected in daily path")
                                 if review_out2.get("approved") and review_out2.get("score",0) >=85 and review_out2.get("technology_relevance") and review_out2.get("metacognition_relevance"):
                                     script = build_script_from_llm(topic, pol, llm_out2, generation_mode="github-models")
                                     reviewer_report = {"model": rev.model, "raw": review_raw2, "output": review_out2, "revision": True}

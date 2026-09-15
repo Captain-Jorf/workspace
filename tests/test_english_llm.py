@@ -104,10 +104,14 @@ class LLMProviderTests(unittest.TestCase):
                     prod.produce(packet)
                 self.assertIn("malformed JSON", str(ctx.exception))
 
-    def test_unavailable_model_fallback(self):
-        prod = llm_provider.GitHubModelsProducer(model="nonexistent/model-xyz")
-        # Should fallback to supported model list
-        self.assertIn(prod.model, llm_provider.SUPPORTED_MODELS)
+    def test_unavailable_model_rejected(self):
+        # Fail-closed: unknown model IDs raise instead of silently substituting
+        # another model (false-success fix: invalid model → nonzero).
+        with self.assertRaises(ValueError) as ctx:
+            llm_provider.GitHubModelsProducer(model="nonexistent/model-xyz")
+        self.assertIn("Invalid model", str(ctx.exception))
+        with self.assertRaises(ValueError):
+            llm_provider.GitHubModelsReviewer(model="nonexistent/model-xyz")
 
     def test_429_quota_behavior(self):
         def raise_429(*args, **kwargs):

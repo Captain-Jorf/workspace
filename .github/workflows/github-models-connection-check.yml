@@ -1,11 +1,25 @@
-# GitHub Models connection check — manual only, no Buffer, no publish, small non-sensitive prompt
+# GitHub Models connection check — FAIL-CLOSED, manual only.
 # Run from: GitHub → Actions → "github-models-connection-check" → Run workflow
-# Permissions: models: read (GitHub Models), contents: read
-# No external secrets, uses secrets.GITHUB_TOKEN only
-# Timeout 5 min, result prints "GitHub Models connection: OK Model: ... Structured output: OK"
+#
+# Real mode is the default and the ONLY mode that can print
+# "GitHub Models connection: OK". Any failure (missing token, DNS, HTTP,
+# invalid model, malformed JSON, reviewer failure) exits nonzero — the run
+# goes RED. There is NO automatic mock fallback.
+#
+# Mock exists ONLY for explicit plumbing tests: dispatch with mock=true.
+# It prints an unambiguous "MOCK MODE" banner and never the real-success line.
+#
+# No Buffer, no createPost, no publish. Secrets: GITHUB_TOKEN only (boolean
+# presence is logged; the value is never printed).
+# Timeout 5 min. Safe logs: hostname, model IDs, HTTP status, attempt numbers.
 name: github-models-connection-check
 on:
   workflow_dispatch:
+    inputs:
+      mock:
+        description: "Explicit mock only (plumbing test, NOT a real connection check)"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -26,73 +40,58 @@ jobs:
       - name: Install deps (no external secret)
         run: |
           python -m pip install --quiet --upgrade pip
-      - name: GitHub Models connection check (small non-sensitive prompt, no Buffer, no createPost)
+
+      - name: DNS diagnostic for the official endpoint (no credentials)
+        run: |
+          set -euo pipefail
+          getent hosts models.github.ai || echo "getent: no record (python check below is authoritative)"
+          python3 - << 'PY'
+          import socket, sys, time
+          host = "models.github.ai"
+          print(f"endpoint hostname: {host}")
+          ok = False
+          for attempt in (1, 2, 3):
+              try:
+                  infos = socket.getaddrinfo(host, 443)
+                  print(f"DNS resolution: OK ({len(infos)} record(s)) attempt={attempt}")
+                  ok = True
+                  break
+              except Exception as e:
+                  print(f"DNS attempt {attempt} failed: {type(e).__name__}")
+                  time.sleep(attempt)
+          if not ok:
+              print("::error::DNS resolution failed for models.github.ai after 3 attempts")
+              sys.exit(1)
+          PY
+
+      - name: Token presence gate (boolean only, value never logged)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo "::error::GITHUB_TOKEN is missing — real connection check cannot run"
+            exit 1
+          fi
+          echo "GITHUB_TOKEN present: true"
+
+      - name: GitHub Models connection check (fail-closed, no mock fallback)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONTENT_LANGUAGE: en
           CONTENT_PRODUCER: github-models
           PRODUCER_MODEL: ${{ vars.PRODUCER_MODEL || 'openai/gpt-4o-mini' }}
           REVIEWER_MODEL: ${{ vars.REVIEWER_MODEL || 'meta/llama-3.3-70b-instruct' }}
+          MOCK_INPUT: ${{ inputs.mock }}
         run: |
-          python3 - << 'PY'
-          import os, json, sys
-          sys.path.insert(0, "build")
-          import llm_provider
-
-          print("[check] CONTENT_LANGUAGE=en check")
-          os.environ["CONTENT_LANGUAGE"] = "en"
-
-          # Small non-sensitive prompt
-          evidence_packet = {
-              "topic": "automation bias in AI assistants",
-              "technology_angle": "automation bias in AI assistants",
-              "discovery_source": {"name": "test", "url": "", "tier": "C"},
-              "evidence_source": {"label": "test evidence", "tier": "B"},
-              "trusted_excerpt": "Test excerpt about automation bias and metacognition for AI age",
-              "recent_topics": [],
-              "editorial_policy": {
-                  "brand": "Metacognition for the AI age",
-                  "pillars": ["AI_JUDGMENT", "CODING"],
-                  "tone": "conversational English",
-                  "length_target": [70,105],
-                  "forbidden_openers": ["in today's video"]
-              }
-          }
-
-          producer_model = os.environ.get("PRODUCER_MODEL", "openai/gpt-4o-mini")
-          reviewer_model = os.environ.get("REVIEWER_MODEL", "meta/llama-3.3-70b-instruct")
-
-          print(f"[check] Trying producer model: {producer_model}")
-          try:
-              prod = llm_provider.GitHubModelsProducer(model=producer_model)
-              out, raw = prod.produce(evidence_packet)
-              print(f"GitHub Models connection: OK Model: {prod.model} Structured output: OK")
-              print(f"Producer output keys: {list(out.keys())}")
-              # Validate minimal schema
-              required = ["title", "technology_angle", "metacognition_concept", "hook"]
-              missing = [k for k in required if k not in out]
-              if missing:
-                  print(f"Structured output incomplete, missing: {missing}")
-                  sys.exit(1)
-              # Try reviewer
-              print(f"[check] Trying reviewer model: {reviewer_model}")
-              rev = llm_provider.GitHubModelsReviewer(model=reviewer_model)
-              review_out, review_raw = rev.review(out, evidence_packet)
-              print(f"Reviewer connection: OK Model: {rev.model} Approved: {review_out.get('approved')} Score: {review_out.get('score')}")
-              print("GitHub Models connection: OK Model: {} Structured output: OK Reviewer: OK".format(prod.model))
-          except Exception as e:
-              # If no token or quota, report but don't fail hard in CI if mock allowed
-              print(f"GitHub Models check failed: {type(e).__name__}: {e}")
-              # Try mock fallback to prove pipeline works without real token
-              os.environ["MOCK_GITHUB_MODELS"] = "1"
-              try:
-                  prod = llm_provider.GitHubModelsProducer(model=producer_model)
-                  out, raw = prod.produce(evidence_packet)
-                  rev = llm_provider.GitHubModelsReviewer(model=reviewer_model)
-                  review_out, _ = rev.review(out, evidence_packet)
-                  print(f"MOCK MODE: GitHub Models connection: OK Model: {prod.model} (mock) Structured output: OK Reviewer: {review_out.get('approved')}")
-                  print("Note: Real token not available in this run, mock used. In production with GITHUB_TOKEN, real call will work.")
-              except Exception as e2:
-                  print(f"Mock also failed: {e2}")
-                  sys.exit(1)
-          PY
+          set -euo pipefail
+          # NOTE: MOCK_GITHUB_MODELS is deliberately NEVER set in this workflow.
+          # Mock runs only when the dispatcher explicitly chose mock=true.
+          ARGS=""
+          if [ "${MOCK_INPUT:-false}" = "true" ]; then
+            echo "::warning::explicit mock requested — this run CANNOT validate the real connection"
+            ARGS="--mock"
+          fi
+          python3 build/github_models_check.py \
+            --producer-model "$PRODUCER_MODEL" \
+            --reviewer-model "$REVIEWER_MODEL" $ARGS

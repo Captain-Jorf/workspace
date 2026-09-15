@@ -39,6 +39,15 @@ class Stage(Exception):
         super().__init__(msg)
         self.stage = stage
 
+def assert_no_mock_in_ci():
+    """Mock LLM fixtures are forbidden in CI/production (cron or dispatch).
+
+    Raises Stage('script', ...) when GITHUB_ACTIONS=true and MOCK_GITHUB_MODELS=1.
+    Local runs (no GITHUB_ACTIONS) may use the explicit mock for tests.
+    """
+    if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("MOCK_GITHUB_MODELS") == "1":
+        raise Stage("script", "MOCK_GITHUB_MODELS=1 is forbidden in CI/production — refusing mock content")
+
 def state_path(tag):
     return os.path.join(common.ROOT, "output", f"auto-{tag}_state.json")
 
@@ -150,6 +159,7 @@ def validate_mp4(path):
 # produce
 def produce(a):
     common.assert_content_language_en()
+    assert_no_mock_in_ci()
     tag = a.tag
     ep = common.episode_dir(tag)
     paths = common.output_paths(tag)

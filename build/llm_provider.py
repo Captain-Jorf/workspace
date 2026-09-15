@@ -15,17 +15,38 @@ Evidence packet is sanitized — web content is untrusted and must not inject pr
 import json
 import os
 import re
+import socket
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 common.assert_content_language_en()  # fail-closed EN-only
 
-# Supported models in GitHub Models (as of 2025-2026)
-# Checked via https://github.com/marketplace/models/catalog
+# Official GitHub Models inference endpoint (OpenAI-compatible).
+# Docs: https://docs.github.com/en/rest/models/inference
+#   POST https://models.github.ai/inference/chat/completions
+# NOTE (2026-09): docs at /en/github-models state the service was retired on
+# 2026-07-30. The legacy Azure hostname no longer resolves (DNS Errno -2) and
+# MUST NOT be used. Single official endpoint below; fail closed on any error.
+GITHUB_MODELS_HOSTNAME = "models.github.ai"
+GITHUB_MODELS_ENDPOINT = "https://models.github.ai/inference/chat/completions"
+
+# Test-only override (local HTTP stub servers). Never set in workflows.
+_TEST_ENDPOINT_ENV = "GITHUB_MODELS_ENDPOINT"
+
+# Retry policy for transient network/DNS failures: 1 initial + 2 retries.
+MAX_ATTEMPTS = 3
+RETRY_BASE_SECONDS = 1.0
+REQUEST_TIMEOUT = 60
+
+# Supported model IDs (publisher/name). Validated strictly: unknown IDs raise
+# instead of silently substituting another model (fail closed).
+# Last verified against the public catalog before its retirement; the IDs below
+# were the documented chat models for Producer/Reviewer use.
 SUPPORTED_MODELS = [
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
@@ -42,6 +63,100 @@ SUPPORTED_MODELS = [
 
 DEFAULT_PRODUCER_MODEL = os.environ.get("PRODUCER_MODEL", "openai/gpt-4o-mini")
 DEFAULT_REVIEWER_MODEL = os.environ.get("REVIEWER_MODEL", "meta/llama-3.3-70b-instruct")
+
+# ---------------------------------------------------------------- fail-closed helpers
+
+def is_mock_enabled():
+    """Mock is allowed ONLY with the explicit flag MOCK_GITHUB_MODELS=1.
+
+    Missing token, DNS failure, HTTP error, invalid model or malformed JSON must
+    NEVER silently switch to mock in real mode. Default: False.
+    """
+    return os.environ.get("MOCK_GITHUB_MODELS") == "1"
+
+
+def get_endpoint():
+    """Official endpoint URL. Test-only override via GITHUB_MODELS_ENDPOINT."""
+    override = os.environ.get(_TEST_ENDPOINT_ENV, "").strip()
+    return override or GITHUB_MODELS_ENDPOINT
+
+
+def get_hostname():
+    """Hostname of the endpoint in use. Safe to log (no secret, no token)."""
+    try:
+        return urllib.parse.urlparse(get_endpoint()).hostname or GITHUB_MODELS_HOSTNAME
+    except Exception:
+        return GITHUB_MODELS_HOSTNAME
+
+
+def get_token():
+    """Return the bearer token or ''. Callers must NEVER log its value."""
+    return os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
+
+
+def require_real_token():
+    """Raise (nonzero in workflows) when no token is available. Never logs it."""
+    token = get_token()
+    if not token:
+        raise RuntimeError(
+            "GITHUB_TOKEN not set — real GitHub Models call impossible "
+            "(mock requires explicit MOCK_GITHUB_MODELS=1)"
+        )
+    return token
+
+
+def validate_model_id(model):
+    """Strict model validation: unknown IDs raise ValueError (fail closed)."""
+    if model not in SUPPORTED_MODELS:
+        raise ValueError(
+            f"Invalid model ID: {model!r} — not in SUPPORTED_MODELS "
+            f"({len(SUPPORTED_MODELS)} known IDs)"
+        )
+    return model
+
+
+def resolve_hostname(hostname=None, timeout=10):
+    """DNS diagnostic without credentials. Returns (ok, detail).
+
+    Retries transient failures up to 2 times with exponential backoff.
+    Only the hostname (safe) is ever reported, never IPs or tokens.
+    """
+    hostname = hostname or get_hostname()
+    last_err = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            infos = socket.getaddrinfo(hostname, 443)
+            return True, f"DNS resolution: OK host={hostname} records={len(infos)} attempt={attempt}"
+        except Exception as e:  # noqa: BLE001 — diagnostic, report type only
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    return False, f"DNS resolution: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
+
+
+def https_probe(timeout=15):
+    """Unauthenticated HTTPS/TLS reachability check (no Authorization header).
+
+    Any HTTP response (even 4xx/5xx) proves DNS+TLS work. Returns
+    (reachable, http_status_or_None, detail). Safe to log.
+    """
+    endpoint = get_endpoint()
+    hostname = get_hostname()
+    last_err = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            req = urllib.request.Request(endpoint, method="GET")  # no auth header
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return True, r.status, f"HTTPS probe: OK host={hostname} status={r.status} attempt={attempt}"
+            except urllib.error.HTTPError as e:
+                # An HTTP status code IS reachability (server answered).
+                return True, e.code, f"HTTPS probe: OK host={hostname} status={e.code} attempt={attempt}"
+        except Exception as e:  # noqa: BLE001 — URLError/timeout/SSL
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    return False, None, f"HTTPS probe: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
 
 def sanitize_untrusted(text, max_len=800):
     """Sanitize untrusted web content to prevent prompt injection."""
@@ -127,16 +242,17 @@ REVIEWER_SCHEMA = {
 }
 
 def call_github_models(prompt, model, max_tokens=1200, temperature=0.7, timeout=60):
-    """Call GitHub Models API using GITHUB_TOKEN. Returns parsed JSON or raises."""
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
-    if not token:
-        raise RuntimeError("GITHUB_TOKEN not set — cannot call GitHub Models (use mock for local tests)")
+    """Real GitHub Models call using GITHUB_TOKEN. Fail-closed, never mock.
 
-    # Endpoint — GitHub Models inference (OpenAI compatible)
-    # Docs: https://docs.github.com/en/github-models/use-github-models/prototyping-with-ai-models
-    url = "https://models.inference.ai.azure.com/chat/completions"
-    # Alternative endpoint that also works: https://models.github.ai/inference/chat/completions
-    # We try primary, fallback to secondary on failure
+    Returns (content, raw_meta). Raises on: missing token, invalid model,
+    DNS/network failure (after 2 retries), HTTP error status, invalid envelope.
+    Error messages contain only safe fields: hostname, model ID, HTTP status,
+    attempt count. Never the token, Authorization header, prompt or response.
+    """
+    token = require_real_token()
+    validate_model_id(model)
+    url = get_endpoint()
+    hostname = get_hostname()
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -152,40 +268,68 @@ def call_github_models(prompt, model, max_tokens=1200, temperature=0.7, timeout=
         "temperature": temperature,
     }
     data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            resp = json.load(r)
-            content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return content, resp
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            raise RuntimeError(f"GitHub Models quota 429: {e.read().decode()[:200]}")
-        # Try secondary endpoint
+
+    last_err = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         try:
-            url2 = "https://models.github.ai/inference/chat/completions"
-            req2 = urllib.request.Request(url2, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req2, timeout=timeout) as r:
-                resp = json.load(r)
-                content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-                return content, resp
-        except Exception as e2:
-            raise RuntimeError(f"GitHub Models HTTP {e.code}: {e.read().decode()[:200]} | fallback {e2}")
-    except Exception as e:
-        raise RuntimeError(f"GitHub Models call failed: {type(e).__name__}: {e}")
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                status = getattr(r, "status", 200)
+                try:
+                    resp = json.load(r)
+                except Exception:
+                    raise RuntimeError(
+                        f"GitHub Models invalid response envelope: host={hostname} "
+                        f"model={model} http_status={status} attempt={attempt}"
+                    )
+                try:
+                    content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+                except Exception:
+                    content = ""
+                if not isinstance(content, str) or not content:
+                    raise RuntimeError(
+                        f"GitHub Models empty message content: host={hostname} "
+                        f"model={model} http_status={status} attempt={attempt}"
+                    )
+                meta = {"mock": False, "model": model, "host": hostname,
+                        "http_status": status, "attempt": attempt,
+                        "content_len": len(content)}
+                if isinstance(resp, dict):
+                    meta["envelope"] = resp
+                return content, meta
+        except urllib.error.HTTPError as e:
+            # HTTP status received: fail immediately, no retry (fail closed).
+            try:
+                detail = e.read().decode("utf-8", "replace")[:200]
+            except Exception:
+                detail = ""
+            detail = common.scrub_secrets(detail)
+            if e.code == 429:
+                raise RuntimeError(
+                    f"GitHub Models quota 429: host={hostname} model={model} "
+                    f"attempt={attempt} detail={detail}"
+                )
+            raise RuntimeError(
+                f"GitHub Models HTTP {e.code}: host={hostname} model={model} "
+                f"attempt={attempt} detail={detail}"
+            )
+        except RuntimeError:
+            raise
+        except Exception as e:  # noqa: BLE001 — URLError/DNS/timeout/SSL: retry 2x
+            last_err = f"{type(e).__name__}"
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+    raise RuntimeError(
+        f"GitHub Models call failed: {last_err} host={hostname} model={model} "
+        f"attempts={MAX_ATTEMPTS}"
+    )
 
 class GitHubModelsProducer:
     def __init__(self, model=None):
         self.model = model or DEFAULT_PRODUCER_MODEL
-        # Validate model is in supported list, else fallback
-        if self.model not in SUPPORTED_MODELS:
-            # Try to find closest
-            for m in SUPPORTED_MODELS:
-                if self.model.split("/")[-1] in m:
-                    self.model = m
-                    break
-            else:
-                self.model = SUPPORTED_MODELS[1]  # gpt-4o-mini
+        # Strict validation: unknown model IDs raise (fail closed, no silent
+        # substitution — a wrong model must never silently become another one).
+        validate_model_id(self.model)
 
     def produce(self, evidence_packet):
         prompt = f"""
@@ -233,8 +377,9 @@ Technology relevance required: must be about AI, software, coding, product, digi
 Metacognition relevance required: must have clear metacognitive concept.
 No Persian, no FA, language=en.
 """
-        # In production, call GitHub Models; in local tests without token, use mock
-        if os.environ.get("MOCK_GITHUB_MODELS") == "1" or not os.environ.get("GITHUB_TOKEN"):
+        # Mock ONLY with the explicit flag. Missing token in real mode raises
+        # (fail closed) instead of silently returning fixture content.
+        if is_mock_enabled():
             # Mocked valid response for local tests / dry-runs — expanded to meet 70-105s target
             topic = evidence_packet.get('topic','automation bias')
             tech_angle = evidence_packet.get('technology_angle') or "automation bias in AI assistants"
@@ -278,15 +423,21 @@ No Persian, no FA, language=en.
             if m:
                 content = m.group(1)
             parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                raise ValueError("top-level JSON is not an object")
             return parsed, raw
         except Exception as e:
-            raise RuntimeError(f"Producer returned malformed JSON: {e} | content: {content[:500]}")
+            # Safe error: type + length only, never the model response text.
+            raise RuntimeError(
+                f"Producer returned malformed JSON: {type(e).__name__} "
+                f"model={self.model} content_len={len(content)}"
+            )
 
 class GitHubModelsReviewer:
     def __init__(self, model=None):
         self.model = model or DEFAULT_REVIEWER_MODEL
-        if self.model not in SUPPORTED_MODELS:
-            self.model = SUPPORTED_MODELS[0]
+        # Strict validation: unknown model IDs raise (fail closed).
+        validate_model_id(self.model)
 
     def review(self, producer_output, evidence_packet):
         prompt = f"""
@@ -328,8 +479,9 @@ Output ONLY valid JSON:
 
 Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims, no fake URL, non-duplicate, hook and ending related.
 """
-        if os.environ.get("MOCK_GITHUB_MODELS") == "1" or not os.environ.get("GITHUB_TOKEN"):
+        if is_mock_enabled():
             # Mocked reviewer that approves if tech and metacog present — broadened to match tech policy
+            # Explicit flag only; real mode without token raises in call_github_models.
             ta = producer_output.get("technology_angle","").lower()
             tech_keywords = ["ai","code","coding","software","product","metric","automation","human","debug","bias","research","attention","notification","llm","hallucination","architecture","offload","tutorial"]
             tech = any(k in ta for k in tech_keywords) or "product" in producer_output.get("technology_angle","").lower() or "AI" in producer_output.get("technology_angle","")
@@ -359,9 +511,15 @@ Publish requires score>=85, no blocking, tech relevance true, metacog relevance 
             if m:
                 content = m.group(1)
             parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                raise ValueError("top-level JSON is not an object")
             return parsed, raw
         except Exception as e:
-            raise RuntimeError(f"Reviewer returned malformed JSON: {e} | content: {content[:500]}")
+            # Safe error: type + length only, never the model response text.
+            raise RuntimeError(
+                f"Reviewer returned malformed JSON: {type(e).__name__} "
+                f"model={self.model} content_len={len(content)}"
+            )
 
 class StaticEnglishFallback:
     """Fallback using curated English playbooks filtered to tech domain."""
