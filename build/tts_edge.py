@@ -4,6 +4,10 @@ usage: python3 build/tts_edge.py <epdir> [voice]   → <epdir>/cNN.mp3
 Speaks chunk["tts_text"] when present (pronunciation overrides such as
 "@metacognition.hq" → "at metacognition H Q"); subtitles keep the original
 text. Retries each chunk a few times; a chunk that stays empty is a tts-error.
+
+Also stores the service's real word boundaries as <epdir>/cNN.words.json
+([{"text", "start", "end"} in seconds, relative to the mp3]) so timing.py can
+drive the karaoke highlight from measured timings instead of estimates.
 """
 import asyncio
 import json
@@ -27,7 +31,34 @@ def policy_tts():
 
 
 async def synth(text, path, voice, rate):
-    await edge_tts.Communicate(text, voice, rate=rate).save(path)
+    meta = path[:-4] + ".meta.jsonl"
+    try:
+        com = edge_tts.Communicate(text, voice, rate=rate, boundary="WordBoundary")   # edge-tts >= 7
+    except TypeError:
+        com = edge_tts.Communicate(text, voice, rate=rate)                            # edge-tts 6.x: words by default
+    await com.save(path, meta)
+    words = []
+    try:
+        with open(meta, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                m = json.loads(line)
+                if m.get("type") != "WordBoundary":
+                    continue
+                st = m["offset"] / 1e7
+                words.append({"text": m.get("text", ""), "start": round(st, 3),
+                              "end": round(st + m.get("duration", 0) / 1e7, 3)})
+    except (OSError, ValueError, KeyError):
+        words = []
+    finally:
+        try:
+            os.remove(meta)
+        except OSError:
+            pass
+    with open(path[:-4] + ".words.json", "w", encoding="utf-8") as fh:
+        json.dump(words, fh, ensure_ascii=False)
 
 
 def main():
@@ -35,7 +66,8 @@ def main():
     pt = policy_tts()
     voice = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("TTS_VOICE", pt.get("voice", VOICE))
     rate = os.environ.get("TTS_RATE", pt.get("rate", RATE))
-    sc = json.load(open(f"{ep}/script.json", encoding="utf-8"))
+    with open(f"{ep}/script.json", encoding="utf-8") as fh:
+        sc = json.load(fh)
     for i, ch in enumerate(sc["chunks"], 1):
         txt = ch.get("tts_text") or " ".join(l["t"] for l in ch["en"])
         out = f"{ep}/c{i:02d}.mp3"

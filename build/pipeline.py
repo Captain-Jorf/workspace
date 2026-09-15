@@ -153,7 +153,7 @@ def produce(a):
             # 3. tts + timing
             st["stage"] = "tts"
             for f in os.listdir(ep):
-                if re.match(r"c\d\d\.mp3$", f):
+                if re.match(r"c\d\d\.(mp3|words\.json|meta\.jsonl)$", f):
                     os.remove(os.path.join(ep, f))
             tts = "tts_synthetic.py" if a.synthetic_tts else "tts_edge.py"
             run([PY, os.path.join(B, tts), ep], "tts", timeout=900)

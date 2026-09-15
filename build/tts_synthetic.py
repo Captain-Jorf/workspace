@@ -32,18 +32,25 @@ def main():
     for i, ch in enumerate(sc["chunks"], 1):
         words = (ch.get("tts_text") or " ".join(l["t"] for l in ch["en"])).split()
         pieces = [np.zeros(int(SR * 0.12), np.float32)]
+        bounds, pos = [], 0.12
         for w in words:
             n = int(SR * (0.16 + 0.05 * min(len(w), 8)))
             pieces.append(burst(n, rng, 110 + rng.integers(0, 60)))
+            bounds.append({"text": w.strip(".,;:!?\"'()"), "start": round(pos, 3), "end": round(pos + n / SR, 3)})
+            pos += n / SR
             pieces.append(np.zeros(int(SR * 0.06), np.float32))
+            pos += 0.06
             if w.endswith((".", "?", "!")):
                 pieces.append(np.zeros(int(SR * 0.25), np.float32))
+                pos += 0.25
         pieces.append(np.zeros(int(SR * 0.2), np.float32))
         audio = np.concatenate(pieces)
         pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes()
         out = f"{ep}/c{i:02d}.mp3"
         subprocess.run([FF, "-y", "-hide_banner", "-loglevel", "error", "-f", "s16le", "-ar", str(SR), "-ac", "1",
                         "-i", "-", "-c:a", "libmp3lame", "-b:a", "64k", out], input=pcm, check=True)
+        with open(out[:-4] + ".words.json", "w", encoding="utf-8") as fh:   # same side file as tts_edge.py
+            json.dump(bounds, fh)
         print("synthetic", os.path.basename(out), f"{len(audio) / SR:.1f}s")
 
 

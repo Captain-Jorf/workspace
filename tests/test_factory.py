@@ -625,3 +625,74 @@ class RetentionTests(unittest.TestCase):
         self.assertFalse(self.r.decide("2026-09-19", self.mem, self.pol, self.today)[0])
         far = __import__("datetime").date(2026, 12, 1)                # > 56 days
         self.assertTrue(self.r.decide("2026-09-19", self.mem, self.pol, far)[0])
+
+
+class WordBoundaryTests(unittest.TestCase):
+    """timing.py uses the TTS service's word boundaries only when they align with the script."""
+
+    def setUp(self):
+        import timing
+        self.t = timing
+
+    def _b(self, words, step=0.3):
+        return [{"text": w, "start": round(i * step, 3), "end": round(i * step + 0.25, 3)} for i, w in enumerate(words)]
+
+    def test_exact_alignment_with_punctuation(self):
+        toks = "It's right there. You know the first letter, the shape.".split()
+        pairs = self.t.align_boundaries(toks, self._b(["It's", "right", "there", "You", "know", "the", "first", "letter", "the", "shape"]))
+        self.assertEqual(len(pairs), len(toks))
+        self.assertEqual(pairs[0], (0.0, 0.25))
+        self.assertTrue(all(a[1] <= b[0] + 1e-9 for a, b in zip(pairs, pairs[1:])))
+
+    def test_service_splitting_a_token_is_merged(self):
+        pairs = self.t.align_boundaries("say HQ now".split(), self._b(["say", "H", "Q", "now"]))
+        self.assertEqual(pairs[1], (0.3, 0.85))
+
+    def test_mismatch_falls_back(self):
+        self.assertIsNone(self.t.align_boundaries("3 things".split(), self._b(["three", "things"])))
+        self.assertIsNone(self.t.align_boundaries("hello world".split(), self._b(["hello"])))
+        self.assertIsNone(self.t.align_boundaries("hello".split(), self._b(["hello", "world"])))
+        self.assertIsNone(self.t.align_boundaries("hello".split(), []))
+        self.assertIsNone(self.t.align_boundaries("hello".split(), None))
+
+    def test_timing_uses_measured_words_when_side_file_exists(self):
+        import subprocess
+        ep = os.path.join(tempfile.mkdtemp(), "auto-2099-05-05")
+        os.makedirs(ep)
+        sc = build_script()
+        sc["chunks"] = sc["chunks"][:2]
+        for ch in sc["chunks"]:
+            ch.pop("tts_text", None)
+        common.save_json(os.path.join(ep, "script.json"), sc)
+        subprocess.run([sys.executable, os.path.join(common.ROOT, "build", "tts_synthetic.py"), ep], check=True,
+                       capture_output=True)
+        self.assertTrue(os.path.exists(os.path.join(ep, "c01.words.json")))
+        subprocess.run([sys.executable, os.path.join(common.ROOT, "build", "timing.py")], check=True,
+                       env={**os.environ, "EP_DIR": ep}, capture_output=True)
+        tl = common.load_json(os.path.join(ep, "timing.json"))
+        self.assertEqual(tl["word_timing"]["measured_lines"], tl["word_timing"]["lines"])
+        for c in tl["chunks"]:
+            ws = [w for l in c["lines"] for w in l["words"]]
+            self.assertTrue(all(a["end"] <= b["start"] + 1e-6 for a, b in zip(ws, ws[1:])))
+            self.assertGreaterEqual(ws[0]["start"], c["start"] - 1e-6)
+            self.assertLessEqual(ws[-1]["end"], c["start"] + c["dur"] + 1e-6)
+            # display lines tile the chunk without gaps
+            self.assertAlmostEqual(c["lines"][0]["start"], c["start"], places=3)
+            for a, b in zip(c["lines"], c["lines"][1:]):
+                self.assertAlmostEqual(a["end"], b["start"], places=3)
+
+    def test_timing_falls_back_without_side_file(self):
+        import subprocess
+        ep = os.path.join(tempfile.mkdtemp(), "auto-2099-05-06")
+        os.makedirs(ep)
+        sc = build_script()
+        sc["chunks"] = sc["chunks"][:1]
+        common.save_json(os.path.join(ep, "script.json"), sc)
+        subprocess.run([sys.executable, os.path.join(common.ROOT, "build", "tts_synthetic.py"), ep], check=True,
+                       capture_output=True)
+        os.remove(os.path.join(ep, "c01.words.json"))
+        subprocess.run([sys.executable, os.path.join(common.ROOT, "build", "timing.py")], check=True,
+                       env={**os.environ, "EP_DIR": ep}, capture_output=True)
+        tl = common.load_json(os.path.join(ep, "timing.json"))
+        self.assertEqual(tl["word_timing"]["measured_lines"], 0)
+        self.assertTrue(all(l["timing"] == "estimated" for c in tl["chunks"] for l in c["lines"]))

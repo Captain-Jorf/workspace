@@ -552,6 +552,10 @@ def check_audio(rep, video, timing, script, pol):
         rep.block("audio_quality", f"narration too fast ({wps:.2f} words/s)")
     elif wps < lo:
         rep.warn("audio_quality", f"narration slow ({wps:.2f} words/s)", 2)
+    wt = timing.get("word_timing") or {}
+    if wt.get("lines") and wt.get("measured_lines", 0) < wt["lines"]:
+        rep.warn("audio_quality", f"karaoke timing estimated for {wt['lines'] - wt['measured_lines']}/{wt['lines']} "
+                                  f"line(s) (no usable TTS word boundaries)", 2)
     # each chunk mp3 should be roughly proportional to its word count (truncated TTS detection)
     for ch, sch in zip(timing.get("chunks", []), script["chunks"]):
         wc = sum(common.word_count(l["t"]) for l in sch["en"])
