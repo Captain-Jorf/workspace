@@ -824,6 +824,91 @@ def spoken_form(text, overrides):
 
 
 # --------------------------------------------------------------- translation
+# Machine translators render English idioms literally ("Sleep on it" → "روی آن بخواب"). The narration
+# keeps its idioms (they are the conversational voice), but the TRANSLATOR receives a plain-meaning
+# rewrite of the same line. Longest match first; case-insensitive; word-bounded.
+TRANSLATION_GLOSS = {
+    "sleep on it": "wait until the next morning before deciding",
+    "hot take": "quick opinion",
+    "hot topic": "popular topic",
+    "nailed it": "did it perfectly",
+    "your gut": "your intuition",
+    "a window into": "a way to observe",
+    "off duty": "not actively working",
+    "the movie version": "the ideal version",
+    "pep talk": "motivational speech",
+    "keep score": "record the results",
+    "keeps score": "records the results",
+    "hit rate": "success rate",
+    "by heart": "from memory",
+    "empty chair": "imaginary listener",
+    "runs high": "is too high",
+    "pops up": "suddenly appears",
+    "pop up": "suddenly appear",
+    "pulls at you": "attracts your attention",
+    "pull one back": "recall one",
+    "lands wrong": "is misunderstood",
+    "when did a message of yours land completely wrong": "when was a message of yours completely misunderstood",
+    "what sticks": "what stays in memory",
+    "the catch": "the hidden problem",
+    "here's why it fails": "this is why it does not work",
+    "you blank on": "you cannot recall",
+    "fall for": "are fooled by",
+    "falls for": "is fooled by",
+    "a bad trade": "a bad exchange",
+    "on paper": "in writing",
+    "out loud": "aloud",
+    "for free": "without effort",
+    "cheap": "low-cost",
+    "expensive": "costly",
+    "loud week": "week of intense discussion",
+    "gets loud": "becomes widely discussed",
+    "the loudest week": "the week of most intense discussion",
+    "by friday": "within a few days",
+    "gone by friday": "forgotten within a few days",
+    "cram session": "last-minute study session",
+    "cramming": "last-minute studying",
+    "in the shower": "later, while doing something else",
+    "clean notes": "neat notes",
+    "a take": "an opinion",
+    "make takes": "form opinions",
+    "strong take": "strong opinion",
+    "scroll on": "continue browsing",
+    "two-line rule": "rule of writing two lines",
+    "the explain test": "the explanation test",
+    "the whole skill in miniature": "the entire skill in small form",
+    "the watcher": "the inner observer",
+    "monitoring miracle": "impressive act of self-monitoring",
+    "rate yourself": "evaluate yourself",
+    "pretend hindsight": "imagined hindsight",
+    "the real thing": "the real failure",
+    "messier": "less tidy",
+    "mess": "disorder",
+    "that stumble": "that hesitation",
+    "the stumble": "the hesitation",
+    "stumble on": "have difficulty with",
+    "if the words run out": "if you cannot continue explaining",
+    "where the words run out": "where you can no longer explain",
+    "quiz that again": "test that again",
+    "progress bar": "progress indicator",
+    "the shape, the rhythm": "its form, its rhythm",
+    "it won't come": "you cannot recall it",
+    "dumb things": "false things",
+    "smart people": "intelligent people",
+}
+_GLOSS_RX = [(re.compile(rf"(?<![\w'])({re.escape(k)})(?![\w'])", re.I), v)
+             for k, v in sorted(TRANSLATION_GLOSS.items(), key=lambda kv: -len(kv[0]))]
+
+
+def translation_source(text):
+    """Plain-meaning English used as translator input (never shown, never spoken).
+    Keeps the capitalisation of the matched span ('The watcher' → 'The inner observer')."""
+    s = text
+    for rx, v in _GLOSS_RX:
+        s = rx.sub(lambda m, v=v: cap_first(v) if m.group(1)[:1].isupper() else v, s)
+    return s
+
+
 PERSIAN_FIXES = [
     (re.compile(r"\s+([،؛:؟!.])"), r"\1"),           # no space before punctuation
     (re.compile(r"([،؛])(?=\S)"), r"\1 "),              # space after comma/semicolon
@@ -862,7 +947,8 @@ def translation_valid(en, fa, pol):
         return False, f"untranslated words {latin[:4]}"
     if len(fa) > pol["length"]["max_chars_per_line_fa"] * 2:
         return False, f"too long ({len(fa)} chars)"
-    ratio = len(fa) / max(1, len(en))
+    src = translation_source(en)                     # what the translator actually received
+    ratio = len(fa) / max(1, len(src))
     if ratio < 0.35 or ratio > 2.6:
         return False, f"length ratio {ratio:.2f} suspicious"
     return True, ""
@@ -883,6 +969,7 @@ def fixture_translator(lines):
     out = []
     for i, ln in enumerate(lines):
         base = FIXTURE_FA[i % len(FIXTURE_FA)]
+        ln = translation_source(ln)                  # same length reference as the validator
         # keep the length ratio plausible for the validator, but never cut a sentence mid-word
         while len(base) < 0.5 * len(ln):
             base += " " + FIXTURE_FA[(i + 1) % len(FIXTURE_FA)]
@@ -911,7 +998,7 @@ def translate_lines(lines, pol, engines=None):
             out = []
             bad = []
             for ln in lines:
-                fa = polish_fa(tr.translate(ln))
+                fa = polish_fa(tr.translate(translation_source(ln)))
                 ok, why = translation_valid(ln, fa, pol)
                 if not ok:
                     bad.append(f"{eng}: '{ln[:40]}' → {why}")

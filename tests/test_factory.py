@@ -10,6 +10,7 @@ decisions, editorial policy invariants.
 import datetime
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -830,3 +831,48 @@ class IssueDedupTests(unittest.TestCase):
     def test_search_failure_is_not_fatal(self):
         found, _ = self._run([], search=None)
         self.assertIsNone(found)
+
+
+class TranslationGlossTests(unittest.TestCase):
+    """Idioms reach the translator as plain meaning; subtitles and TTS keep the original line."""
+
+    def test_idioms_are_rewritten_for_the_translator_only(self):
+        self.assertEqual(cp.translation_source("Sleep on it."), "Wait until the next morning before deciding.")
+        self.assertEqual(cp.translation_source("The watcher asks: could I explain it?"),
+                         "The inner observer asks: could I explain it?")
+        self.assertEqual(cp.translation_source("It takes time."), "It takes time.")   # no false match
+
+    def test_translator_receives_plain_meaning_and_script_keeps_idiom(self):
+        received = []
+
+        class FakeTr:
+            def __init__(self, **kw):
+                pass
+
+            def translate(self, text):
+                received.append(text)
+                return "این جمله فقط برای آزمایش محلی است و در انتشار واقعی استفاده نمی‌شود."
+        fake_mod = type(sys)("deep_translator")
+        fake_mod.GoogleTranslator = FakeTr
+        fake_mod.MyMemoryTranslator = FakeTr
+        with mock.patch.dict(sys.modules, {"deep_translator": fake_mod}), \
+                mock.patch.dict(os.environ, {"TRANSLATE_FIXTURE": "0"}):
+            fa, eng, fails = cp.translate_lines(["Sleep on it, then decide with a clear head."], POL)
+        self.assertEqual(eng, "google")
+        self.assertEqual(received, ["Wait until the next morning before deciding, then decide with a clear head."])
+        self.assertTrue(fa and fa[0].startswith("این جمله"))
+
+    def test_every_narration_line_survives_validation_after_glossing(self):
+        lines = []
+        for pb in cp.PLAYBOOKS.values():
+            for _, ls in cp.chunk_plan(pb):
+                lines += ls
+        for pillar in cp.TREND_LENSES:
+            for _, ls in cp.chunk_plan(cp.trend_playbook("the Dunning-Kruger effect", pillar)):
+                lines += ls
+        fa, _, _ = cp.fixture_translator(lines)
+        bad = [(l, cp.translation_valid(l, f, POL)[1]) for l, f in zip(lines, fa) if not cp.translation_valid(l, f, POL)[0]]
+        self.assertEqual(bad, [])
+        for l in lines:                                        # a gloss must never leave a doubled word behind
+            g = cp.translation_source(l).lower()
+            self.assertIsNone(re.search(r"\b(\w+) \1\b", g), (l, g))
