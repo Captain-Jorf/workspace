@@ -45,6 +45,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# Import common for quarantine check (safe, no network)
+try:
+    import common
+    common.assert_content_language_en()  # fail-closed EN-only
+    _common = common
+except Exception:
+    _common = None
+
 API = "https://api.buffer.com"
 UA = "Mozilla/5.0 (trend-factory; +metacognition.hq)"   # Buffer sits behind Cloudflare
 CAPTION_LIMIT = 2200
@@ -485,6 +493,22 @@ def cmd_publish(argv):
     marker = arg("--marker", required=False, default=None)
     content_id = arg("--content-id", required=False, default=(f"reel-{tag}" if tag else ""))
     thumb = arg("--thumbnail-ms", required=False, default=None)
+
+    # --- QUARANTINE SAFETY LOCK (Issue #14 and pre-fix outputs) ---
+    # Even if AUTO_PUBLISH_ENABLED=true, quarantined ids/dates must never be published.
+    # This is a temporary safety lock in the fix branch, but also a permanent fail-closed gate.
+    if _common is not None:
+        try:
+            q_date = tag if tag else None
+            if _common.is_quarantined(content_id, q_date):
+                print(f"[SAFETY] content_id {content_id} / tag {tag} is quarantined (translation-rejected) — refusing to publish.")
+                print(f"[SAFETY] quarantine reason: see content/quarantine.json")
+                return EXIT_DISABLED
+        except Exception as e:
+            # If quarantine check fails, fail closed
+            print(f"[SAFETY] quarantine check failed: {e} — refusing to publish as precaution.")
+            return EXIT_DISABLED
+
     want_live = "--yes" in argv and "--dry-run" not in argv
     dry = not (want_live and publishing_enabled())
 

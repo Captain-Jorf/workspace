@@ -110,11 +110,14 @@
    "video_hash": "850b60fbfa848fa54ae2449af46c17af52660bd992ce13d4272d85fe0c0050b5",
    "qa_score": 92,
    "buffer_post_id": null,
-   "status": "approved-dry-run",
+   "status": "translation-rejected",
    "run_id": "35004154042",
-   "reason": "",
+   "reason": "MyMemory-only translation garbled FA (see docs/issue14_diagnosis.md) — QA false positive 92, now blocked by quarantine.json, curated catalog v1 required",
    "hook_type": "question",
-   "updated_utc": "2026-09-15T17:58:49+00:00"
+   "updated_utc": "2026-09-15T17:58:49+00:00",
+   "quarantined": true,
+   "qa_failed": true,
+   "rejected_utc": "2026-09-15T18:30:00+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",

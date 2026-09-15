@@ -1,0 +1,10 @@
+# Core dependencies for @metacognition.hq reel factory — English-only production
+# Used by GitHub Actions and local fresh env
+# No translation/RTL deps (arabic_reshaper, python-bidi, deep-translator removed — not executed in EN-only path)
+pillow
+numpy
+fonttools
+brotli
+imageio-ffmpeg
+edge-tts
+pyyaml

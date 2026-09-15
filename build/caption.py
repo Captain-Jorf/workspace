@@ -10,6 +10,9 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import common
+common.assert_content_language_en()
 LIMIT = 2200
 
 

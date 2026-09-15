@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
-          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
+          pip install -q -r requirements.txt
           bash build/fetch_fonts.sh
           python3 build/logo_make.py
           ffprobe -version | head -1

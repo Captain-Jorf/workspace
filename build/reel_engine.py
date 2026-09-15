@@ -1,14 +1,14 @@
-"""Episode-aware render engine for auto reels (@metacognition.hq).
+"""Episode-aware render engine — English-only, Technology × Metacognition.
 
-Visual system: dark marble + drifting lattice mesh + a 6-node concept web that
-grows beat by beat (labels come from the episode script, never from reel 01),
-one animated diagram widget per beat (gauge / chain / cards / steps / loop),
-English karaoke captions (top, LTR, word-by-word) and Persian subtitles
-(bottom, RTL pill). Everything stays inside the Instagram Reels safe zone
-defined in content/editorial_policy.json → layout, and the engine records
-per-line layout boxes so the QA supervisor can verify them independently.
+Visual system: dark marble + drifting lattice mesh + 6-node concept web (labels from script),
+animated diagram widgets per beat (confidence meter, code visual, decision tree, evidence card,
+prediction graph, human-AI network), English karaoke captions only (lower-middle, LTR, big font,
+high contrast, safe zone above caption/IG buttons). No Persian layer.
 
-Used by render_auto.py (MP4 / stills / contact sheet) and poster_auto.py.
+Freed FA space used for bigger diagram/code visual/evidence card/confidence meter/decision tree/
+prediction-vs-result graph/human↔AI network. Keeps mesh network style but tech-relevant per episode.
+
+Used by render_auto.py and poster_auto.py.
 """
 import bisect
 import json
@@ -19,10 +19,12 @@ import re
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
-from arabic_reshaper import reshape
-from bidi.algorithm import get_display
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import common
+common.assert_content_language_en()
 W, H, FPS = 1080, 1920, 30
 GOLD = (233, 180, 74)
 GOLD_HI = (255, 228, 158)
@@ -30,42 +32,43 @@ GOLD_LO = (122, 88, 32)
 WARM = (246, 234, 210)
 DIM = (150, 136, 112)
 INK = (24, 17, 8)
+CODE_BG = (18, 20, 24)
+CODE_GREEN = (120, 220, 120)
+CODE_BLUE = (120, 180, 255)
 
 _fcache = {}
-
 
 def font(kind, w, size):
     k = (kind, w, size)
     if k not in _fcache:
-        _fcache[k] = ImageFont.truetype(f"{ROOT}/assets/fonts/{kind}-{w}.ttf", size)
+        # kind en only now, but keep fallback
+        path = f"{ROOT}/assets/fonts/{kind}-{w}.ttf"
+        if not os.path.exists(path):
+            # fallback to en
+            path = f"{ROOT}/assets/fonts/en-{w}.ttf"
+        _fcache[k] = ImageFont.truetype(path, size)
     return _fcache[k]
-
 
 def clamp(x, a=0.0, b=1.0):
     return max(a, min(b, x))
-
 
 def ease(t):
     t = clamp(t)
     return t * t * (3 - 2 * t)
 
-
 def ease_out(t):
     t = clamp(t)
     return 1 - (1 - t) ** 3
-
 
 def ease_back(t):
     t = clamp(t)
     c = 1.7
     return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2
 
-
 def lerp(a, b, t):
     return a + (b - a) * t
 
-
-# ------------------------------------------------------------------ text utils
+# text utils
 def text_img(text, fnt, fill, spacing=0):
     pad = 12
     tmp = Image.new("RGBA", (8, 8))
@@ -83,25 +86,21 @@ def text_img(text, fnt, fill, spacing=0):
         d.text((x, pad - bb[1]), text, font=fnt, fill=fill)
     return im
 
-
 def gold_text(text, fnt, spacing=0, hi=GOLD_HI, lo=GOLD_LO):
     mask = text_img(text, fnt, (255, 255, 255), spacing)
     a = np.array(mask.getchannel("A"), np.float32) / 255.0
     g = np.linspace(0, 1, mask.height)[:, None]
-    col = np.array(hi, np.float32)[None, None, :] * (1 - g)[..., None] + \
-        np.array(lo, np.float32)[None, None, :] * g[..., None]
+    col = np.array(hi, np.float32)[None, None, :] * (1 - g)[..., None] + np.array(lo, np.float32)[None, None, :] * g[..., None]
     rgb = np.repeat(col, mask.width, axis=1).astype(np.uint8)
     out = Image.fromarray(rgb, "RGB").convert("RGBA")
     out.putalpha(Image.fromarray((a * 255).astype(np.uint8), "L"))
     return out
-
 
 def glow_disc(size, color, radius, blur):
     im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     c = size / 2
     ImageDraw.Draw(im).ellipse([c - radius, c - radius, c + radius, c + radius], fill=color)
     return im.filter(ImageFilter.GaussianBlur(blur))
-
 
 def rounded_card(w, h, r, fill, outline=None, ow=2):
     im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -111,7 +110,6 @@ def rounded_card(w, h, r, fill, outline=None, ow=2):
         d.rounded_rectangle([ow // 2, ow // 2, w - 1 - ow // 2, h - 1 - ow // 2], r, outline=outline, width=ow)
     return im
 
-
 def with_alpha(im, a):
     if a >= 0.999:
         return im
@@ -119,36 +117,7 @@ def with_alpha(im, a):
     out.putalpha(out.getchannel("A").point(lambda v: int(v * a)))
     return out
 
-
-# ------------------------------------------------------------------ persian
-_LATIN_RUN = re.compile(r"[A-Za-z0-9@._/%'+:!;?()&\-]+")
-
-
-def fa_display(logical):
-    """Logical Persian (with optional Latin runs) → visually ordered string for PIL."""
-    return get_display(reshape(logical), base_dir="R")
-
-
-def fa_wrap(text, fnt, max_w):
-    """Greedy wrap in logical order; returns rows (logical strings)."""
-    words = text.split()
-    rows, cur = [], []
-    for w in words:
-        trial = " ".join(cur + [w])
-        if cur and fnt.getlength(fa_display(trial)) > max_w:
-            rows.append(" ".join(cur))
-            cur = [w]
-        else:
-            cur.append(w)
-    if cur:
-        rows.append(" ".join(cur))
-    return rows
-
-
-FA_CX = 512          # Persian pill centre-line (28 px left of centre, clear of IG buttons)
-
-
-# ------------------------------------------------------------------ resources
+# Resources
 class Reel:
     def __init__(self, epdir, pol, safe=False):
         self.ep = os.path.abspath(epdir)
@@ -168,12 +137,13 @@ class Reel:
                     "chain": vis.get("chain") or self.web_labels[1:4],
                     "cards": vis.get("cards") or [self.web_labels[0], self.web_labels[3]],
                     "steps": vis.get("steps") or ["NOTICE", "TEST", "UPDATE"]}
+        self.visual_direction = self.script.get("visual_direction", "") or self.script.get("meta", {}).get("technology_angle", "")
         # beats / cuts
-        self.lines = []            # flat timed EN lines with beat
+        self.lines = []
         for ch in self.tl["chunks"]:
             for ln in ch["lines"]:
                 self.lines.append(ln)
-        self.cuts = []             # (start, beat)
+        self.cuts = []
         for ln in self.lines:
             b = ln.get("scene") or ln.get("beat") or "explain"
             if not self.cuts or self.cuts[-1][1] != b:
@@ -185,7 +155,6 @@ class Reel:
         for t, b in self.cuts:
             self.beat_start.setdefault(b, t)
         self.beat_order = ["hook", "problem", "explain", "example", "technique", "ending"]
-        # images
         bw, bh = 1296, 2304
         self.bg_base = self._marble().resize((bw, bh), Image.LANCZOS)
         self.bg_alt = {}
@@ -197,18 +166,15 @@ class Reel:
         self.emblem = Image.open(f"{ROOT}/assets/img/logo_emblem.png").convert("RGBA")
         self.eye = Image.open(f"{ROOT}/assets/img/logo_eye.png").convert("RGBA")
         self.wmark = self.emblem.resize((96, 96), Image.LANCZOS)
-        self.handle_img = text_img(self.script["meta"].get("handle", "@metacognition.hq"),
-                                   font("en", 600, 28), GOLD, spacing=3)
+        self.handle_img = text_img(self.script["meta"].get("handle", "@metacognition.hq"), font("en", 600, 28), GOLD, spacing=3)
         self.flash = glow_disc(1600, (255, 200, 110, 255), 620, 260).resize((W, H))
         self.layout = {"en": [], "fa": [], "policy": self.L, "font_fallbacks": 0}
         self._build_lattice()
         self._build_web()
         self._build_captions()
-        self._build_fa()
         self._build_tags()
         self._widget_cache = {}
 
-    # ---- background
     def _marble(self):
         yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
         base = np.zeros((H, W, 3), np.float32)
@@ -232,12 +198,10 @@ class Reel:
         box = (int(cx - cw / 2), int(cy - ch / 2), int(cx + cw / 2), int(cy + ch / 2))
         return big.crop(box).resize((W, H), Image.BILINEAR)
 
-    # ---- lattice mesh (background texture, drifts slowly)
     def _build_lattice(self):
         rnd = random.Random(7)
         z0, z1 = self.L["scene_zone"]
-        self.lat = [(rnd.uniform(40, W - 40), rnd.uniform(z0 - 60, z1 + 60),
-                     rnd.uniform(0, 6.28), rnd.uniform(0.15, 0.5)) for _ in range(46)]
+        self.lat = [(rnd.uniform(40, W - 40), rnd.uniform(z0 - 60, z1 + 60), rnd.uniform(0, 6.28), rnd.uniform(0.15, 0.5)) for _ in range(46)]
 
     def draw_lattice(self, fr, t, alpha=1.0):
         d = ImageDraw.Draw(fr)
@@ -253,7 +217,6 @@ class Reel:
         for x, y in pts:
             d.ellipse([x - 2, y - 2, x + 2, y + 2], fill=(200, 160, 80, int(90 * alpha)))
 
-    # ---- concept web: 6 nodes on a ring, labels from the script
     def _build_web(self):
         cx, cy, rx, ry = 540, 790, 310, 150
         angles = [-90, -30, 30, 90, 150, 210]
@@ -297,7 +260,6 @@ class Reel:
                             (1 - u) ** 2 * y0 + 2 * (1 - u) * u * by + u ** 2 * y1))
             if len(pts) > 1:
                 d.line(pts, fill=(233, 180, 74, 150 if hot else 70), width=2)
-        # centre: small watcher eye once the web exists
         a_c = max(self.node_alpha(1, t), 0.0)
         if a_c > 0:
             eye = self._cached("eye_small", lambda: self.eye.resize((110, 110), Image.LANCZOS))
@@ -316,7 +278,7 @@ class Reel:
             lab = nd["lab_on"] if hot else nd["lab"]
             ly = y + 14 if nd["below"] else y - 14 - lab.height
             if cur_beat == "ending" and i == 3:
-                continue                       # the loop widget's PLAN station sits exactly here → no label overlap
+                continue
             fr.alpha_composite(with_alpha(lab, a * (1.0 if hot else 0.8)), (int(x - lab.width / 2), int(ly)))
 
     def _cached(self, key, fn):
@@ -324,19 +286,18 @@ class Reel:
             self._widget_cache[key] = fn()
         return self._widget_cache[key]
 
-    # ---- english karaoke captions (top, LTR)
+    # English karaoke captions — lower-middle, big font, high contrast, safe zone above caption/IG buttons
     def _build_captions(self):
         L = self.L
         self.cap_lines = []
         for ln in self.lines:
             words = ln["words"]
             chosen = None
-            for size in (L["en_font_size"], 46, 42, 38):
+            for size in (L["en_font_size"], 50, 46, 42, 38):
                 f = font("en", 600, size)
                 asc, desc = f.getmetrics()
                 lh = asc + desc + 14
-                rows, cur, cw, imgs = [], [], 0, {}
-
+                rows, cur, cw = [], [], 0
                 def word_img(wd, fill, f=f, asc=asc, lh=lh):
                     bb = f.getbbox(wd)
                     im = Image.new("RGBA", (bb[2] - bb[0] + 24, lh), (0, 0, 0, 0))
@@ -360,11 +321,8 @@ class Reel:
             width = max((r[-1][2] + r[-1][1][0].width) for r in rows)
             top = L["en_top"]
             bottom = top + len(rows) * row_h
-            self.cap_lines.append({"rows": rows, "start": ln["start"], "end": ln["end"], "size": size,
-                                   "lh": lh, "width": width, "top": top, "bottom": bottom})
-            self.layout["en"].append({"text": ln["text"], "start": ln["start"], "end": ln["end"],
-                                      "rows": len(rows), "font": size, "direction": "ltr",
-                                      "bbox": [int((W - width) // 2), top, int((W + width) // 2), bottom]})
+            self.cap_lines.append({"rows": rows, "start": ln["start"], "end": ln["end"], "size": size, "lh": lh, "width": width, "top": top, "bottom": bottom})
+            self.layout["en"].append({"text": ln["text"], "start": ln["start"], "end": ln["end"], "rows": len(rows), "font": size, "direction": "ltr", "bbox": [int((W - width) // 2), top, int((W + width) // 2), bottom]})
 
     def draw_captions(self, fr, t):
         i = bisect.bisect_right([l["start"] for l in self.cap_lines], t) - 1
@@ -374,7 +332,6 @@ class Reel:
         if t > ln["end"] + 0.35 and i + 1 < len(self.cap_lines):
             return
         a = ease((t - ln["start"]) / 0.16)
-        # scrim guarantees contrast whatever the background does
         sw = int(ln["width"]) + 70
         sh = int(len(ln["rows"]) * self.L["en_row_height"]) + 18
         scrim = self._cached(("scrim", sw, sh), lambda: rounded_card(sw, sh, 26, (8, 6, 4, 132)))
@@ -396,82 +353,6 @@ class Reel:
                 fr.alpha_composite(with_alpha(im, al), (int(wx), int(y)))
             y += self.L["en_row_height"]
 
-    # ---- persian subtitle pill (bottom, RTL)
-    def _build_fa(self):
-        L = self.L
-        self.fa_lines = []
-        idx = 0
-        cues = []
-        for ch in self.tl["chunks"]:
-            for fa in ch["fa"]:
-                txt = (fa["text"] or "").strip()
-                if not txt:
-                    continue
-                cues += self._split_fa_cue(txt, fa["start"], fa["end"])
-        for txt, start, end in cues:
-            rows, size, ff = self._fit_fa(txt)
-            rh = int(size * 1.7)
-            row_imgs = [text_img(fa_display(r), ff, WARM) for r in rows]
-            tw = max(im.width for im in row_imgs)
-            pw, ph = tw + 60, len(rows) * rh + 36
-            pill = rounded_card(pw, ph, 28, (12, 10, 8, 200), (233, 180, 74, 80), 2)
-            d = ImageDraw.Draw(pill)
-            d.line([26, 5, pw - 26, 5], fill=(233, 180, 74, 120), width=2)
-            for k, im in enumerate(row_imgs):
-                # RTL paragraph: rows are right-aligned inside the pill
-                pill.alpha_composite(im, (pw - 30 - im.width, 18 + k * rh + (rh - im.height) // 2))
-            y1 = L["fa_bottom"]
-            y0 = y1 - ph
-            # centred on x=FA_CX (slightly left of centre) so the pill never reaches the
-            # Instagram like/comment/share column on the right
-            x0 = int(FA_CX - pw / 2)
-            self.fa_lines.append({"img": pill, "start": start, "end": end, "y": y0, "x": x0})
-            self.layout["fa"].append({"text": txt, "start": start, "end": end, "rows": len(rows),
-                                      "font": size, "direction": "rtl",
-                                      "bbox": [x0, y0, x0 + pw, y1],
-                                      "overflow": tw > L["fa_max_width"] + 24})
-
-    def _fit_fa(self, txt):
-        L = self.L
-        for size in range(L["fa_font_max"], L["fa_font_min"] - 1, -2):
-            ff = font("fa", 500, size)
-            rows = fa_wrap(txt, ff, L["fa_max_width"])
-            if len(rows) <= L["fa_max_rows"]:
-                return rows, size, ff
-        ff = font("fa", 500, L["fa_font_min"])
-        return fa_wrap(txt, ff, L["fa_max_width"]), L["fa_font_min"], ff
-
-    def _split_fa_cue(self, txt, start, end):
-        """A Persian line that cannot fit two rows at the minimum font is shown as two
-        consecutive cues (split at the best punctuation/space near the middle)."""
-        rows, size, _ = self._fit_fa(txt)
-        if len(rows) <= self.L["fa_max_rows"]:
-            return [(txt, start, end)]
-        n = len(txt)
-        best, best_d = None, 10 ** 9
-        for m in re.finditer(r"[،؛:.؟!]\s|\s", txt):
-            i = m.end()
-            d = abs(i - n / 2) - (18 if m.group(0).strip() else 0)   # prefer punctuation
-            if d < best_d and 0.3 * n < i < 0.7 * n:
-                best, best_d = i, d
-        if best is None:
-            return [(txt, start, end)]
-        a, b = txt[:best].strip(), txt[best:].strip()
-        mid = start + (end - start) * len(a) / max(1, len(a) + len(b))
-        return self._split_fa_cue(a, start, mid) + self._split_fa_cue(b, mid, end)
-
-    def draw_fa(self, fr, t):
-        i = bisect.bisect_right([l["start"] for l in self.fa_lines], t) - 1
-        if i < 0:
-            return
-        ln = self.fa_lines[i]
-        if t > ln["end"] + 0.3 and i + 1 < len(self.fa_lines):      # the last FA line holds to the end, like EN
-            return
-        a = ease((t - ln["start"]) / 0.22)
-        img = with_alpha(ln["img"], a)
-        fr.alpha_composite(img, (ln["x"], ln["y"] + int((1 - a) * 22)))
-
-    # ---- chrome
     def _build_tags(self):
         self.tag_imgs = {k: gold_text(v, font("en", 700, 26), spacing=5) for k, v in self.tags.items()}
 
@@ -484,21 +365,17 @@ class Reel:
         if tag is not None:
             a = ease((t - t0) / 0.3)
             fr.alpha_composite(with_alpha(tag, a), (64 - int((1 - a) * 30), self.L["en_top"] - 66))
-            d.line([64, self.L["en_top"] - 22, 64 + int(tag.width * a), self.L["en_top"] - 22],
-                   fill=(233, 180, 74, 160), width=2)
+            d.line([64, self.L["en_top"] - 22, 64 + int(tag.width * a), self.L["en_top"] - 22], fill=(233, 180, 74, 160), width=2)
         hi = self.handle_img
-        fr.alpha_composite(hi, ((W - hi.width) // 2, self.L["fa_bottom"] + 12))
+        fr.alpha_composite(hi, ((W - hi.width) // 2, self.L["fa_bottom"] + 12 if "fa_bottom" in self.L else H - 120))
 
-    # ---- helpers used by widgets
     def line_times(self, beat):
         return [(ln["start"], ln["end"]) for ln in self.lines if (ln.get("scene") or ln.get("beat")) == beat]
 
-    # ---- beat widgets (all inside the widget zone y 980..1260)
-    WZ = (980, 1260)
+    WZ = (500, 1300)
 
     def widget(self, fr, t, beat, ts, sd):
-        fn = {"hook": self.w_hook, "problem": self.w_gauge, "explain": self.w_chain,
-              "example": self.w_cards, "technique": self.w_steps, "ending": self.w_loop}.get(beat)
+        fn = {"hook": self.w_hook, "problem": self.w_problem, "explain": self.w_explain, "example": self.w_example, "technique": self.w_technique, "ending": self.w_ending}.get(beat)
         if fn:
             fn(fr, t, ts, sd)
 
@@ -522,65 +399,226 @@ class Reel:
         for k in range(2):
             pt = (ts * 0.55 + k * 0.5) % 1.0
             rr = 300 + pt * 260
-            d.ellipse([540 - rr, 930 - rr * 0.94, 540 + rr, 930 + rr * 0.94],
-                      outline=(233, 180, 74, int(120 * (1 - pt))), width=3)
+            d.ellipse([540 - rr, 930 - rr * 0.94, 540 + rr, 930 + rr * 0.94], outline=(233, 180, 74, int(120 * (1 - pt))), width=3)
 
     def _gauge(self, d, cx, cy, r, val, hot):
         a0, sweep = 135, 270
         d.arc([cx - r, cy - r, cx + r, cy + r], a0, a0 + sweep, fill=(70, 60, 45), width=12)
         if val > 0.01:
-            d.arc([cx - r, cy - r, cx + r, cy + r], a0, a0 + sweep * clamp(val),
-                  fill=GOLD if hot else (150, 132, 100), width=12)
+            d.arc([cx - r, cy - r, cx + r, cy + r], a0, a0 + sweep * clamp(val), fill=GOLD if hot else (150, 132, 100), width=12)
         a = math.radians(a0 + sweep * clamp(val))
-        d.line([cx, cy, cx + math.cos(a) * (r - 30), cy + math.sin(a) * (r - 30)],
-               fill=GOLD_HI if hot else (200, 180, 140), width=5)
+        d.line([cx, cy, cx + math.cos(a) * (r - 30), cy + math.sin(a) * (r - 30)], fill=GOLD_HI if hot else (200, 180, 140), width=5)
         d.ellipse([cx - 8, cy - 8, cx + 8, cy + 8], fill=GOLD_HI if hot else (200, 180, 140))
 
-    def w_gauge(self, fr, t, ts, sd):
-        """Feeling vs reality: the left gauge shoots up, the right one settles low."""
+    def w_problem(self, fr, t, ts, sd):
+        # Confidence meter + code visual for tech
         d = ImageDraw.Draw(fr)
-        lab_a, lab_b = self.vis["gauge"][:2]
-        feel = ease_out(ts / 1.4) * 0.9 + 0.03 * math.sin(ts * 3)
-        real = ease_out((ts - 1.0) / 1.8) * 0.36
-        for cx, val, lab, hot in ((330, feel, lab_a, True), (750, real, lab_b, False)):
-            self._gauge(d, cx, 1110, 96, val, hot)
-            li = self._cached(("glab", lab, hot), lambda lab=lab, hot=hot: text_img(
-                lab, font("en", 800, 28), GOLD_HI if hot else DIM, spacing=2))
-            fr.alpha_composite(li, (cx - li.width // 2, 1216))
-        if ts > 2.2:
-            a = ease((ts - 2.2) / 0.5)
-            gap = self._cached("gaplab", lambda: gold_text("THE GAP", font("en", 800, 34), spacing=4))
-            fr.alpha_composite(with_alpha(gap, a), (540 - gap.width // 2, 1080))
-            d.line([430, 1110, 650, 1110], fill=(233, 180, 74, int(150 * a)), width=2)
+        vd = self.visual_direction.lower()
+        if "code" in vd or "coding" in vd or "debug" in vd:
+            self._draw_code_visual(fr, t, ts, 200, 950, 680, 320)
+        else:
+            lab_a, lab_b = self.vis["gauge"][:2]
+            feel = ease_out(ts / 1.4) * 0.9 + 0.03 * math.sin(ts * 3)
+            real = ease_out((ts - 1.0) / 1.8) * 0.36
+            for cx, val, lab, hot in ((330, feel, lab_a, True), (750, real, lab_b, False)):
+                self._gauge(d, cx, 1110, 96, val, hot)
+                li = self._cached(("glab", lab, hot), lambda lab=lab, hot=hot: text_img(lab, font("en", 800, 28), GOLD_HI if hot else DIM, spacing=2))
+                fr.alpha_composite(li, (cx - li.width // 2, 1216))
+            if ts > 2.2:
+                a = ease((ts - 2.2) / 0.5)
+                gap = self._cached("gaplab", lambda: gold_text("THE GAP", font("en", 800, 34), spacing=4))
+                fr.alpha_composite(with_alpha(gap, a), (540 - gap.width // 2, 1080))
+                d.line([430, 1110, 650, 1110], fill=(233, 180, 74, int(150 * a)), width=2)
 
-    def w_chain(self, fr, t, ts, sd):
-        """Mechanism chain: three linked chips appear one per explain line."""
+    def w_explain(self, fr, t, ts, sd):
+        # Evidence card / decision tree / human-AI network depending on tech angle
+        vd = self.visual_direction.lower()
+        if "decision" in vd or "tree" in vd or "product" in vd:
+            self._draw_decision_tree(fr, t, ts)
+        elif "evidence" in vd or "research" in vd:
+            self._draw_evidence_card(fr, t, ts)
+        elif "human" in vd and "ai" in vd:
+            self._draw_human_ai_network(fr, t, ts)
+        else:
+            # Chain mechanism
+            d = ImageDraw.Draw(fr)
+            labs = self.vis["chain"][:3]
+            times = self.line_times("explain")
+            starts = [s for s, _ in times][:3]
+            while len(starts) < 3:
+                starts.append(starts[-1] + 2.0 if starts else self.beat_start.get("explain", 0))
+            xs = [200, 540, 880]
+            for i, (lab, x) in enumerate(zip(labs, xs)):
+                a = ease((t - starts[i]) / 0.5)
+                if a <= 0:
+                    continue
+                chip = self._cached(("chain", lab), lambda lab=lab: self._chip(lab, 250, 92))
+                if i > 0:
+                    pa = ease((t - starts[i]) / 0.7)
+                    x0, x1 = xs[i - 1] + 125, x - 125
+                    d.line([x0, 1120, x0 + (x1 - x0) * pa, 1120], fill=(233, 180, 74, 200), width=4)
+                    if pa > 0.9:
+                        d.polygon([(x1, 1120), (x1 - 18, 1110), (x1 - 18, 1130)], fill=GOLD)
+                sc = 0.9 + 0.1 * a
+                ci = chip.resize((int(chip.width * sc), int(chip.height * sc)), Image.BILINEAR)
+                fr.alpha_composite(with_alpha(ci, a), (x - ci.width // 2, 1120 - ci.height // 2))
+            if ts > 1.0:
+                ph = (ts * 0.35) % 1.0
+                px = 325 + ph * 430
+                d.ellipse([px - 7, 1113, px + 7, 1127], fill=(255, 228, 158, 220))
+
+    def w_example(self, fr, t, ts, sd):
+        vd = self.visual_direction.lower()
+        if "prediction" in vd or "graph" in vd:
+            self._draw_prediction_graph(fr, t, ts)
+        elif "code" in vd:
+            self._draw_code_visual(fr, t, ts, 180, 900, 720, 380)
+        else:
+            d = ImageDraw.Draw(fr)
+            la, lb = self.vis["cards"][:2]
+            p1, p2 = ease_out(ts / 0.6), ease_out((ts - 0.5) / 0.6)
+            ca = self._cached(("card", la), lambda: self._card(la, (34, 28, 20, 235), DIM))
+            cb = self._cached(("card", lb), lambda: self._card(lb, (40, 31, 16, 240), GOLD_HI))
+            ya = 1000 + (1 - p1) * 80
+            yb = 1000 + (1 - p2) * 80
+            fr.alpha_composite(with_alpha(ca, p1), (int(90), int(ya)))
+            fr.alpha_composite(with_alpha(cb, p2), (int(590), int(yb)))
+            if p2 > 0.95:
+                k = 0.5 + 0.5 * math.sin(ts * 3)
+                d.rounded_rectangle([586, 996, 986, 1236], 24, outline=(255, 228, 158, int(60 + 120 * k)), width=3)
+                vs = self._cached("vs", lambda: gold_text("VS", font("en", 800, 34), spacing=3))
+                fr.alpha_composite(vs, (540 - vs.width // 2, 1100))
+
+    def w_technique(self, fr, t, ts, sd):
+        # Steps + confidence meter / code
         d = ImageDraw.Draw(fr)
-        labs = self.vis["chain"][:3]
-        times = self.line_times("explain")
+        labs = self.vis["steps"][:3]
+        times = self.line_times("technique")
         starts = [s for s, _ in times][:3]
         while len(starts) < 3:
-            starts.append(starts[-1] + 2.0 if starts else self.beat_start.get("explain", 0))
-        xs = [200, 540, 880]
+            starts.append((starts[-1] + 2.5) if starts else self.beat_start.get("technique", 0))
+        xs = [190, 540, 890]
+        d.line([xs[0], 1112, xs[-1], 1112], fill=(90, 76, 52, 200), width=6)
         for i, (lab, x) in enumerate(zip(labs, xs)):
-            a = ease((t - starts[i]) / 0.5)
-            if a <= 0:
+            lit = t >= starts[i]
+            a = ease((t - starts[i]) / 0.45) if lit else 0.0
+            if i > 0 and lit:
+                d.line([xs[i - 1], 1112, xs[i - 1] + (x - xs[i - 1]) * ease((t - starts[i]) / 0.6), 1112], fill=(233, 180, 74, 220), width=6)
+            r = 30 + 6 * a
+            d.ellipse([x - r, 1112 - r, x + r, 1112 + r], fill=GOLD if lit else (60, 50, 36), outline=(255, 228, 158, 200) if lit else (120, 104, 72, 200), width=3)
+            num = self._cached(("stepn", i, lit), lambda i=i, lit=lit: text_img(str(i + 1), font("en", 800, 30), INK if lit else DIM))
+            fr.alpha_composite(num, (x - num.width // 2, 1112 - num.height // 2))
+            li = self._cached(("stepl", lab, lit), lambda lab=lab, lit=lit: text_img(lab, font("en", 800, 28), GOLD_HI if lit else DIM, spacing=2))
+            fr.alpha_composite(with_alpha(li, 0.9 if lit else 0.6), (x - li.width // 2, 1160))
+            if lit and a > 0.9:
+                d.line([x - 60, 1215, x - 45, 1230, x - 18, 1200], fill=(255, 228, 158, 230), width=5, joint="curve")
+
+    def w_ending(self, fr, t, ts, sd):
+        d = ImageDraw.Draw(fr)
+        cx, cy, rx, ry = 540, 1120, 330, 105
+        for i in range(90):
+            a0, a1 = 2 * math.pi * i / 90, 2 * math.pi * (i + 1) / 90
+            dep = (math.sin(a0) + math.sin(a1)) / 2
+            d.line([cx + math.cos(a0) * rx, cy + math.sin(a0) * ry, cx + math.cos(a1) * rx, cy + math.sin(a1) * ry], fill=(233, 180, 74, int(70 + 130 * (dep * 0.5 + 0.5))), width=int(4 + 6 * (dep * 0.5 + 0.5)))
+        stations = [("PLAN", -math.pi / 2, 0.0), ("MONITOR", math.pi / 6, 0.8), ("EVALUATE", math.pi * 5 / 6, 1.6)]
+        for name, a, t0 in stations:
+            lit = ts >= t0
+            x, y = cx + math.cos(a) * rx, cy + math.sin(a) * ry
+            r = 14 + 8 * (math.sin(a) * 0.5 + 0.5)
+            if lit:
+                fr.alpha_composite(self._cached("stglow", lambda: glow_disc(150, (255, 200, 110, 170), 48, 26)), (int(x) - 75, int(y) - 75))
+            d.ellipse([x - r, y - r, x + r, y + r], fill=GOLD if lit else (86, 72, 50))
+            lab = self._cached(("st", name, lit), lambda name=name, lit=lit: text_img(name, font("en", 800, 30), GOLD_HI if lit else DIM, spacing=3))
+            ly = y - 70 if math.sin(a) < 0 else y + 30
+            fr.alpha_composite(lab, (int(x - lab.width // 2), int(ly)))
+        ang = -math.pi / 2 + ts * 1.05
+        for k in range(20):
+            aa = ang - k * 0.055
+            x, y = cx + math.cos(aa) * rx, cy + math.sin(aa) * ry
+            r = 8 * (1 - k / 24)
+            d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 226, 150, int(230 * (1 - k / 20))))
+        eye = self._cached("eye_mid", lambda: self.eye.resize((150, 150), Image.LANCZOS))
+        fr.alpha_composite(eye, (540 - 75, cy - 75))
+
+    # New tech visuals
+    def _draw_code_visual(self, fr, t, ts, x, y, w, h):
+        card = rounded_card(w, h, 18, (18, 20, 24, 230), (233, 180, 74, 90), 2)
+        d = ImageDraw.Draw(card)
+        # Fake code lines
+        code_lines = ["def solve():", "    # explain before accept", "    result = ai.complete()", "    assert test(result)", "    return result"]
+        for i, ln in enumerate(code_lines[:5]):
+            col = CODE_GREEN if "assert" in ln or "def" in ln else CODE_BLUE if "ai" in ln else WARM
+            f = font("en", 500, 26)
+            d.text((20, 20 + i * 34), ln, font=f, fill=col)
+        # Glow cursor
+        cursor_x = 20 + int((ts * 80) % (w - 40))
+        d.rectangle([cursor_x, 20 + 2 * 34, cursor_x + 2, 20 + 3 * 34], fill=GOLD)
+        fr.alpha_composite(card, (x, y))
+
+    def _draw_evidence_card(self, fr, t, ts):
+        card = rounded_card(760, 280, 22, (26, 20, 13, 235), (233, 180, 74, 180), 2)
+        d = ImageDraw.Draw(card)
+        title = text_img("EVIDENCE", font("en", 800, 28), GOLD_HI, spacing=2)
+        card.alpha_composite(title, (30, 20))
+        lines = ["Source: Bansal et al. (2021)", "Tier: B — peer-reviewed", "Claim: calibration matters", "No fake stats"]
+        for i, ln in enumerate(lines):
+            d.text((30, 70 + i * 36), ln, font=font("en", 500, 24), fill=WARM)
+        fr.alpha_composite(card, (160, 980))
+
+    def _draw_decision_tree(self, fr, t, ts):
+        d = ImageDraw.Draw(fr)
+        # Root
+        nodes = [(540, 960, "DECIDE"), (320, 1100, "OPTION A"), (760, 1100, "OPTION B"), (200, 1240, "COST?"), (440, 1240, "GAIN?"), (640, 1240, "RISK?"), (880, 1240, "NOW?")]
+        edges = [(0,1),(0,2),(1,3),(1,4),(2,5),(2,6)]
+        for i,j in edges:
+            x0,y0,_ = nodes[i]
+            x1,y1,_ = nodes[j]
+            prog = clamp((ts - i*0.3)/0.6)
+            if prog > 0:
+                x2 = x0 + (x1 - x0) * prog
+                y2 = y0 + (y1 - y0) * prog
+                d.line([x0,y0,x2,y2], fill=(233,180,74,200), width=3)
+        for i,(x,y,label) in enumerate(nodes):
+            prog = clamp((ts - i*0.2)/0.5)
+            if prog <=0:
                 continue
-            chip = self._cached(("chain", lab), lambda lab=lab: self._chip(lab, 250, 92))
-            if i > 0:
-                pa = ease((t - starts[i]) / 0.7)
-                x0, x1 = xs[i - 1] + 125, x - 125
-                d.line([x0, 1120, x0 + (x1 - x0) * pa, 1120], fill=(233, 180, 74, 200), width=4)
-                if pa > 0.9:
-                    d.polygon([(x1, 1120), (x1 - 18, 1110), (x1 - 18, 1130)], fill=GOLD)
-            sc = 0.9 + 0.1 * a
-            ci = chip.resize((int(chip.width * sc), int(chip.height * sc)), Image.BILINEAR)
-            fr.alpha_composite(with_alpha(ci, a), (x - ci.width // 2, 1120 - ci.height // 2))
-        # pulse travelling along the chain
-        if ts > 1.0:
-            ph = (ts * 0.35) % 1.0
-            px = 325 + ph * 430
-            d.ellipse([px - 7, 1113, px + 7, 1127], fill=(255, 228, 158, 220))
+            chip = self._cached(("dt", label), lambda label=label: self._chip(label, 160, 60))
+            fr.alpha_composite(with_alpha(chip, prog), (int(x - 80), int(y - 30)))
+
+    def _draw_human_ai_network(self, fr, t, ts):
+        d = ImageDraw.Draw(fr)
+        # Two clusters
+        human = (300, 1080)
+        ai = (780, 1080)
+        # Nodes
+        for cx,cy in [human, ai]:
+            g = glow_disc(200, (255,200,110,90), 60, 20)
+            fr.alpha_composite(g, (int(cx-100), int(cy-100)))
+            d.ellipse([cx-30, cy-30, cx+30, cy+30], fill=GOLD if cx==300 else CODE_BLUE)
+            label = "HUMAN" if cx==300 else "AI"
+            li = text_img(label, font("en", 800, 26), GOLD_HI, spacing=2)
+            fr.alpha_composite(li, (cx - li.width//2, cy+40))
+        # Connection with pulse
+        prog = (math.sin(ts*1.5)+1)/2
+        mx = human[0] + (ai[0]-human[0]) * prog
+        d.line([human[0], human[1], ai[0], ai[1]], fill=(100,100,80,120), width=2)
+        d.ellipse([mx-8, human[1]-8, mx+8, human[1]+8], fill=GOLD_HI)
+
+    def _draw_prediction_graph(self, fr, t, ts):
+        card = rounded_card(760, 320, 22, (18,20,24,230), (233,180,74,90), 2)
+        d = ImageDraw.Draw(card)
+        d.text((30,20), "PREDICTION vs RESULT", font=font("en", 700, 26), fill=GOLD_HI)
+        # Axes
+        d.line([40, 280, 720, 280], fill=(100,100,100,200), width=2)
+        d.line([40, 60, 40, 280], fill=(100,100,100,200), width=2)
+        # Two lines: predicted (dashed) and actual (solid)
+        pred = [(40 + i*60, 260 - i*10 - 20*math.sin(i)) for i in range(10)]
+        actual = [(40 + i*60, 250 - i*8 - 10*math.cos(i*0.5)) for i in range(10)]
+        prog = int(clamp(ts/2.0) * len(pred))
+        if prog >1:
+            d.line(pred[:prog], fill=(150,150,150,180), width=2)
+            d.line(actual[:prog], fill=GOLD, width=3)
+        fr.alpha_composite(card, (160, 940))
 
     def _chip(self, title, w, h):
         t1 = gold_text(title, font("en", 800, 30), spacing=2)
@@ -589,27 +627,11 @@ class Reel:
         im.alpha_composite(t1, ((w - t1.width) // 2, (h - t1.height) // 2))
         return im
 
-    def w_cards(self, fr, t, ts, sd):
-        """Two contrasting cards slide in; the second one gets the spotlight."""
-        d = ImageDraw.Draw(fr)
-        la, lb = self.vis["cards"][:2]
-        p1, p2 = ease_out(ts / 0.6), ease_out((ts - 0.5) / 0.6)
-        ca = self._cached(("card", la), lambda: self._card(la, (34, 28, 20, 235), DIM))
-        cb = self._cached(("card", lb), lambda: self._card(lb, (40, 31, 16, 240), GOLD_HI))
-        ya = 1000 + (1 - p1) * 80
-        yb = 1000 + (1 - p2) * 80
-        fr.alpha_composite(with_alpha(ca, p1), (int(90), int(ya)))
-        fr.alpha_composite(with_alpha(cb, p2), (int(590), int(yb)))
-        if p2 > 0.95:
-            k = 0.5 + 0.5 * math.sin(ts * 3)
-            d.rounded_rectangle([586, 996, 986, 1236], 24, outline=(255, 228, 158, int(60 + 120 * k)), width=3)
-            vs = self._cached("vs", lambda: gold_text("VS", font("en", 800, 34), spacing=3))
-            fr.alpha_composite(vs, (540 - vs.width // 2, 1100))
-
     def _card(self, title, fill, col):
         w, h = 400, 240
         im = rounded_card(w, h, 24, fill, (233, 180, 74, 140), 2)
         d = ImageDraw.Draw(im)
+        import random
         rnd = random.Random(len(title))
         y = 150
         while y < h - 30:
@@ -627,66 +649,6 @@ class Reel:
             yy += ti.height - 6
         return im
 
-    def w_steps(self, fr, t, ts, sd):
-        """Three step chips light up as each technique line is spoken; ticks appear."""
-        d = ImageDraw.Draw(fr)
-        labs = self.vis["steps"][:3]
-        times = self.line_times("technique")
-        starts = [s for s, _ in times][:3]
-        while len(starts) < 3:
-            starts.append((starts[-1] + 2.5) if starts else self.beat_start.get("technique", 0))
-        xs = [190, 540, 890]
-        d.line([xs[0], 1112, xs[-1], 1112], fill=(90, 76, 52, 200), width=6)
-        for i, (lab, x) in enumerate(zip(labs, xs)):
-            lit = t >= starts[i]
-            a = ease((t - starts[i]) / 0.45) if lit else 0.0
-            if i > 0 and lit:
-                d.line([xs[i - 1], 1112, xs[i - 1] + (x - xs[i - 1]) * ease((t - starts[i]) / 0.6), 1112],
-                       fill=(233, 180, 74, 220), width=6)
-            r = 30 + 6 * a
-            d.ellipse([x - r, 1112 - r, x + r, 1112 + r], fill=GOLD if lit else (60, 50, 36),
-                      outline=(255, 228, 158, 200) if lit else (120, 104, 72, 200), width=3)
-            num = self._cached(("stepn", i, lit), lambda i=i, lit=lit: text_img(
-                str(i + 1), font("en", 800, 30), INK if lit else DIM))
-            fr.alpha_composite(num, (x - num.width // 2, 1112 - num.height // 2))
-            li = self._cached(("stepl", lab, lit), lambda lab=lab, lit=lit: text_img(
-                lab, font("en", 800, 28), GOLD_HI if lit else DIM, spacing=2))
-            fr.alpha_composite(with_alpha(li, 0.9 if lit else 0.6), (x - li.width // 2, 1160))
-            if lit and a > 0.9:
-                d.line([x - 60, 1215, x - 45, 1230, x - 18, 1200], fill=(255, 228, 158, 230), width=5, joint="curve")
-
-    def w_loop(self, fr, t, ts, sd):
-        """Plan → monitor → evaluate loop with the watcher eye — the page's signature."""
-        d = ImageDraw.Draw(fr)
-        cx, cy, rx, ry = 540, 1120, 330, 105
-        for i in range(90):
-            a0, a1 = 2 * math.pi * i / 90, 2 * math.pi * (i + 1) / 90
-            dep = (math.sin(a0) + math.sin(a1)) / 2
-            d.line([cx + math.cos(a0) * rx, cy + math.sin(a0) * ry, cx + math.cos(a1) * rx, cy + math.sin(a1) * ry],
-                   fill=(233, 180, 74, int(70 + 130 * (dep * 0.5 + 0.5))), width=int(4 + 6 * (dep * 0.5 + 0.5)))
-        stations = [("PLAN", -math.pi / 2, 0.0), ("MONITOR", math.pi / 6, 0.8), ("EVALUATE", math.pi * 5 / 6, 1.6)]
-        for name, a, t0 in stations:
-            lit = ts >= t0
-            x, y = cx + math.cos(a) * rx, cy + math.sin(a) * ry
-            r = 14 + 8 * (math.sin(a) * 0.5 + 0.5)
-            if lit:
-                fr.alpha_composite(self._cached("stglow", lambda: glow_disc(150, (255, 200, 110, 170), 48, 26)),
-                                   (int(x) - 75, int(y) - 75))
-            d.ellipse([x - r, y - r, x + r, y + r], fill=GOLD if lit else (86, 72, 50))
-            lab = self._cached(("st", name, lit), lambda name=name, lit=lit: text_img(
-                name, font("en", 800, 30), GOLD_HI if lit else DIM, spacing=3))
-            ly = y - 70 if math.sin(a) < 0 else y + 30
-            fr.alpha_composite(lab, (int(x - lab.width / 2), int(ly)))
-        ang = -math.pi / 2 + ts * 1.05
-        for k in range(20):
-            aa = ang - k * 0.055
-            x, y = cx + math.cos(aa) * rx, cy + math.sin(aa) * ry
-            r = 8 * (1 - k / 24)
-            d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 226, 150, int(230 * (1 - k / 20))))
-        eye = self._cached("eye_mid", lambda: self.eye.resize((150, 150), Image.LANCZOS))
-        fr.alpha_composite(eye, (540 - 75, cy - 75))
-
-    # ---- frame
     def beat_at(self, t):
         i = bisect.bisect_right(self.cut_t, t) - 1
         return max(0, i)
@@ -714,14 +676,12 @@ class Reel:
             self.draw_web(fr, t, beat)
         self.widget(fr, t, beat, ts, sd)
         self.draw_captions(fr, t)
-        self.draw_fa(fr, t)
         self.draw_chrome(fr, t, beat, t0)
         if flash > 0:
             fr.alpha_composite(with_alpha(self.flash, 0.3 * flash))
         return fr.convert("RGB")
 
     def background_only(self, t):
-        """Frame without text layers — used to measure contrast under captions."""
         si = self.beat_at(t)
         beat, t0 = self.cuts[si][1], self.cut_t[si]
         sd = (self.cut_t[si + 1] if si + 1 < len(self.cut_t) else self.total) - t0
