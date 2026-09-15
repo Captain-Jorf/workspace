@@ -1,0 +1,5 @@
+{
+ "version": 1,
+ "_comment": "aggregate Buffer post metrics only (reach, plays, likes, comments, shares, saves) — no personal audience data; filled by build/performance_analyst.py collect",
+ "posts": []
+}

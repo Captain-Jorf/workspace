@@ -8,35 +8,492 @@
     "FORMAT": "interactive series (quizzes, myth-busting, paper breakdowns)"
   },
   "episodes": [
-    {"id": 2, "pillar": "MIND", "title": "Unskilled & Unaware: the Dunning-Kruger effect", "hook": "Why do the least skilled people feel the most confident?", "beats": ["paper card: Kruger & Dunning 1999", "gauges: bottom-quartile actual 12% vs self-view 68%", "chart: confidence vs competence across skill quartiles", "the loop as the fix"], "sources": ["Kruger & Dunning (1999), JPSP 77(6)", "Dunning (2011), Advances in Experimental Social Psychology"], "cta": "Tag someone who is confidently wrong (kindly)."},
-    {"id": 3, "pillar": "LEARN", "title": "The forgetting curve: why cramming dies", "hook": "Why does 70% of what you studied vanish in 48 hours?", "beats": ["paper card: Ebbinghaus 1885 / Cepeda 2006", "chart: recall % at day 1/7/30 with 0, 1, 3 reviews", "spacing schedule visual", "loop"], "sources": ["Ebbinghaus (1885), Memory: A Contribution to Experimental Psychology", "Cepeda et al. (2006), Psychological Science 17(5)"], "cta": "Save this as your revision calendar."},
-    {"id": 4, "pillar": "LEARN", "title": "The testing effect: exams are study tools", "hook": "What if the exam was the best way to learn, not to judge?", "beats": ["paper card: Roediger & Karpicke 2006", "two-path diagram: reread vs retrieve", "chart: retention after 1 week", "loop"], "sources": ["Roediger & Karpicke (2006), Psychological Science 17(3)", "Karpicke & Roediger (2008), Science 319"], "cta": "Comment your last self-test score."},
-    {"id": 5, "pillar": "AI", "title": "Reflexion: the AI that criticizes itself", "hook": "What happens when an AI grades its own answer before you see it?", "beats": ["paper card: Shinn et al. 2023", "agent loop diagram: act → judge → revise", "success-rate chart with/without reflexion", "loop"], "sources": ["Shinn et al. (2023), NeurIPS", "Yao et al. (2023), ReAct, ICLR"], "cta": "Would you trust a self-grading AI? Vote below."},
-    {"id": 6, "pillar": "MIND", "title": "The illusion of explanatory depth", "hook": "Do you actually know how a zipper works?", "beats": ["zipper/bike-brake illustration", "confidence gauge before vs after explaining", "paper card: Rozenblit & Keil 2002", "loop"], "sources": ["Rozenblit & Keil (2002), Psychological Science 13(5)"], "cta": "Try explaining a zipper out loud. Then tell us what happened."},
-    {"id": 7, "pillar": "LEARN", "title": "Desirable difficulties: hard feels like progress", "hook": "Why does the easy study session teach you almost nothing?", "beats": ["two desks: smooth vs struggle", "chart: performance during practice vs on test", "paper card: Bjork & Bjork 2011", "loop"], "sources": ["Bjork & Bjork (2011), in Successful Remembering", "Bjork (1994), Memory and Metamemory considerations"], "cta": "Share with a friend who studies on easy mode."},
-    {"id": 8, "pillar": "AI", "title": "Hallucination is AI's fluency trap", "hook": "Why is an AI most dangerous when it sounds most sure?", "beats": ["mirror of reel 01 trap scene with model outputs", "calibration chart: stated vs actual accuracy", "paper card: Xiong et al. 2024", "loop"], "sources": ["Xiong et al. (2024), ICLR", "Kadavath et al. (2022), Anthropic technical report"], "cta": "Save this before your next ChatGPT answer."},
-    {"id": 9, "pillar": "LIFE", "title": "The planning fallacy: your to-do list is lying", "hook": "Why does everything take 2x longer than you promised yourself?", "beats": ["calendar vs reality split-screen", "gauge: estimated vs actual hours", "paper card: Kahneman & Tversky 1979", "pre-mortem as the loop"], "sources": ["Kahneman & Tversky (1979), in Progress in Social Psychology", "Buehler, Griffin & Peetz (2010), Advances in Experimental Social Psychology"], "cta": "Comment your worst time estimate ever."},
-    {"id": 10, "pillar": "FORMAT", "title": "Calibration quiz #1: how sure are you?", "hook": "Five questions. Then we score how well you know what you know.", "beats": ["5 quick Q&A cards with confidence sliders", "scoring: Brier-style calibration", "what good calibration looks like", "loop"], "sources": ["Fleming & Lau (2014), Frontiers in Human Neuroscience", "Tetlock & Gardner (2015), Superforecasting"], "cta": "Screenshot your score and tag us."},
-    {"id": 11, "pillar": "LEARN", "title": "Interleaving: why mixing subjects beats blocking", "hook": "Why does studying one topic all day feel great and teach less?", "beats": ["blocked vs interleaved schedule visual", "chart: test accuracy by schedule", "paper card: Rohrer & Taylor 2007", "loop"], "sources": ["Rohrer & Taylor (2007), Instructional Science 35", "Dunlosky et al. (2013), PSPI"], "cta": "Send this to your study-group chat."},
-    {"id": 12, "pillar": "MIND", "title": "Feeling of knowing: tip-of-the-tongue", "hook": "Why can you feel a word you cannot say?", "beats": ["TOT moment animation", "FOK as metacognitive signal", "paper card: Brown & McNeill 1966", "loop"], "sources": ["Brown & McNeill (1966), Journal of Verbal Learning", "Metcalfe (1993), in Handbook of Metacognition"], "cta": "What word is on your tongue right now?"},
-    {"id": 13, "pillar": "AI", "title": "Chain-of-thought = AI thinking out loud on purpose", "hook": "Why does asking an AI to 'think step by step' actually work?", "beats": ["answer-first vs steps-first comparison", "monitoring each step = self-check", "paper card: Wei et al. 2022", "loop"], "sources": ["Wei et al. (2022), NeurIPS", "Wang et al. (2023), Self-Consistency, ICLR"], "cta": "Try it today and report back."},
-    {"id": 14, "pillar": "LIFE", "title": "Illusion of transparency: nobody read your mind", "hook": "Why are you sure they understood you? They didn't.", "beats": ["speaker vs listener gap diagram", "gauge: felt clarity vs measured clarity", "paper card: Gilovich et al. 1998", "feedback as monitoring"], "sources": ["Gilovich, Savitsky & Medvec (1998), JPSP 75(2)"], "cta": "Tag the person who always misreads your texts."},
-    {"id": 15, "pillar": "LEARN", "title": "Highlighting: the comfortable placebo", "hook": "Why does your highlighter remember more than you do?", "beats": ["notes covered in color vs recall score", "chart: Dunlosky utility ratings", "paper card: Dunlosky 2013", "loop"], "sources": ["Dunlosky et al. (2013), PSPI 14(1)"], "cta": "Confess: how many colors is your notebook?"},
-    {"id": 16, "pillar": "MIND", "title": "Overconfidence: the most expensive bias", "hook": "What does being 90% sure cost you when you're right 60%?", "beats": ["betting simulation visual", "calibration curve: over/under-confidence", "paper card: Lichtenstein et al. 1982", "loop"], "sources": ["Lichtenstein, Fischhoff & Phillips (1982), in Judgment Under Uncertainty", "Kahneman (2011), Thinking, Fast and Slow"], "cta": "What's one bet you lost while feeling sure?"},
-    {"id": 17, "pillar": "AI", "title": "Knowing when to say 'I don't know'", "hook": "Can an AI refuse to answer? The best ones can.", "beats": ["selective prediction / abstention diagram", "coverage-accuracy tradeoff chart", "paper card: Chow 1970 + modern LLM abstention", "loop"], "sources": ["Chow (1970), IEEE Trans. Information Theory", "Kadavath et al. (2022), Anthropic"], "cta": "Should AI say 'I don't know' more? Yes/No below."},
-    {"id": 18, "pillar": "LIFE", "title": "The pre-mortem: predict your own failure", "hook": "What if you planned your project's funeral first?", "beats": ["project timeline → future obituary", "listing causes of death = evaluation upfront", "paper card: Klein (2007), HBR", "loop"], "sources": ["Klein (2007), Harvard Business Review", "Kahneman, Lovallo & Sibony (2011), HBR"], "cta": "Save this for your next big project."},
-    {"id": 19, "pillar": "LEARN", "title": "Self-explanation: talk to yourself like a teacher", "hook": "Why do students who explain out loud learn 2x deeper?", "beats": ["reader vs explainer split", "gap-detection moment = monitoring", "paper card: Chi et al. 1989", "Feynman-style loop"], "sources": ["Chi, Bassok, Lewis, Reimann & Glaser (1989), Cognitive Science 13(2)", "Fiorella & Mayer (2016), Educational Psychologist"], "cta": "Try it on today's lesson. Comment the gap you found."},
-    {"id": 20, "pillar": "FORMAT", "title": "Paper breakdown #1: Flavell 1979 in 60 seconds", "hook": "The 1979 paper that named the watcher in your head.", "beats": ["paper card hero", "three key claims as nodes", "what changed after 1979", "loop"], "sources": ["Flavell (1979), American Psychologist 34(10)"], "cta": "Which paper should we break down next?"},
-    {"id": 21, "pillar": "MIND", "title": "Metacognition in the cockpit: how checklists save lives", "hook": "Why do expert pilots still read checklists?", "beats": ["cockpit scene", "error types: slip vs mistake", "paper card: Reason 1990 / Gawande 2009", "checklist = external monitor"], "sources": ["Reason (1990), Human Error", "Gawande (2009), The Checklist Manifesto"], "cta": "What's your personal checklist?"},
-    {"id": 22, "pillar": "AI", "title": "RLHF: teaching AI to judge its own answers", "hook": "How do humans train an AI's inner critic?", "beats": ["reward-model diagram", "compare two answers → preference", "paper card: Christiano et al. 2017", "loop"], "sources": ["Christiano et al. (2017), NeurIPS", "Ouyang et al. (2022), InstructGPT, NeurIPS"], "cta": "Is human feedback enough? Discuss below."},
-    {"id": 23, "pillar": "LIFE", "title": "Listening checks: the metacognition of conversation", "hook": "When did you last notice you weren't listening?", "beats": ["conversation waveform with dropouts", "paraphrase-as-monitor move", "research: conversational repair", "loop"], "sources": ["Clark & Schaefer (1989), Cognitive Science 13(2)"], "cta": "Tag someone who never listens (lovingly)."},
-    {"id": 24, "pillar": "LEARN", "title": "Sleep is when the watcher files your day", "hook": "Why does yesterday's impossible problem solve itself overnight?", "beats": ["day vs night brain diagram", "consolidation + insight studies", "paper card: Diekelmann & Born 2010", "loop"], "sources": ["Diekelmann & Born (2010), Nature Reviews Neuroscience", "Walker (2017), Why We Sleep"], "cta": "Night-owl or early-bird? Vote."},
-    {"id": 25, "pillar": "FORMAT", "title": "Myth-busting #1: 'I learn better with my learning style'", "hook": "Visual, auditory, kinesthetic — sure?", "beats": ["learning-style quiz card", "the evidence: no interaction effect", "paper card: Pashler et al. 2008", "what to do instead"], "sources": ["Pashler, McDaniel, Rohrer & Bjork (2008), PSPI 9(3)", "Dunlosky et al. (2013), PSPI"], "cta": "Did you believe this myth? Be honest below."},
-    {"id": 26, "pillar": "MIND", "title": "Superforecasters: calibration as a trainable skill", "hook": "Some people predict better than intel agencies. They train like athletes.", "beats": ["probability ladder visual", "Brier score explainer", "paper card: Tetlock 2005", "loop"], "sources": ["Tetlock (2005), Expert Political Judgment", "Tetlock & Gardner (2015), Superforecasting"], "cta": "Give a % for tomorrow's news. We'll check."},
-    {"id": 27, "pillar": "AI", "title": "Agents that ask for help: metacognitive AI teams", "hook": "The smartest agent in the room knows when to call a human.", "beats": ["agent handing off task diagram", "confidence-threshold routing", "paper card: metareasoning (Russell & Wefald)", "loop"], "sources": ["Russell & Wefald (1991), MIT Press", "Cox & Raja (2011), Metareasoning, MIT Press"], "cta": "Would you let AI call you for help? Yes/No."},
-    {"id": 28, "pillar": "LIFE", "title": "Money metacognition: what your confidence costs your wallet", "hook": "Why do sure traders lose the most?", "beats": ["trading dashboard visual", "overtrading vs calibration chart", "paper card: Barber & Odean 2001", "loop"], "sources": ["Barber & Odean (2001), Quarterly Journal of Economics 116(1)", "Kahneman (2011), Thinking, Fast and Slow"], "cta": "Save this before your next 'sure thing'."},
-    {"id": 29, "pillar": "FORMAT", "title": "Calibration quiz #2: the confidence ladder", "hook": "Ten true/false questions. Your score isn't the point — your calibration is.", "beats": ["10 rapid T/F cards with confidence picks", "calibration curve reveal", "how to retrain in 2 weeks", "loop"], "sources": ["Fleming & Lau (2014), Frontiers in Human Neuroscience"], "cta": "Post your calibration gap in the comments."},
-    {"id": 30, "pillar": "LEARN", "title": "The watcher grows: metacognition in kids", "hook": "At what age do you notice your own thinking?", "beats": ["child vs teen strategy-choice demo", "Flavell's developmental experiments", "paper card: Flavell 1979 / Wellman 1985", "how to train it early"], "sources": ["Flavell (1979), American Psychologist", "Wellman (1985), in Thinking About Thinking"], "cta": "Parents: what did your kid say that sounded like this?"},
-    {"id": 31, "pillar": "MIND", "title": "Debiasing doctors: metacognition in diagnosis", "hook": "Most diagnostic errors aren't ignorance — they're unmonitored confidence.", "beats": ["case walkthrough with branching", "cognitive forcing strategies", "paper card: Croskerry 2003", "loop"], "sources": ["Croskerry (2003), Academic Medicine 78(11)", "Graber, Franklin & Gordon (2005), Diagnosis"], "cta": "Healthcare workers: which bias hits your field?"}
+    {
+      "id": 2,
+      "pillar": "MIND",
+      "title": "Unskilled & Unaware: the Dunning-Kruger effect",
+      "hook": "Why do the least skilled people feel the most confident?",
+      "beats": [
+        "paper card: Kruger & Dunning 1999",
+        "gauges: bottom-quartile actual 12% vs self-view 68%",
+        "chart: confidence vs competence across skill quartiles",
+        "the loop as the fix"
+      ],
+      "sources": [
+        "Kruger & Dunning (1999), JPSP 77(6)",
+        "Dunning (2011), Advances in Experimental Social Psychology"
+      ],
+      "cta": "Tag someone who is confidently wrong (kindly)."
+    },
+    {
+      "id": 3,
+      "pillar": "LEARN",
+      "title": "The forgetting curve: why cramming dies",
+      "hook": "Why does 70% of what you studied vanish in 48 hours?",
+      "beats": [
+        "paper card: Ebbinghaus 1885 / Cepeda 2006",
+        "chart: recall % at day 1/7/30 with 0, 1, 3 reviews",
+        "spacing schedule visual",
+        "loop"
+      ],
+      "sources": [
+        "Ebbinghaus (1885), Memory: A Contribution to Experimental Psychology",
+        "Cepeda et al. (2006), Psychological Science 17(5)"
+      ],
+      "cta": "Save this as your revision calendar."
+    },
+    {
+      "id": 4,
+      "pillar": "LEARN",
+      "title": "The testing effect: exams are study tools",
+      "hook": "What if the exam was the best way to learn, not to judge?",
+      "beats": [
+        "paper card: Roediger & Karpicke 2006",
+        "two-path diagram: reread vs retrieve",
+        "chart: retention after 1 week",
+        "loop"
+      ],
+      "sources": [
+        "Roediger & Karpicke (2006), Psychological Science 17(3)",
+        "Karpicke & Roediger (2008), Science 319"
+      ],
+      "cta": "Comment your last self-test score."
+    },
+    {
+      "id": 5,
+      "pillar": "AI",
+      "title": "Reflexion: the AI that criticizes itself",
+      "hook": "What happens when an AI grades its own answer before you see it?",
+      "beats": [
+        "paper card: Shinn et al. 2023",
+        "agent loop diagram: act → judge → revise",
+        "success-rate chart with/without reflexion",
+        "loop"
+      ],
+      "sources": [
+        "Shinn et al. (2023), NeurIPS",
+        "Yao et al. (2023), ReAct, ICLR"
+      ],
+      "cta": "Would you trust a self-grading AI? Vote below."
+    },
+    {
+      "id": 6,
+      "pillar": "MIND",
+      "title": "The illusion of explanatory depth",
+      "hook": "Do you actually know how a zipper works?",
+      "beats": [
+        "zipper/bike-brake illustration",
+        "confidence gauge before vs after explaining",
+        "paper card: Rozenblit & Keil 2002",
+        "loop"
+      ],
+      "sources": [
+        "Rozenblit & Keil (2002), Psychological Science 13(5)"
+      ],
+      "cta": "Try explaining a zipper out loud. Then tell us what happened."
+    },
+    {
+      "id": 7,
+      "pillar": "LEARN",
+      "title": "Desirable difficulties: hard feels like progress",
+      "hook": "Why does the easy study session teach you almost nothing?",
+      "beats": [
+        "two desks: smooth vs struggle",
+        "chart: performance during practice vs on test",
+        "paper card: Bjork & Bjork 2011",
+        "loop"
+      ],
+      "sources": [
+        "Bjork & Bjork (2011), in Successful Remembering",
+        "Bjork (1994), Memory and Metamemory considerations"
+      ],
+      "cta": "Share with a friend who studies on easy mode."
+    },
+    {
+      "id": 8,
+      "pillar": "AI",
+      "title": "Hallucination is AI's fluency trap",
+      "hook": "Why is an AI most dangerous when it sounds most sure?",
+      "beats": [
+        "mirror of reel 01 trap scene with model outputs",
+        "calibration chart: stated vs actual accuracy",
+        "paper card: Xiong et al. 2024",
+        "loop"
+      ],
+      "sources": [
+        "Xiong et al. (2024), ICLR",
+        "Kadavath et al. (2022), Anthropic technical report"
+      ],
+      "cta": "Save this before your next ChatGPT answer."
+    },
+    {
+      "id": 9,
+      "pillar": "LIFE",
+      "title": "The planning fallacy: your to-do list is lying",
+      "hook": "Why does everything take 2x longer than you promised yourself?",
+      "beats": [
+        "calendar vs reality split-screen",
+        "gauge: estimated vs actual hours",
+        "paper card: Kahneman & Tversky 1979",
+        "pre-mortem as the loop"
+      ],
+      "sources": [
+        "Kahneman & Tversky (1979), in Progress in Social Psychology",
+        "Buehler, Griffin & Peetz (2010), Advances in Experimental Social Psychology"
+      ],
+      "cta": "Comment your worst time estimate ever."
+    },
+    {
+      "id": 10,
+      "pillar": "FORMAT",
+      "title": "Calibration quiz #1: how sure are you?",
+      "hook": "Five questions. Then we score how well you know what you know.",
+      "beats": [
+        "5 quick Q&A cards with confidence sliders",
+        "scoring: Brier-style calibration",
+        "what good calibration looks like",
+        "loop"
+      ],
+      "sources": [
+        "Fleming & Lau (2014), Frontiers in Human Neuroscience",
+        "Tetlock & Gardner (2015), Superforecasting"
+      ],
+      "cta": "Screenshot your score and tag us."
+    },
+    {
+      "id": 11,
+      "pillar": "LEARN",
+      "title": "Interleaving: why mixing subjects beats blocking",
+      "hook": "Why does studying one topic all day feel great and teach less?",
+      "beats": [
+        "blocked vs interleaved schedule visual",
+        "chart: test accuracy by schedule",
+        "paper card: Rohrer & Taylor 2007",
+        "loop"
+      ],
+      "sources": [
+        "Rohrer & Taylor (2007), Instructional Science 35",
+        "Dunlosky et al. (2013), PSPI"
+      ],
+      "cta": "Send this to your study-group chat."
+    },
+    {
+      "id": 12,
+      "pillar": "MIND",
+      "title": "Feeling of knowing: tip-of-the-tongue",
+      "hook": "Why can you feel a word you cannot say?",
+      "beats": [
+        "TOT moment animation",
+        "FOK as metacognitive signal",
+        "paper card: Brown & McNeill 1966",
+        "loop"
+      ],
+      "sources": [
+        "Brown & McNeill (1966), Journal of Verbal Learning",
+        "Metcalfe (1993), in Handbook of Metacognition"
+      ],
+      "cta": "What word is on your tongue right now?"
+    },
+    {
+      "id": 13,
+      "pillar": "AI",
+      "title": "Chain-of-thought = AI thinking out loud on purpose",
+      "hook": "Why does asking an AI to 'think step by step' actually work?",
+      "beats": [
+        "answer-first vs steps-first comparison",
+        "monitoring each step = self-check",
+        "paper card: Wei et al. 2022",
+        "loop"
+      ],
+      "sources": [
+        "Wei et al. (2022), NeurIPS",
+        "Wang et al. (2023), Self-Consistency, ICLR"
+      ],
+      "cta": "Try it today and report back."
+    },
+    {
+      "id": 14,
+      "pillar": "LIFE",
+      "title": "Illusion of transparency: nobody read your mind",
+      "hook": "Why are you sure they understood you? They didn't.",
+      "beats": [
+        "speaker vs listener gap diagram",
+        "gauge: felt clarity vs measured clarity",
+        "paper card: Gilovich et al. 1998",
+        "feedback as monitoring"
+      ],
+      "sources": [
+        "Gilovich, Savitsky & Medvec (1998), JPSP 75(2)"
+      ],
+      "cta": "Tag the person who always misreads your texts."
+    },
+    {
+      "id": 15,
+      "pillar": "LEARN",
+      "title": "Highlighting: the comfortable placebo",
+      "hook": "Why does your highlighter remember more than you do?",
+      "beats": [
+        "notes covered in color vs recall score",
+        "chart: Dunlosky utility ratings",
+        "paper card: Dunlosky 2013",
+        "loop"
+      ],
+      "sources": [
+        "Dunlosky et al. (2013), PSPI 14(1)"
+      ],
+      "cta": "Confess: how many colors is your notebook?"
+    },
+    {
+      "id": 16,
+      "pillar": "MIND",
+      "title": "Overconfidence: the most expensive bias",
+      "hook": "What does being 90% sure cost you when you're right 60%?",
+      "beats": [
+        "betting simulation visual",
+        "calibration curve: over/under-confidence",
+        "paper card: Lichtenstein et al. 1982",
+        "loop"
+      ],
+      "sources": [
+        "Lichtenstein, Fischhoff & Phillips (1982), in Judgment Under Uncertainty",
+        "Kahneman (2011), Thinking, Fast and Slow"
+      ],
+      "cta": "What's one bet you lost while feeling sure?"
+    },
+    {
+      "id": 17,
+      "pillar": "AI",
+      "title": "Knowing when to say 'I don't know'",
+      "hook": "Can an AI refuse to answer? The best ones can.",
+      "beats": [
+        "selective prediction / abstention diagram",
+        "coverage-accuracy tradeoff chart",
+        "paper card: Chow 1970 + modern LLM abstention",
+        "loop"
+      ],
+      "sources": [
+        "Chow (1970), IEEE Trans. Information Theory",
+        "Kadavath et al. (2022), Anthropic"
+      ],
+      "cta": "Should AI say 'I don't know' more? Yes/No below."
+    },
+    {
+      "id": 18,
+      "pillar": "LIFE",
+      "title": "The pre-mortem: predict your own failure",
+      "hook": "What if you planned your project's funeral first?",
+      "beats": [
+        "project timeline → future obituary",
+        "listing causes of death = evaluation upfront",
+        "paper card: Klein (2007), HBR",
+        "loop"
+      ],
+      "sources": [
+        "Klein (2007), Harvard Business Review",
+        "Kahneman, Lovallo & Sibony (2011), HBR"
+      ],
+      "cta": "Save this for your next big project."
+    },
+    {
+      "id": 19,
+      "pillar": "LEARN",
+      "title": "Self-explanation: talk to yourself like a teacher",
+      "hook": "Why do students who explain out loud learn 2x deeper?",
+      "beats": [
+        "reader vs explainer split",
+        "gap-detection moment = monitoring",
+        "paper card: Chi et al. 1989",
+        "Feynman-style loop"
+      ],
+      "sources": [
+        "Chi, Bassok, Lewis, Reimann & Glaser (1989), Cognitive Science 13(2)",
+        "Fiorella & Mayer (2016), Educational Psychologist"
+      ],
+      "cta": "Try it on today's lesson. Comment the gap you found."
+    },
+    {
+      "id": 20,
+      "pillar": "FORMAT",
+      "title": "Paper breakdown #1: Flavell 1979 in 60 seconds",
+      "hook": "The 1979 paper that named the watcher in your head.",
+      "beats": [
+        "paper card hero",
+        "three key claims as nodes",
+        "what changed after 1979",
+        "loop"
+      ],
+      "sources": [
+        "Flavell (1979), American Psychologist 34(10)"
+      ],
+      "cta": "Which paper should we break down next?"
+    },
+    {
+      "id": 21,
+      "pillar": "MIND",
+      "title": "Metacognition in the cockpit: how checklists save lives",
+      "hook": "Why do expert pilots still read checklists?",
+      "beats": [
+        "cockpit scene",
+        "error types: slip vs mistake",
+        "paper card: Reason 1990 / Gawande 2009",
+        "checklist = external monitor"
+      ],
+      "sources": [
+        "Reason (1990), Human Error",
+        "Gawande (2009), The Checklist Manifesto"
+      ],
+      "cta": "What's your personal checklist?"
+    },
+    {
+      "id": 22,
+      "pillar": "AI",
+      "title": "RLHF: teaching AI to judge its own answers",
+      "hook": "How do humans train an AI's inner critic?",
+      "beats": [
+        "reward-model diagram",
+        "compare two answers → preference",
+        "paper card: Christiano et al. 2017",
+        "loop"
+      ],
+      "sources": [
+        "Christiano et al. (2017), NeurIPS",
+        "Ouyang et al. (2022), InstructGPT, NeurIPS"
+      ],
+      "cta": "Is human feedback enough? Discuss below."
+    },
+    {
+      "id": 23,
+      "pillar": "LIFE",
+      "title": "Listening checks: the metacognition of conversation",
+      "hook": "When did you last notice you weren't listening?",
+      "beats": [
+        "conversation waveform with dropouts",
+        "paraphrase-as-monitor move",
+        "research: conversational repair",
+        "loop"
+      ],
+      "sources": [
+        "Clark & Schaefer (1989), Cognitive Science 13(2)"
+      ],
+      "cta": "Tag someone who never listens (lovingly)."
+    },
+    {
+      "id": 24,
+      "pillar": "LEARN",
+      "title": "Sleep is when the watcher files your day",
+      "hook": "Why does yesterday's impossible problem solve itself overnight?",
+      "beats": [
+        "day vs night brain diagram",
+        "consolidation + insight studies",
+        "paper card: Diekelmann & Born 2010",
+        "loop"
+      ],
+      "sources": [
+        "Diekelmann & Born (2010), Nature Reviews Neuroscience",
+        "Walker (2017), Why We Sleep"
+      ],
+      "cta": "Night-owl or early-bird? Vote."
+    },
+    {
+      "id": 25,
+      "pillar": "FORMAT",
+      "title": "Myth-busting #1: 'I learn better with my learning style'",
+      "hook": "Visual, auditory, kinesthetic — sure?",
+      "beats": [
+        "learning-style quiz card",
+        "the evidence: no interaction effect",
+        "paper card: Pashler et al. 2008",
+        "what to do instead"
+      ],
+      "sources": [
+        "Pashler, McDaniel, Rohrer & Bjork (2008), PSPI 9(3)",
+        "Dunlosky et al. (2013), PSPI"
+      ],
+      "cta": "Did you believe this myth? Be honest below."
+    },
+    {
+      "id": 26,
+      "pillar": "MIND",
+      "title": "Superforecasters: calibration as a trainable skill",
+      "hook": "Some people predict better than intel agencies. They train like athletes.",
+      "beats": [
+        "probability ladder visual",
+        "Brier score explainer",
+        "paper card: Tetlock 2005",
+        "loop"
+      ],
+      "sources": [
+        "Tetlock (2005), Expert Political Judgment",
+        "Tetlock & Gardner (2015), Superforecasting"
+      ],
+      "cta": "Give a % for tomorrow's news. We'll check."
+    },
+    {
+      "id": 27,
+      "pillar": "AI",
+      "title": "Agents that ask for help: metacognitive AI teams",
+      "hook": "The smartest agent in the room knows when to call a human.",
+      "beats": [
+        "agent handing off task diagram",
+        "confidence-threshold routing",
+        "paper card: metareasoning (Russell & Wefald)",
+        "loop"
+      ],
+      "sources": [
+        "Russell & Wefald (1991), MIT Press",
+        "Cox & Raja (2011), Metareasoning, MIT Press"
+      ],
+      "cta": "Would you let AI call you for help? Yes/No."
+    },
+    {
+      "id": 29,
+      "pillar": "FORMAT",
+      "title": "Calibration quiz #2: the confidence ladder",
+      "hook": "Ten true/false questions. Your score isn't the point — your calibration is.",
+      "beats": [
+        "10 rapid T/F cards with confidence picks",
+        "calibration curve reveal",
+        "how to retrain in 2 weeks",
+        "loop"
+      ],
+      "sources": [
+        "Fleming & Lau (2014), Frontiers in Human Neuroscience"
+      ],
+      "cta": "Post your calibration gap in the comments."
+    },
+    {
+      "id": 30,
+      "pillar": "LEARN",
+      "title": "The watcher grows: metacognition in kids",
+      "hook": "At what age do you notice your own thinking?",
+      "beats": [
+        "child vs teen strategy-choice demo",
+        "Flavell's developmental experiments",
+        "paper card: Flavell 1979 / Wellman 1985",
+        "how to train it early"
+      ],
+      "sources": [
+        "Flavell (1979), American Psychologist",
+        "Wellman (1985), in Thinking About Thinking"
+      ],
+      "cta": "Parents: what did your kid say that sounded like this?"
+    },
+    {
+      "id": 31,
+      "pillar": "MIND",
+      "title": "Debiasing doctors: metacognition in diagnosis",
+      "hook": "Most diagnostic errors aren't ignorance — they're unmonitored confidence.",
+      "beats": [
+        "case walkthrough with branching",
+        "cognitive forcing strategies",
+        "paper card: Croskerry 2003",
+        "loop"
+      ],
+      "sources": [
+        "Croskerry (2003), Academic Medicine 78(11)",
+        "Graber, Franklin & Gordon (2005), Diagnosis"
+      ],
+      "cta": "Healthcare workers: which bias hits your field?"
+    }
   ]
 }

@@ -1,12 +1,21 @@
-"""Caption assembler: <epdir>/script.json["caption"] → output/<name>_caption.txt (<=2200 chars)."""
-import json, os, sys
+"""Caption assembler: <epdir>/script.json["caption"] → output/<name>_caption.txt (<=2200 chars).
+usage: python3 build/caption.py <epdir> [out.txt]
+
+File format (consumed by buffer_publish.split_caption): caption body, blank
+line, then ONE hashtag line. Hashtags go to the Instagram first comment.
+"""
+import json
+import os
+import re
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LIMIT = 2200
 
 
 def build(sc):
     c = sc.get("caption", {})
-    parts = [c.get("hook", ""), "", c.get("intro", "")]
+    parts = [c.get("hook", "").strip(), "", c.get("intro", "").strip()]
     for sec in c.get("sections", []):
         parts += ["", f"{sec.get('icon', '✦')} {sec['title']}"]
         parts += [f"→ {ln}" for ln in sec.get("lines", [])]
@@ -14,35 +23,43 @@ def build(sc):
     if src:
         parts += ["", "📚 SOURCES"]
         parts += [f"{i}. {s}" for i, s in enumerate(src, 1)]
-    parts += [""] + c.get("ctas", [])
-    cap = "\n".join(p for p in parts)
-    tag = " ".join(c.get("hashtags", []))
+    ctas = [x for x in c.get("ctas", []) if x]
+    if ctas:
+        parts += [""] + ctas
+    if sc.get("meta", {}).get("logo") == "stand-in":
+        pass                                     # never claim an official logo in captions
+    cap = "\n".join(parts).strip()
+    cap = re.sub(r"\n{3,}", "\n\n", cap)
+    tag = " ".join(dict.fromkeys(c.get("hashtags", [])))
     return cap, tag
 
 
 def fit(cap, tag):
-    if len(cap) <= 2200:
+    if len(cap) <= LIMIT:
         return cap
-    # shrink: drop source details to first author + year
-    import re
-    cap2 = re.sub(r"\((\d{4})[^)]*\)", r"(\1)", cap)
-    if len(cap2) <= 2200:
+    cap2 = re.sub(r"\((\d{4})[^)]*\)", r"(\1)", cap)          # shrink citations
+    if len(cap2) <= LIMIT:
         return cap2
-    return cap2[:2197] + "…"
+    # drop the sources block last-resort
+    cap3 = re.sub(r"\n\n📚 SOURCES(?:\n[^\n]*)+", "", cap2)
+    if len(cap3) <= LIMIT:
+        return cap3
+    return cap3[:LIMIT - 1].rstrip() + "…"
 
 
 def main():
     epdir = os.path.abspath(sys.argv[1])
     name = os.path.basename(epdir)
-    sc = json.load(open(f"{epdir}/script.json"))
+    with open(f"{epdir}/script.json", encoding="utf-8") as fh:
+        sc = json.load(fh)
     cap, tag = build(sc)
     cap = fit(cap, tag)
-    out = f"{ROOT}/output/{name}_caption.txt"
-    with open(out, "w") as f:
+    out = sys.argv[2] if len(sys.argv) > 2 else f"{ROOT}/output/{name}_caption.txt"
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
         f.write(cap + "\n\n" + tag + "\n")
-    print(f"caption: {len(cap)} chars (limit 2200) → {out}")
-    print("hashtags go in the first comment:")
-    print(tag)
+    print(f"caption: {len(cap)} chars (limit {LIMIT}) → {out}")
+    print("hashtags (first comment):", tag)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,576 @@
+{
+ "_comment": "Permanent editorial rules for @metacognition.hq. Read by trend_scout, content_producer, render (layout), qa_supervisor and performance_analyst. Owner-editable. The QA thresholds here are FLOORS: code never lowers them at runtime.",
+ "page": {
+  "handle": "@metacognition.hq",
+  "buffer_channel_name": "metacognition.hq",
+  "language_primary": "en",
+  "language_subtitles": "fa",
+  "timezone": "Asia/Tehran",
+  "publish_slot_local": "19:30"
+ },
+ "allowed_topics": [
+  "metacognition",
+  "cognitive biases",
+  "decision-making",
+  "critical thinking",
+  "learning science",
+  "memory",
+  "attention",
+  "problem-solving",
+  "self-awareness",
+  "thinking in probabilities",
+  "mental models"
+ ],
+ "pillars": {
+  "LEARN": "learning science & study techniques",
+  "MEMORY": "how memory works and fails",
+  "ATTENTION": "focus, distraction, task switching",
+  "BIAS": "cognitive biases and calibration",
+  "DECIDE": "decision-making and planning",
+  "THINK": "critical thinking and reasoning",
+  "SOLVE": "problem-solving",
+  "SELF": "self-awareness and metacognitive monitoring",
+  "PROB": "thinking in probabilities",
+  "MODELS": "mental models"
+ },
+ "banned_topics": [
+  "sports",
+  "match results",
+  "celebrity gossip",
+  "daily politics",
+  "war",
+  "violence",
+  "tabloid news",
+  "crypto promotion",
+  "investment advice",
+  "medical diagnosis",
+  "medical treatment",
+  "psychiatric diagnosis",
+  "psychiatric treatment",
+  "weak or artificial link to metacognition"
+ ],
+ "negative_keywords": [
+  "nfl",
+  "nba",
+  "mlb",
+  "nhl",
+  "fifa",
+  "uefa",
+  "premier league",
+  "champions league",
+  "super bowl",
+  "world cup",
+  "playoff",
+  "touchdown",
+  "goal scorer",
+  "match",
+  "vs",
+  "wrestlemania",
+  "ufc",
+  "boxing",
+  "dolphins",
+  "patriots",
+  "cowboys",
+  "lakers",
+  "celtics",
+  "warriors",
+  "manchester",
+  "real madrid",
+  "arsenal",
+  "kardashian",
+  "celebrity",
+  "divorce",
+  "dating rumor",
+  "red carpet",
+  "grammy",
+  "oscars",
+  "netflix series",
+  "election",
+  "senate",
+  "congress",
+  "parliament",
+  "president",
+  "prime minister",
+  "minister",
+  "party leader",
+  "ballot",
+  "impeach",
+  "sanction",
+  "war",
+  "missile",
+  "airstrike",
+  "troops",
+  "shooting",
+  "murder",
+  "stabbing",
+  "terror",
+  "hostage",
+  "explosion",
+  "crash",
+  "hurricane",
+  "earthquake",
+  "wildfire",
+  "flood",
+  "bitcoin",
+  "crypto",
+  "token",
+  "airdrop",
+  "memecoin",
+  "nft",
+  "stock pick",
+  "buy now",
+  "price target",
+  "invest in",
+  "earnings call",
+  "ipo",
+  "forex",
+  "lottery",
+  "powerball",
+  "jackpot",
+  "casino",
+  "betting",
+  "odds",
+  "diagnos",
+  "treatment",
+  "therapy for",
+  "cure",
+  "symptom",
+  "adhd medication",
+  "antidepressant",
+  "dosage",
+  "supplement",
+  "weight loss",
+  "diet plan",
+  "vaccine",
+  "outbreak",
+  "suicide",
+  "self-harm",
+  "overdose",
+  "porn",
+  "onlyfans",
+  "leak",
+  "nude",
+  "scandal",
+  "arrested",
+  "lawsuit",
+  "verdict"
+ ],
+ "tone": {
+  "style": "informal, conversational, natural spoken English; second person; short sentences",
+  "forbidden_openers": [
+   "in today's video",
+   "in this video",
+   "welcome back",
+   "hey guys",
+   "hello everyone",
+   "today we are going to",
+   "today we're going to",
+   "let's talk about",
+   "have you ever wondered",
+   "did you know"
+  ],
+  "banned_phrases": [
+   "science proves",
+   "scientists proved",
+   "scientifically proven",
+   "proven fact",
+   "studies prove",
+   "you won't believe",
+   "shocking",
+   "mind-blowing",
+   "brain hack",
+   "one weird trick",
+   "changes everything",
+   "doctors hate",
+   "guaranteed",
+   "100%",
+   "never fails",
+   "life-changing secret",
+   "the truth they",
+   "smash that like",
+   "like and subscribe",
+   "follow for more",
+   "link in bio"
+  ],
+  "fear_words": [
+   "terrifying",
+   "dangerous secret",
+   "destroying your brain",
+   "ruining your life",
+   "before it's too late"
+  ],
+  "jargon_needing_explanation": [
+   "metacognition",
+   "retrieval practice",
+   "spacing effect",
+   "interleaving",
+   "working memory",
+   "base rate",
+   "regression to the mean",
+   "calibration",
+   "heuristic",
+   "cognitive load",
+   "consolidation",
+   "implementation intention",
+   "functional fixedness",
+   "incubation"
+  ],
+  "informality_markers": [
+   "you're",
+   "you'll",
+   "don't",
+   "can't",
+   "isn't",
+   "it's",
+   "that's",
+   "won't",
+   "let's",
+   "here's",
+   "there's",
+   "didn't",
+   "doesn't",
+   "wasn't",
+   "we're",
+   "they're"
+  ]
+ },
+ "length": {
+  "target_seconds": [
+   66,
+   100
+  ],
+  "hard_seconds": [
+   60,
+   120
+  ],
+  "narration_words": [
+   150,
+   260
+  ],
+  "max_words_per_line": 20,
+  "max_chars_per_line_en": 110,
+  "max_chars_per_line_fa": 84,
+  "hook_max_words": 15,
+  "ending_max_words": 40,
+  "speech_rate_wps": [
+   1.6,
+   3.4
+  ]
+ },
+ "script_structure": [
+  "hook",
+  "problem",
+  "explain",
+  "example",
+  "technique",
+  "ending"
+ ],
+ "beat_min_lines": {
+  "hook": 1,
+  "problem": 1,
+  "explain": 2,
+  "example": 2,
+  "technique": 2,
+  "ending": 1
+ },
+ "hook_policy": {
+  "must_be_question_or_contrast": true,
+  "contrast_markers": [
+   "but",
+   "yet",
+   "so why",
+   "still",
+   "instead",
+   "not",
+   "why"
+  ],
+  "max_words": 15,
+  "banned_hook_phrases": [
+   "you won't believe",
+   "shocking",
+   "scientists discovered",
+   "brain hack",
+   "changes everything",
+   "secret",
+   "nobody tells you"
+  ]
+ },
+ "subtitles": {
+  "english": {
+   "position": "top",
+   "direction": "ltr",
+   "style": "karaoke word-by-word"
+  },
+  "persian": {
+   "position": "bottom",
+   "direction": "rtl",
+   "style": "clean pill, max two rows"
+  }
+ },
+ "layout": {
+  "width": 1080,
+  "height": 1920,
+  "safe_top": 270,
+  "safe_bottom": 1520,
+  "right_button_column_x": 960,
+  "right_button_column_y": [
+   1100,
+   1700
+  ],
+  "en_top": 270,
+  "en_row_height": 80,
+  "en_max_rows": 3,
+  "en_max_width": 950,
+  "en_font_size": 50,
+  "fa_bottom": 1520,
+  "fa_max_width": 780,
+  "fa_max_rows": 2,
+  "fa_font_max": 52,
+  "fa_font_min": 40,
+  "scene_zone": [
+   560,
+   1340
+  ],
+  "min_contrast_ratio": 4.5
+ },
+ "visual": {
+  "style": "network / node-edge diagrams, gold on dark marble, animated, episode-aware",
+  "rules": [
+   "nodes and edges must come from the episode (no reel-01 leftovers)",
+   "every scene animates; no static picture longer than 4 seconds",
+   "diagram never covers subtitles; subtitles never leave the safe zone",
+   "logo is a procedural stand-in until the official file exists"
+  ],
+  "logo_status": "stand-in (procedural emblem, not the official logo)"
+ },
+ "tts": {
+  "engine": "edge-tts",
+  "voice": "en-US-ChristopherNeural",
+  "rate": "+5%",
+  "pronunciation_overrides": {
+   "@metacognition.hq": "at metacognition H Q",
+   "metacognition.hq": "metacognition H Q",
+   "HQ": "H Q"
+  },
+  "_comment": "measured en-US-ChristopherNeural ≈ 1.9 words/s at +0%; +5% keeps 180-word scripts ≈ 95 s and still sounds conversational"
+ },
+ "source_policy": {
+  "tiers": {
+   "A": [
+    "doi.org",
+    "dx.doi.org",
+    "pubmed.ncbi.nlm.nih.gov",
+    "ncbi.nlm.nih.gov",
+    "arxiv.org",
+    "psycnet.apa.org",
+    "journals.sagepub.com",
+    "onlinelibrary.wiley.com",
+    "link.springer.com",
+    "sciencedirect.com",
+    "nature.com",
+    "science.org",
+    "pnas.org",
+    "frontiersin.org",
+    "journals.plos.org",
+    "cell.com",
+    "academic.oup.com",
+    "cambridge.org",
+    "tandfonline.com",
+    "annualreviews.org",
+    "jstor.org",
+    "journals.physiology.org",
+    "psychologicalscience.org",
+    "aeaweb.org",
+    "pubsonline.informs.org",
+    "journals.uchicago.edu",
+    "apps.dtic.mil",
+    ".edu",
+    ".ac.uk"
+   ],
+   "B": [
+    "hbr.org",
+    "apa.org",
+    "learningscientists.org",
+    "retrievalpractice.org",
+    "edutopia.org",
+    "britannica.com",
+    "plato.stanford.edu",
+    "nobelprize.org",
+    "ted.com",
+    "bbc.co.uk/future",
+    "scientificamerican.com",
+    "theconversation.com"
+   ],
+   "C": [
+    "news.ycombinator.com",
+    "trends.google.com",
+    "reddit.com",
+    "wikipedia.org",
+    "medium.com",
+    "substack.com",
+    "nytimes.com",
+    "theguardian.com",
+    "bbc.com",
+    "cnn.com"
+   ]
+  },
+  "min_evidence_tier_for_claims": "B",
+  "require_evidence_for_claim_words": [
+   "studies show",
+   "study shows",
+   "one study",
+   "studies found",
+   "study found",
+   "research shows",
+   "research found",
+   "research says",
+   "according to research",
+   "researchers",
+   "scientists",
+   "science says",
+   "science shows",
+   "experiment showed",
+   "experiments show",
+   "in an experiment",
+   "meta-analysis",
+   "peer-reviewed",
+   "the data shows",
+   "data show",
+   "proven",
+   "proves",
+   "clinically",
+   "psychologists found",
+   "neuroscience shows",
+   "brain scans",
+   "the evidence shows",
+   "evidence suggests",
+   "studies suggest",
+   "published in",
+   "journal"
+  ],
+  "forbidden": [
+   "fabricated url",
+   "fabricated citation",
+   "quote not in source",
+   "causal claim from correlation",
+   "generalizing a small study",
+   "hiding limitations",
+   "preprint stated as settled fact"
+  ],
+  "_claim_words_comment": "Phrases that assert empirical backing. Bare verbs like 'study' (a study session), 'found' (you've found the gap) or 'shows' (the gap shows up) are everyday English and are not claims."
+ },
+ "cta_policy": {
+  "allowed_types": [
+   "question",
+   "try-it",
+   "share-experience",
+   "save"
+  ],
+  "banned_phrases": [
+   "follow for more",
+   "like and share",
+   "like, comment",
+   "smash",
+   "tag 3 friends",
+   "double tap",
+   "comment below if you agree",
+   "share this now"
+  ],
+  "max_words": 40,
+  "avoid_same_type_consecutive": true
+ },
+ "hashtag_policy": {
+  "min": 3,
+  "max": 8,
+  "always": [
+   "#metacognition",
+   "#metacognitionhq"
+  ],
+  "banned": [
+   "#follow4follow",
+   "#like4like",
+   "#f4f",
+   "#l4l",
+   "#followme",
+   "#viral",
+   "#fyp",
+   "#foryou",
+   "#trending",
+   "#explorepage"
+  ]
+ },
+ "caption_policy": {
+  "max_chars": 2200,
+  "min_chars": 150,
+  "language": "en",
+  "place_hashtags_in_first_comment": true
+ },
+ "video_policy": {
+  "width": 1080,
+  "height": 1920,
+  "aspect": "9:16",
+  "aspect_tolerance": 0.01,
+  "fps": [
+   24,
+   60
+  ],
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "max_av_duration_diff_seconds": 1.0,
+  "max_black_seconds": 1.5,
+  "max_freeze_seconds": 4.0,
+  "max_silence_seconds": 2.5,
+  "max_lead_silence_seconds": 1.6,
+  "max_tail_silence_seconds": 2.6,
+  "mean_volume_db": [
+   -32,
+   -8
+  ],
+  "max_peak_db": -0.3,
+  "bitrate_kbps": [
+   800,
+   14000
+  ],
+  "file_size_mb": [
+   1,
+   90
+  ],
+  "poster_sizes": {
+   "9x16": [
+    1080,
+    1920
+   ],
+   "4x5": [
+    1080,
+    1350
+   ]
+  }
+ },
+ "qa_thresholds": {
+  "min_score": 85,
+  "min_score_floor": 80,
+  "blocking_always_blocks": true
+ },
+ "duplicates": {
+  "window_posts": 30,
+  "title_similarity_block": 0.6,
+  "title_similarity_warn": 0.45,
+  "tag_cooldown_posts": 10,
+  "pillar_repeat_warn_consecutive": 2
+ },
+ "retention": {
+  "draft_branch_days": 14,
+  "keep_if_status": [
+   "queued",
+   "scheduled",
+   "unknown"
+  ]
+ },
+ "buffer": {
+  "queue_limit_free_plan": 10,
+  "mode": "addToQueue",
+  "scheduling_type": "automatic",
+  "instagram_post_type": "reel",
+  "share_to_feed": true
+ }
+}

@@ -1,0 +1,99 @@
+{
+ "version": 2,
+ "entries": [
+  {
+   "content_id": "reel-01",
+   "content_date": "2026-09-12",
+   "topic": "Why metacognition? Flavell 1979 and the watcher in your head",
+   "normalized_topic": "metacognition flavell 1979 watcher head",
+   "pillar": "SELF",
+   "tags": [
+    "flavell",
+    "metacognition-basics"
+   ],
+   "cta_type": "question",
+   "playbook": "flavell-1979",
+   "source_url": null,
+   "script_hash": null,
+   "video_hash": null,
+   "qa_score": null,
+   "buffer_post_id": null,
+   "status": "published-manual",
+   "run_id": null,
+   "reason": "Reel 01, posted manually by the owner",
+   "hook_type": "question",
+   "updated_utc": "2026-09-15T14:30:23+00:00"
+  },
+  {
+   "content_id": "legacy-2026-09-13",
+   "content_date": "2026-09-13",
+   "topic": "The pre-mortem: predict your own failure",
+   "normalized_topic": "pre mortem predict own failure",
+   "pillar": "DECIDE",
+   "tags": [
+    "pre-mortem",
+    "planning"
+   ],
+   "cta_type": "question",
+   "playbook": "pre-mortem",
+   "source_url": null,
+   "script_hash": null,
+   "video_hash": null,
+   "qa_score": null,
+   "buffer_post_id": null,
+   "status": "legacy-not-published",
+   "run_id": null,
+   "reason": "old workflow draft (issue #7) — not published, kept only to avoid repeats",
+   "hook_type": "question",
+   "updated_utc": "2026-09-15T14:30:23+00:00"
+  },
+  {
+   "content_id": "legacy-2026-09-14",
+   "content_date": "2026-09-14",
+   "topic": "Self-explanation: talk to yourself like a teacher",
+   "normalized_topic": "self explanation talk yourself like teacher",
+   "pillar": "LEARN",
+   "tags": [
+    "self-explanation",
+    "teaching"
+   ],
+   "cta_type": "question",
+   "playbook": "self-explanation",
+   "source_url": null,
+   "script_hash": null,
+   "video_hash": null,
+   "qa_score": null,
+   "buffer_post_id": null,
+   "status": "legacy-not-published",
+   "run_id": null,
+   "reason": "old workflow draft (issue #12) — not published",
+   "hook_type": "question",
+   "updated_utc": "2026-09-15T14:30:23+00:00"
+  },
+  {
+   "content_id": "legacy-2026-09-15",
+   "content_date": "2026-09-15",
+   "topic": "Paper breakdown #1: Flavell 1979 in 60 seconds",
+   "normalized_topic": "paper breakdown flavell 1979 seconds",
+   "pillar": "SELF",
+   "tags": [
+    "flavell",
+    "metacognition-basics"
+   ],
+   "cta_type": "question",
+   "playbook": "flavell-1979",
+   "source_url": null,
+   "script_hash": null,
+   "video_hash": null,
+   "qa_score": null,
+   "buffer_post_id": null,
+   "status": "legacy-not-published",
+   "run_id": null,
+   "reason": "old workflow draft (issue #13) — not published",
+   "hook_type": "question",
+   "updated_utc": "2026-09-15T14:30:23+00:00"
+  }
+ ],
+ "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
+ "updated_utc": "2026-09-15T14:30:23+00:00"
+}

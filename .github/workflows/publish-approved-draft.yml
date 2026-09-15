@@ -1,54 +1,23 @@
-name: publish-approved-draft
+# RETIRED — the /publish approval gate is no longer part of the pipeline.
+#
+# The factory is autonomous: build/qa_supervisor.py decides, and
+# daily-trend-draft.yml queues the reel in Buffer only when it is approved
+# and the repo variable AUTO_PUBLISH_ENABLED == "true".
+#
+# This file is intentionally kept as a no-op so an old copy on another branch
+# can never publish: it has no triggers other than manual dispatch, no secrets,
+# no permissions, and it only prints a notice.
+name: publish-approved-draft (retired)
 on:
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
+
+permissions: {}
 
 jobs:
-  publish:
-    if: "${{ startsWith(github.event.issue.title, 'trend reel draft') && contains(github.event.comment.body, '/publish') }}"
+  retired:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
+    timeout-minutes: 2
     steps:
-      - name: resolve draft tag
-        id: tag
-        env:
-          TITLE: "${{ github.event.issue.title }}"
-        run: echo "tag=${TITLE##*draft }" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
-        with:
-          ref: "drafts/${{ steps.tag.outputs.tag }}"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: deps
-        run: |
-          pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg
-          ./build/fetch_fonts.sh
-          python3 build/logo_make.py
-      - name: render full reel
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          EP_DIR="content/episodes/auto-$TAG" python3 build/render.py "out=output/auto-$TAG.mp4"
-      - name: push video + publish to Instagram
-        env:
-          GH_TOKEN: "${{ github.token }}"
-          IG_USER_ID: "${{ secrets.IG_USER_ID }}"
-          PAGE_TOKEN: "${{ secrets.IG_PAGE_TOKEN }}"
-          REPO: "${{ github.repository }}"
-          ISSUE: "${{ github.event.issue.number }}"
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          git config user.name "trend-factory"
-          git config user.email "factory@metacognition.hq"
-          git add -f "output/auto-$TAG.mp4"
-          git commit -q -m "reel $TAG"
-          git push -q origin HEAD
-          sleep 5
-          RAW="https://github.com/$REPO/raw/drafts/$TAG/output/auto-$TAG.mp4"
-          curl -sfI "$RAW" | head -1 || { echo "video URL not public - make repo public or host elsewhere"; exit 1; }
-          mkdir -p secrets
-          printf "IG_USER_ID=%s\nPAGE_TOKEN=%s\n" "$IG_USER_ID" "$PAGE_TOKEN" > secrets/insta.env
-          python3 build/insta_publish.py publish --video "$RAW" --caption "output/auto-${TAG}_caption.txt"
-          gh issue comment "$ISSUE" --body "published to Instagram from draft $TAG"
+      - run: |
+          echo "This workflow is retired. Publishing is handled by daily-trend-draft.yml"
+          echo "behind the Quality Supervisor and the AUTO_PUBLISH_ENABLED=true repo variable."

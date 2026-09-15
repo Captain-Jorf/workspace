@@ -1,10 +1,19 @@
+# renders / intermediates never go to the default branch (public files live on drafts/<date> orphan branches)
 output/*
-!output/drafts/
-!output/auto-*_caption.txt
+!output/.gitkeep
+!output/auto-*_manifest.json
 audio/*.wav
 audio/timing.json
 assets/tts/
 assets/fonts/*.ttf
 assets/img/logo_preview.jpg
+# generated daily episodes live on their drafts/<date> branch, not on main
+content/episodes/auto-*/
 __pycache__/
+*.pyc
+# secrets (also: never put tokens in any tracked file)
 secrets/
+*.env
+.env*
+*.token
+buffer_token*
