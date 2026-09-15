@@ -650,21 +650,116 @@ GENERIC_LENS = {
 }
 
 
-def short_title(title, limit=48):
-    t = re.sub(r"\s+", " ", title).strip().rstrip(".?!")
-    t = re.sub(r"^(why|how|what|the)\s+", "", t, flags=re.I)
+STOP_LEAD = re.compile(r"^(show hn|ask hn|tell hn|launch hn|new study|a new study|study|research|paper|opinion|analysis|"
+                       r"breaking|i built|we built|i made|we made|i wrote|introducing|"
+                       r"why|how|what|when|where|the|a|an|is|are|do|does|did|can|should|could|would|will)\b[:\s-]*", re.I)
+CUT_AT = re.compile(r"\s+(?:is|are|was|were|and why|and how|and the|because|but|that|which|who|when|while|so that|"
+                    r"explained|—|–|-|:|;|,|\(|\[)\s+", re.I)
+CUT_LATE = re.compile(r"\s+(?:to|for|in|on|at|with|without|from|by|of|and)\s+", re.I)   # only when still too long
+TAIL_JUNK = re.compile(r"\s+(and|or|of|in|for|to|the|a|an|is|are|was|were|with|by|on|at|that|your|my|our|their|"
+                       r"app|tool|website|extension|plugin|startup|library|framework|api|sdk|cli|bot|game)$", re.I)
+KNOWN_NAMES = {"Bayes", "Kahneman", "Tversky", "Ebbinghaus", "Flavell", "Tetlock", "Dunning", "Kruger", "Bjork",
+               "Roediger", "Karpicke", "Gawande", "Klein", "Gilovich", "Pashler", "Dunlosky", "Feynman", "Occam",
+               "Hanlon", "Pareto", "Parkinson", "Peter", "Goodhart", "Simpson", "Zeigarnik", "Stroop", "Piaget"}
+COMMON_CAPS = {"why", "how", "what", "when", "the", "a", "an", "new", "show", "ask", "cognitive", "brain", "smart",
+               "sleep", "memory", "study", "overconfidence", "metacognitive", "attention", "focus", "decision", "people",
+               "most", "your", "you", "we", "our", "i", "it", "this", "that", "these", "those", "one", "two", "three"}
+
+
+def short_title(title, limit=44):
+    """Turn a headline into a short noun phrase that can sit inside a spoken sentence.
+
+    'The Dunning-Kruger effect is autocorrelation'  -> 'the Dunning-Kruger effect'
+    'Cognitive load theory and why your onboarding docs fail' -> 'cognitive load theory'
+    'Why LLMs hallucinate: a study of confidence calibration…' -> 'LLM hallucination' is out of reach; we
+    keep 'LLMs hallucinate' -> readable and short.
+    Proper nouns and acronyms keep their case; everything else is lower-cased for mid-sentence use."""
+    t = re.sub(r"\s+", " ", title or "").strip().rstrip(".?!")
+    t = re.sub(r"^[\"'“”‘’]+|[\"'“”‘’]+$", "", t)
+    t = STOP_LEAD.sub("", t)
+    for _ in range(3):
+        t2 = STOP_LEAD.sub("", t)
+        if t2 == t:
+            break
+        t = t2
+    # cut at the first clause boundary / punctuation once the phrase has ≥2 words
+    m = CUT_AT.search(t)
+    while m and len(t[:m.start()].split()) < 2:
+        m = CUT_AT.search(t, m.end())
+    if m:
+        t = t[:m.start()]
+    t = re.split(r"[:;(\[]", t)[0].strip(" -–—,")
+    if len(t.split()) > 5:                                   # still long → cut at a late preposition after ≥3 words
+        m = CUT_LATE.search(t)
+        while m and len(t[:m.start()].split()) < 3:
+            m = CUT_LATE.search(t, m.end())
+        if m:
+            t = t[:m.start()]
     if len(t) > limit:
-        cut = t[:limit].rsplit(" ", 1)[0]
-        t = cut
-    # spoken form: sentence case, no trailing connectors
-    t = re.sub(r"\s+(and|or|of|in|for|to|the|a|an|is|are)$", "", t, flags=re.I)
-    if t[:2].isupper():                    # acronym (LLM, AI…) keeps its case
-        return t
-    return t[:1].lower() + t[1:]
+        t = t[:limit].rsplit(" ", 1)[0]
+        m = list(CUT_LATE.finditer(t))
+        if m and len(t[:m[-1].start()].split()) >= 2:
+            t = t[:m[-1].start()]                            # never end on a dangling prepositional fragment
+    for _ in range(3):
+        t2 = TAIL_JUNK.sub("", t).strip()
+        if t2 == t:
+            break
+        t = t2
+    words = t.split()
+    if not words:
+        words = (title or "this topic").split()[:4]
+    # keep acronyms and proper names; lower-case ordinary words for mid-sentence use.
+    # A capitalised FIRST word of the headline is ambiguous (sentence case) → treated as proper only if it
+    # is in the known-names list or looks like a surname followed by a name-marker.
+    out = []
+    first_headline_word = (title or "").split()[:1]
+    for w in words:
+        base = w.strip(",.:;()")
+        if base.isupper() or base[:2].isupper() or base.lower().startswith("llm"):
+            out.append(w)                                   # LLM, AI, GPT-5, LLMs
+        elif "-" in base and base[:1].isupper():
+            out.append(w)                                   # Dunning-Kruger, Tversky-Kahneman
+        elif base[:1].isupper() and base.lower() not in COMMON_CAPS and (
+                [w] != first_headline_word or re.sub(r"('s|')$", "", base) in KNOWN_NAMES):
+            out.append(w)                                   # Kahneman, Ebbinghaus, Bayes'
+        else:
+            out.append(w.lower())
+    phrase = " ".join(out)
+    # 'the cognitive load theory' is wrong, 'the Dunning-Kruger effect' is right: only add 'the' after a name
+    if re.match(r"^[A-Z][\w-]+ (effect|theory|bias|fallacy|paradox|principle|method|rule|law|curve|theorem)$", phrase) \
+            and not re.match(r"^(the|a|an)\b", phrase, re.I):
+        phrase = "the " + phrase                                # the Dunning-Kruger effect (but: Bayes' theorem)
+    return phrase
 
 
 def cap_first(s):
     return s[:1].upper() + s[1:] if s else s
+
+
+SINGLE_WORD_OK = {"overconfidence", "procrastination", "multitasking", "metacognition", "calibration", "interleaving",
+                  "forgetting", "mnemonics", "flashcards", "journaling", "mindfulness", "focus", "attention", "memory",
+                  "hindsight", "anchoring", "priming", "heuristics", "burnout", "boredom", "curiosity", "intuition"}
+VERB_LIKE = re.compile(r"\b(is|are|was|were|be|been|being|do|does|did|has|have|had|will|would|can|could|should|"
+                       r"built|made|wrote|launch|launched|release|released|announce|announced|explained|impairs|"
+                       r"beats|kills|loves|hates|believe|believes|hallucinate|stop|start|get|got|make|makes|"
+                       r"you|your|we|our|i|my|me|us|them|they|he|she|it)\b", re.I)
+
+
+def speakable_topic(title):
+    """(ok, short, why): can this headline be spoken as a noun phrase inside the trend-lens sentences?
+    Trend lenses say things like 'Take {short}.' / 'Try it with {short}.' — that only works for a
+    noun phrase of 1–6 words without verbs/pronouns. Anything else → the scout skips the candidate."""
+    short = short_title(title)
+    n = len(short.split())
+    if n < 1 or n > 6:
+        return False, short, f"{n} words"
+    if VERB_LIKE.search(short):
+        return False, short, "contains a verb/pronoun (not a noun phrase)"
+    if re.search(r"[?!\"“”]", short) or len(short) < 4:
+        return False, short, "punctuation/too short"
+    if n < 2 and short.lower() not in SINGLE_WORD_OK:
+        return False, short, "single word is too vague for a hook"
+    return True, short, ""
 
 
 def trend_playbook(topic_title, pillar):

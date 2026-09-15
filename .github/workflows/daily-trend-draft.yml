@@ -82,13 +82,15 @@ jobs:
           echo "CAL=${IN_CAL:-false}" >> "$GITHUB_ENV"
           echo "date=$TAG dry_run=$DRY calendar_only=${IN_CAL:-false}"
 
-      - name: dependencies, fonts, stand-in logo
+      - name: dependencies, fonts, stand-in logo, self-test
         run: |
           set -euo pipefail
           sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
           pip install -q pillow numpy arabic_reshaper python-bidi fonttools brotli imageio-ffmpeg edge-tts deep-translator pyyaml
           bash build/fetch_fonts.sh
           python3 build/logo_make.py
+          ffprobe -version | head -1
+          # fail closed: a broken toolchain must never produce a post
           python3 -m unittest discover -s tests -q 2>&1 | tail -3
 
       - name: produce + supervise (controlled retries inside)

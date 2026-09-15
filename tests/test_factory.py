@@ -723,3 +723,29 @@ class ClaimPhraseTests(unittest.TestCase):
     def test_trend_topics_never_make_research_claims_even_with_sources(self):
         src = [{"label": "x", "url": "https://arxiv.org/abs/1", "tier": "A", "role": "evidence"}]
         self.assertTrue(self._blocking("Studies show experts skip steps.", src, mode="limited-claims"))
+
+
+class SpeakableTopicTests(unittest.TestCase):
+    def test_headlines_become_noun_phrases(self):
+        cases = {"The Dunning-Kruger effect is autocorrelation": "the Dunning-Kruger effect",
+                 "Cognitive load theory and why your onboarding docs fail": "cognitive load theory",
+                 "Show HN: I built a spaced repetition app for medical students": "spaced repetition",
+                 "Why spaced repetition is trending among med students": "spaced repetition",
+                 "The planning fallacy (2019)": "planning fallacy"}
+        for title, want in cases.items():
+            ok, short, why = cp.speakable_topic(title)
+            self.assertTrue(ok, f"{title}: {why}")
+            self.assertEqual(short, want)
+
+    def test_sentences_are_rejected_not_spoken(self):
+        for title in ("Why LLMs hallucinate: a study of confidence calibration", "New study: sleep deprivation impairs decision making",
+                      "How to stop procrastinating: a practical guide", "Why your brain loves to-do lists"):
+            ok, short, why = cp.speakable_topic(title)
+            self.assertFalse(ok, f"{title} → {short}")
+
+    def test_scout_skips_unspeakable_trends(self):
+        items = [{"source": "hackernews", "title": "New study: sleep deprivation impairs decision making and memory", "traffic": 5000, "url": "https://x"},
+                 {"source": "hackernews", "title": "The Dunning-Kruger effect is autocorrelation", "traffic": 100, "url": "https://y"}]
+        pick, ranked, rejected = ts.choose(items, POL, common.empty_memory(), __import__("datetime").date(2026, 9, 16))
+        self.assertEqual(pick["title"], "The Dunning-Kruger effect is autocorrelation")
+        self.assertTrue(any("not speakable" in r["why"] for r in rejected), rejected)

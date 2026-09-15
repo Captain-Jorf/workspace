@@ -33,7 +33,8 @@ UA = {"User-Agent": "Mozilla/5.0 (trend-scout; +metacognition.hq)"}
 PILLAR_TERMS = {
     "LEARN": {"learning": 2, "study": 2, "students": 1, "exam": 1, "revision": 1, "spaced": 3,
               "retrieval": 3, "repetition": 2, "practice testing": 3, "flashcard": 2, "interleav": 3, "note-taking": 2,
-              "notes": 1, "tutor": 1, "education": 1, "textbook": 1, "homework": 1, "learn": 1},
+              "notes": 1, "tutor": 1, "education": 1, "textbook": 1, "homework": 1, "learn": 1,
+              "cognitive load": 3, "onboarding": 1},
     "MEMORY": {"memory": 3, "forgetting": 3, "recall": 2, "remember": 2, "mnemonic": 3, "hippocamp": 2,
                "consolidation": 2, "sleep": 1, "amnesia": 1, "working memory": 3},
     "ATTENTION": {"attention": 3, "focus": 2, "distract": 3, "multitask": 3, "task switching": 3,
@@ -44,7 +45,8 @@ PILLAR_TERMS = {
     "DECIDE": {"decision": 3, "decide": 2, "choice": 2, "judgment": 2, "planning": 2, "forecast": 2,
                "pre-mortem": 3, "premortem": 3, "trade-off": 2, "regret": 1, "risk": 1, "strategy": 1},
     "THINK": {"critical thinking": 3, "reasoning": 3, "argument": 2, "logic": 2, "misinformation": 2,
-              "skeptic": 2, "evidence": 1, "fact-check": 2, "rational": 2, "thinking": 1, "debate": 1},
+              "skeptic": 2, "evidence": 1, "fact-check": 2, "rational": 2, "thinking": 1, "debate": 1,
+              "motivated reasoning": 3, "hallucinat": 2, "believe": 1},
     "SOLVE": {"problem solving": 3, "problem-solving": 3, "insight": 2, "puzzle": 2, "incubation": 3,
               "creativity": 2, "brainstorm": 2, "debugging": 1, "first principles": 3},
     "SELF": {"metacognit": 4, "self-aware": 3, "self-monitor": 3, "reflection": 2, "journaling": 2,
@@ -56,7 +58,8 @@ PILLAR_TERMS = {
                "systems thinking": 3, "first principles": 2},
 }
 PSYCH_CONTEXT = {"psycholog": 2, "cognitive": 2, "brain": 1, "neuroscien": 1, "behavio": 1, "mind": 1,
-                 "habit": 1, "productivity": 1, "procrastinat": 2, "motivation": 1, "expert": 1}
+                 "habit": 1, "productivity": 1, "procrastinat": 2, "motivation": 1, "expert": 1,
+                 "language model": 1, "llm": 1}
 MIN_TREND_SCORE = 6          # relevance floor; below → calendar
 MIN_CALENDAR_SCORE = 5
 
@@ -208,6 +211,7 @@ def calendar_candidates(pol, memory, date):
 
 # ------------------------------------------------------------------ main
 def choose(items, pol, memory, date, allow_trends=True):
+    from content_producer import speakable_topic                 # noun-phrase gate shared with the producer
     rejected = []
     ranked = []
     if allow_trends:
@@ -225,6 +229,11 @@ def choose(items, pol, memory, date, allow_trends=True):
             if blocked:
                 rejected.append({"title": it["title"], "why": f"duplicate: {why}"})
                 continue
+            ok, short, why = speakable_topic(it["title"])
+            if not ok:
+                rejected.append({"title": it["title"], "why": f"not speakable as a noun phrase ('{short}': {why})"})
+                continue
+            it["short"] = short
             it["max_similarity"] = sim
             ranked.append(it)
         ranked.sort(key=lambda x: -x["score"])
