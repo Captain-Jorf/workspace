@@ -92,8 +92,31 @@
    "reason": "old workflow draft (issue #13) — not published",
    "hook_type": "question",
    "updated_utc": "2026-09-15T14:30:23+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-15",
+   "content_date": "2026-09-15",
+   "topic": "The planning fallacy: your to-do list is lying",
+   "normalized_topic": "planning fallacy list lying",
+   "pillar": "DECIDE",
+   "tags": [
+    "planning-fallacy",
+    "estimation"
+   ],
+   "cta_type": "question",
+   "playbook": "planning-fallacy",
+   "source_url": null,
+   "script_hash": "1d23bb4d92aa24cea0f243590be65c8d1cea04908016fc19896f3a92ccfddec7",
+   "video_hash": "850b60fbfa848fa54ae2449af46c17af52660bd992ce13d4272d85fe0c0050b5",
+   "qa_score": 92,
+   "buffer_post_id": null,
+   "status": "approved-dry-run",
+   "run_id": "35004154042",
+   "reason": "",
+   "hook_type": "question",
+   "updated_utc": "2026-09-15T17:58:49+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-15T14:30:23+00:00"
+ "updated_utc": "2026-09-15T17:58:49+00:00"
 }
