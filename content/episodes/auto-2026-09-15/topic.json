@@ -1,0 +1,41 @@
+{
+ "content_date": "2026-09-15",
+ "content_id": "reel-2026-09-15",
+ "title": "The planning fallacy: your to-do list is lying",
+ "normalized_topic": "planning fallacy list lying",
+ "pillar": "DECIDE",
+ "discovery_source": {
+  "name": "content-calendar",
+  "url": "",
+  "tier": "cal"
+ },
+ "evidence_mode": "calendar",
+ "score": 10,
+ "max_similarity_recent": 0.0,
+ "fallback_reason": "calendar-only mode",
+ "calendar": {
+  "id": 9,
+  "pillar": "LIFE",
+  "title": "The planning fallacy: your to-do list is lying",
+  "hook": "Why does everything take 2x longer than you promised yourself?",
+  "beats": [
+   "calendar vs reality split-screen",
+   "gauge: estimated vs actual hours",
+   "paper card: Kahneman & Tversky 1979",
+   "pre-mortem as the loop"
+  ],
+  "sources": [
+   "Kahneman & Tversky (1979), in Progress in Social Psychology",
+   "Buehler, Griffin & Peetz (2010), Advances in Experimental Social Psychology"
+  ],
+  "cta": "Comment your worst time estimate ever."
+ },
+ "ranked_trends": [],
+ "rejected": [],
+ "recent_pillars": [
+  "SELF",
+  "LEARN",
+  "DECIDE"
+ ],
+ "generated_utc": "2026-09-15T17:55:16+00:00"
+}

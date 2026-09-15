@@ -1,0 +1,120 @@
+{
+ "approved": true,
+ "score": 92,
+ "min_score": 85,
+ "checks": {
+  "topic_relevance": "pass",
+  "source_quality": "pass",
+  "script_quality": "pass",
+  "english_quality": "warn",
+  "persian_quality": "warn",
+  "subtitle_layout": "pass",
+  "audio_quality": "pass",
+  "video_quality": "pass",
+  "caption_quality": "pass",
+  "duplicate_check": "warn",
+  "buffer_readiness": "warn"
+ },
+ "warnings": [
+  "[english_quality] few conversational markers",
+  "[persian_quality] FA line long for two mobile rows (91 chars)",
+  "[persian_quality] FA line long for two mobile rows (94 chars)",
+  "[persian_quality] FA line long for two mobile rows (89 chars)",
+  "[persian_quality] FA line long for two mobile rows (87 chars)",
+  "[duplicate_check] same CTA type 'question' as the previous post",
+  "[buffer_readiness] public URL not provided (pre-push check)"
+ ],
+ "blocking_errors": [],
+ "details": {
+  "topic": {
+   "field_terms": 9,
+   "allowed_topics": 11
+  },
+  "sources": {
+   "evidence": 2,
+   "best_tier": "A",
+   "claim_words": [],
+   "numbers_in_narration": [],
+   "discovery": "content-calendar"
+  },
+  "script": {
+   "words": 177,
+   "hook_words": 11,
+   "beats": [
+    "hook",
+    "problem",
+    "explain",
+    "explain",
+    "example",
+    "technique",
+    "technique",
+    "ending",
+    "ending"
+   ],
+   "cta_type": "question"
+  },
+  "english": {
+   "informality_markers": 1,
+   "avg_words_per_line": 11.1
+  },
+  "persian": {
+   "lines": 16,
+   "invalid": 0,
+   "engine": "mymemory"
+  },
+  "layout": {
+   "en_lines": 16,
+   "fa_lines": 18,
+   "en_bottom_max": 510,
+   "fa_top_min": 1308
+  },
+  "video": {
+   "w": 1080,
+   "h": 1920,
+   "duration": 70.3,
+   "fps": 30.0,
+   "size_mb": 27.0,
+   "bitrate_kbps": 3073,
+   "codec": "h264",
+   "audio_codec": "aac"
+  },
+  "audio": {
+   "mean_db": -19.7,
+   "peak_db": -1.5,
+   "words_per_second": 2.69,
+   "chunk_levels_db": [
+    -19.3,
+    -19.6,
+    -19.7,
+    -19.7,
+    -19.6,
+    -19.7,
+    -19.6,
+    -19.6,
+    -19.7
+   ]
+  },
+  "frames": {
+   "sampled": 18,
+   "min_caption_contrast": 16.23
+  },
+  "caption": {
+   "chars": 782,
+   "hashtags": 6
+  },
+  "duplicates": {
+   "compared": 4,
+   "script_hash": "1d23bb4d92aa"
+  },
+  "buffer": {
+   "public_url": null
+  }
+ },
+ "content_id": "reel-2026-09-15",
+ "content_date": "2026-09-15",
+ "topic": "The planning fallacy: your to-do list is lying",
+ "script_hash": "1d23bb4d92aa24cea0f243590be65c8d1cea04908016fc19896f3a92ccfddec7",
+ "video_hash": "850b60fbfa848fa54ae2449af46c17af52660bd992ce13d4272d85fe0c0050b5",
+ "evaluated_utc": "2026-09-15T17:58:26+00:00",
+ "supervisor_version": "1.0"
+}

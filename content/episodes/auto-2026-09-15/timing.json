@@ -1,0 +1,1227 @@
+{
+ "total": 70.32,
+ "lead": 0.55,
+ "tail": 1.2,
+ "gap": 0.34,
+ "chunks": [
+  {
+   "id": "c1",
+   "beat": "hook",
+   "start": 0.55,
+   "dur": 3.01,
+   "lines": [
+    {
+     "text": "Why does everything take twice as long as you promised yourself?",
+     "scene": "hook",
+     "beat": "hook",
+     "start": 0.55,
+     "end": 3.56,
+     "words": [
+      {
+       "w": "Why",
+       "start": 0.629,
+       "end": 0.851
+      },
+      {
+       "w": "does",
+       "start": 0.863,
+       "end": 1.039
+      },
+      {
+       "w": "everything",
+       "start": 1.05,
+       "end": 1.414
+      },
+      {
+       "w": "take",
+       "start": 1.426,
+       "end": 1.684
+      },
+      {
+       "w": "twice",
+       "start": 1.695,
+       "end": 2.023
+      },
+      {
+       "w": "as",
+       "start": 2.035,
+       "end": 2.141
+      },
+      {
+       "w": "long",
+       "start": 2.153,
+       "end": 2.399
+      },
+      {
+       "w": "as",
+       "start": 2.411,
+       "end": 2.504
+      },
+      {
+       "w": "you",
+       "start": 2.516,
+       "end": 2.587
+      },
+      {
+       "w": "promised",
+       "start": 2.599,
+       "end": 3.008
+      },
+      {
+       "w": "yourself?",
+       "start": 3.02,
+       "end": 3.56
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "چرا همه چیز دو برابر زمانی که به خودت قول دادی طول میکشه؟",
+     "start": 0.55,
+     "end": 3.56
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "beat": "problem",
+   "start": 3.9,
+   "dur": 14.1,
+   "lines": [
+    {
+     "text": "You plan the week, and it looks doable. Even relaxed.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 3.9,
+     "end": 8.703,
+     "words": [
+      {
+       "w": "You",
+       "start": 3.98,
+       "end": 4.146
+      },
+      {
+       "w": "plan",
+       "start": 4.158,
+       "end": 4.48
+      },
+      {
+       "w": "the",
+       "start": 4.492,
+       "end": 4.575
+      },
+      {
+       "w": "week,",
+       "start": 4.587,
+       "end": 4.932
+      },
+      {
+       "w": "and",
+       "start": 5.134,
+       "end": 5.218
+      },
+      {
+       "w": "it",
+       "start": 5.23,
+       "end": 5.337
+      },
+      {
+       "w": "looks",
+       "start": 5.349,
+       "end": 5.587
+      },
+      {
+       "w": "doable.",
+       "start": 5.599,
+       "end": 6.087
+      },
+      {
+       "w": "Even",
+       "start": 6.906,
+       "end": 7.203
+      },
+      {
+       "w": "relaxed.",
+       "start": 7.215,
+       "end": 7.882
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Then Thursday arrives and half the list is untouched.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 8.703,
+     "end": 12.43,
+     "words": [
+      {
+       "w": "Then",
+       "start": 8.703,
+       "end": 8.977
+      },
+      {
+       "w": "Thursday",
+       "start": 8.989,
+       "end": 9.489
+      },
+      {
+       "w": "arrives",
+       "start": 9.501,
+       "end": 9.977
+      },
+      {
+       "w": "and",
+       "start": 9.989,
+       "end": 10.072
+      },
+      {
+       "w": "half",
+       "start": 10.084,
+       "end": 10.37
+      },
+      {
+       "w": "the",
+       "start": 10.382,
+       "end": 10.489
+      },
+      {
+       "w": "list",
+       "start": 10.501,
+       "end": 10.799
+      },
+      {
+       "w": "is",
+       "start": 10.811,
+       "end": 10.93
+      },
+      {
+       "w": "untouched.",
+       "start": 10.942,
+       "end": 11.608
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "It's not laziness. It's a bias so reliable it has a name: the planning fallacy.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 12.43,
+     "end": 18.0,
+     "words": [
+      {
+       "w": "It's",
+       "start": 12.43,
+       "end": 12.632
+      },
+      {
+       "w": "not",
+       "start": 12.644,
+       "end": 12.882
+      },
+      {
+       "w": "laziness.",
+       "start": 12.894,
+       "end": 13.608
+      },
+      {
+       "w": "It's",
+       "start": 14.43,
+       "end": 14.608
+      },
+      {
+       "w": "a",
+       "start": 14.62,
+       "end": 14.691
+      },
+      {
+       "w": "bias",
+       "start": 14.703,
+       "end": 15.096
+      },
+      {
+       "w": "so",
+       "start": 15.108,
+       "end": 15.322
+      },
+      {
+       "w": "reliable",
+       "start": 15.334,
+       "end": 15.87
+      },
+      {
+       "w": "it",
+       "start": 15.882,
+       "end": 15.953
+      },
+      {
+       "w": "has",
+       "start": 15.965,
+       "end": 16.144
+      },
+      {
+       "w": "a",
+       "start": 16.156,
+       "end": 16.206
+      },
+      {
+       "w": "name:",
+       "start": 16.203,
+       "end": 16.608
+      },
+      {
+       "w": "the",
+       "start": 16.834,
+       "end": 16.93
+      },
+      {
+       "w": "planning",
+       "start": 16.942,
+       "end": 17.311
+      },
+      {
+       "w": "fallacy.",
+       "start": 17.322,
+       "end": 17.965
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "شما برای هفته برنامه‌ریزی می‌کنید، و به نظر می‌رسد که شدنی است. حتی با آرامش.",
+     "start": 3.9,
+     "end": 8.524
+    },
+    {
+     "text": "سپس پنجشنبه از راه می‌رسد و نیمی از لیست دست نخورده باقی مانده است.",
+     "start": 8.524,
+     "end": 12.577
+    },
+    {
+     "text": "این تنبلی نیست. این یک سوگیریِ آنقدر قابل اعتماد است که اسمی هم دارد: مغالطه‌ی برنامه‌ریزی.",
+     "start": 12.577,
+     "end": 18.0
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "beat": "explain",
+   "start": 18.34,
+   "dur": 7.75,
+   "lines": [
+    {
+     "text": "When we plan, we imagine the best-case version of the task.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 18.34,
+     "end": 22.56,
+     "words": [
+      {
+       "w": "When",
+       "start": 18.42,
+       "end": 18.598
+      },
+      {
+       "w": "we",
+       "start": 18.61,
+       "end": 18.717
+      },
+      {
+       "w": "plan,",
+       "start": 18.729,
+       "end": 19.134
+      },
+      {
+       "w": "we",
+       "start": 19.384,
+       "end": 19.515
+      },
+      {
+       "w": "imagine",
+       "start": 19.527,
+       "end": 19.967
+      },
+      {
+       "w": "the",
+       "start": 19.979,
+       "end": 20.062
+      },
+      {
+       "w": "best-case",
+       "start": 20.074,
+       "end": 20.634
+      },
+      {
+       "w": "version",
+       "start": 20.646,
+       "end": 20.991
+      },
+      {
+       "w": "of",
+       "start": 21.003,
+       "end": 21.086
+      },
+      {
+       "w": "the",
+       "start": 21.098,
+       "end": 21.17
+      },
+      {
+       "w": "task.",
+       "start": 21.182,
+       "end": 21.741
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "We picture ourselves focused, healthy, and uninterrupted.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 22.56,
+     "end": 26.09,
+     "words": [
+      {
+       "w": "We",
+       "start": 22.56,
+       "end": 22.715
+      },
+      {
+       "w": "picture",
+       "start": 22.727,
+       "end": 23.108
+      },
+      {
+       "w": "ourselves",
+       "start": 23.12,
+       "end": 23.632
+      },
+      {
+       "w": "focused,",
+       "start": 23.643,
+       "end": 24.155
+      },
+      {
+       "w": "healthy,",
+       "start": 24.405,
+       "end": 24.846
+      },
+      {
+       "w": "and",
+       "start": 25.048,
+       "end": 25.251
+      },
+      {
+       "w": "uninterrupted.",
+       "start": 25.262,
+       "end": 26.072
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "وقتی برنامه‌ریزی می‌کنیم، بهترین حالت ممکنِ انجام کار را تصور می‌کنیم.",
+     "start": 18.34,
+     "end": 22.856
+    },
+    {
+     "text": "ما خودمان را متمرکز، سالم و بی‌وقفه تصور می‌کنیم.",
+     "start": 22.856,
+     "end": 26.09
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "beat": "explain",
+   "start": 26.43,
+   "dur": 3.92,
+   "lines": [
+    {
+     "text": "We forget the interruptions, because they are not part of the story we tell.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 26.43,
+     "end": 30.35,
+     "words": [
+      {
+       "w": "We",
+       "start": 26.51,
+       "end": 26.7
+      },
+      {
+       "w": "forget",
+       "start": 26.712,
+       "end": 27.093
+      },
+      {
+       "w": "the",
+       "start": 27.105,
+       "end": 27.188
+      },
+      {
+       "w": "interruptions,",
+       "start": 27.2,
+       "end": 27.95
+      },
+      {
+       "w": "because",
+       "start": 28.164,
+       "end": 28.486
+      },
+      {
+       "w": "they",
+       "start": 28.498,
+       "end": 28.605
+      },
+      {
+       "w": "are",
+       "start": 28.617,
+       "end": 28.7
+      },
+      {
+       "w": "not",
+       "start": 28.712,
+       "end": 28.938
+      },
+      {
+       "w": "part",
+       "start": 28.95,
+       "end": 29.176
+      },
+      {
+       "w": "of",
+       "start": 29.188,
+       "end": 29.26
+      },
+      {
+       "w": "the",
+       "start": 29.272,
+       "end": 29.343
+      },
+      {
+       "w": "story",
+       "start": 29.355,
+       "end": 29.724
+      },
+      {
+       "w": "we",
+       "start": 29.736,
+       "end": 29.879
+      },
+      {
+       "w": "tell.",
+       "start": 29.891,
+       "end": 30.295
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "ما وقفه‌ها را فراموش می‌کنیم، چون آنها بخشی از داستانی که تعریف می‌کنیم نیستند.",
+     "start": 26.43,
+     "end": 30.35
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "beat": "example",
+   "start": 30.69,
+   "dur": 13.03,
+   "lines": [
+    {
+     "text": "Think about the last essay, tax form, or apartment move.",
+     "scene": "example",
+     "beat": "example",
+     "start": 30.69,
+     "end": 34.958,
+     "words": [
+      {
+       "w": "Think",
+       "start": 30.77,
+       "end": 31.008
+      },
+      {
+       "w": "about",
+       "start": 31.02,
+       "end": 31.258
+      },
+      {
+       "w": "the",
+       "start": 31.27,
+       "end": 31.353
+      },
+      {
+       "w": "last",
+       "start": 31.365,
+       "end": 31.71
+      },
+      {
+       "w": "essay,",
+       "start": 31.722,
+       "end": 32.091
+      },
+      {
+       "w": "tax",
+       "start": 32.305,
+       "end": 32.639
+      },
+      {
+       "w": "form,",
+       "start": 32.651,
+       "end": 32.96
+      },
+      {
+       "w": "or",
+       "start": 33.151,
+       "end": 33.258
+      },
+      {
+       "w": "apartment",
+       "start": 33.27,
+       "end": 33.686
+      },
+      {
+       "w": "move.",
+       "start": 33.698,
+       "end": 34.139
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Your guess before, and the real time after. Notice the gap.",
+     "scene": "example",
+     "beat": "example",
+     "start": 34.958,
+     "end": 40.005,
+     "words": [
+      {
+       "w": "Your",
+       "start": 34.958,
+       "end": 35.184
+      },
+      {
+       "w": "guess",
+       "start": 35.196,
+       "end": 35.47
+      },
+      {
+       "w": "before,",
+       "start": 35.482,
+       "end": 35.982
+      },
+      {
+       "w": "and",
+       "start": 36.208,
+       "end": 36.279
+      },
+      {
+       "w": "the",
+       "start": 36.291,
+       "end": 36.374
+      },
+      {
+       "w": "real",
+       "start": 36.386,
+       "end": 36.648
+      },
+      {
+       "w": "time",
+       "start": 36.66,
+       "end": 36.934
+      },
+      {
+       "w": "after.",
+       "start": 36.946,
+       "end": 37.41
+      },
+      {
+       "w": "Notice",
+       "start": 38.232,
+       "end": 38.636
+      },
+      {
+       "w": "the",
+       "start": 38.648,
+       "end": 38.755
+      },
+      {
+       "w": "gap.",
+       "start": 38.767,
+       "end": 39.184
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "The gap is rarely small, and it almost always points the same way.",
+     "scene": "example",
+     "beat": "example",
+     "start": 40.005,
+     "end": 43.72,
+     "words": [
+      {
+       "w": "The",
+       "start": 40.005,
+       "end": 40.148
+      },
+      {
+       "w": "gap",
+       "start": 40.16,
+       "end": 40.47
+      },
+      {
+       "w": "is",
+       "start": 40.482,
+       "end": 40.624
+      },
+      {
+       "w": "rarely",
+       "start": 40.636,
+       "end": 40.982
+      },
+      {
+       "w": "small,",
+       "start": 40.993,
+       "end": 41.434
+      },
+      {
+       "w": "and",
+       "start": 41.684,
+       "end": 41.767
+      },
+      {
+       "w": "it",
+       "start": 41.779,
+       "end": 41.862
+      },
+      {
+       "w": "almost",
+       "start": 41.874,
+       "end": 42.231
+      },
+      {
+       "w": "always",
+       "start": 42.243,
+       "end": 42.577
+      },
+      {
+       "w": "points",
+       "start": 42.589,
+       "end": 42.91
+      },
+      {
+       "w": "the",
+       "start": 42.922,
+       "end": 43.029
+      },
+      {
+       "w": "same",
+       "start": 43.041,
+       "end": 43.339
+      },
+      {
+       "w": "way.",
+       "start": 43.351,
+       "end": 43.696
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "به آخرین انشا، فرم مالیات یا نقل مکان به آپارتمان فکر کنید.",
+     "start": 30.69,
+     "end": 34.774
+    },
+    {
+     "text": "حدس شما قبل و زمان واقعی بعد از آن. به فاصله بین حدس‌ها توجه کنید.",
+     "start": 34.774,
+     "end": 39.312
+    },
+    {
+     "text": "این شکاف به ندرت کوچک است، و تقریباً همیشه به یک سمت اشاره دارد.",
+     "start": 39.312,
+     "end": 43.72
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "beat": "technique",
+   "start": 44.06,
+   "dur": 7.7,
+   "lines": [
+    {
+     "text": "Try this: before you estimate, ask how long similar tasks took last time.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 44.06,
+     "end": 49.59,
+     "words": [
+      {
+       "w": "Try",
+       "start": 44.14,
+       "end": 44.413
+      },
+      {
+       "w": "this:",
+       "start": 44.425,
+       "end": 44.782
+      },
+      {
+       "w": "before",
+       "start": 45.08,
+       "end": 45.425
+      },
+      {
+       "w": "you",
+       "start": 45.437,
+       "end": 45.544
+      },
+      {
+       "w": "estimate,",
+       "start": 45.556,
+       "end": 46.021
+      },
+      {
+       "w": "ask",
+       "start": 46.282,
+       "end": 46.544
+      },
+      {
+       "w": "how",
+       "start": 46.556,
+       "end": 46.687
+      },
+      {
+       "w": "long",
+       "start": 46.699,
+       "end": 47.021
+      },
+      {
+       "w": "similar",
+       "start": 47.032,
+       "end": 47.425
+      },
+      {
+       "w": "tasks",
+       "start": 47.437,
+       "end": 47.89
+      },
+      {
+       "w": "took",
+       "start": 47.902,
+       "end": 48.104
+      },
+      {
+       "w": "last",
+       "start": 48.116,
+       "end": 48.39
+      },
+      {
+       "w": "time.",
+       "start": 48.402,
+       "end": 48.771
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Use that number, not the hopeful one.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 49.59,
+     "end": 51.76,
+     "words": [
+      {
+       "w": "Use",
+       "start": 49.59,
+       "end": 49.887
+      },
+      {
+       "w": "that",
+       "start": 49.899,
+       "end": 50.078
+      },
+      {
+       "w": "number,",
+       "start": 50.09,
+       "end": 50.447
+      },
+      {
+       "w": "not",
+       "start": 50.637,
+       "end": 50.828
+      },
+      {
+       "w": "the",
+       "start": 50.84,
+       "end": 50.911
+      },
+      {
+       "w": "hopeful",
+       "start": 50.923,
+       "end": 51.352
+      },
+      {
+       "w": "one.",
+       "start": 51.363,
+       "end": 51.661
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "این را امتحان کنید: قبل از اینکه تخمین بزنید، بپرسید دفعه قبل کارهای مشابه چقدر طول کشیده است.",
+     "start": 44.06,
+     "end": 49.124
+    },
+    {
+     "text": "از آن عدد استفاده کنید، نه از عدد امیدوارکننده.",
+     "start": 49.124,
+     "end": 51.76
+    }
+   ]
+  },
+  {
+   "id": "c7",
+   "beat": "technique",
+   "start": 52.1,
+   "dur": 2.68,
+   "lines": [
+    {
+     "text": "Then add the interruptions you already know will come.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 52.1,
+     "end": 54.78,
+     "words": [
+      {
+       "w": "Then",
+       "start": 52.18,
+       "end": 52.465
+      },
+      {
+       "w": "add",
+       "start": 52.477,
+       "end": 52.703
+      },
+      {
+       "w": "the",
+       "start": 52.715,
+       "end": 52.787
+      },
+      {
+       "w": "interruptions",
+       "start": 52.799,
+       "end": 53.43
+      },
+      {
+       "w": "you",
+       "start": 53.442,
+       "end": 53.549
+      },
+      {
+       "w": "already",
+       "start": 53.561,
+       "end": 53.942
+      },
+      {
+       "w": "know",
+       "start": 53.953,
+       "end": 54.144
+      },
+      {
+       "w": "will",
+       "start": 54.156,
+       "end": 54.299
+      },
+      {
+       "w": "come.",
+       "start": 54.311,
+       "end": 54.692
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "سپس وقفه‌هایی را که می‌دانید پیش خواهد آمد، اضافه کنید.",
+     "start": 52.1,
+     "end": 54.78
+    }
+   ]
+  },
+  {
+   "id": "c8",
+   "beat": "ending",
+   "start": 55.12,
+   "dur": 10.37,
+   "lines": [
+    {
+     "text": "So: your gut plans the movie version. Your history knows the real one.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 55.12,
+     "end": 60.914,
+     "words": [
+      {
+       "w": "So:",
+       "start": 55.2,
+       "end": 55.687
+      },
+      {
+       "w": "your",
+       "start": 55.984,
+       "end": 56.174
+      },
+      {
+       "w": "gut",
+       "start": 56.186,
+       "end": 56.376
+      },
+      {
+       "w": "plans",
+       "start": 56.388,
+       "end": 56.756
+      },
+      {
+       "w": "the",
+       "start": 56.768,
+       "end": 56.839
+      },
+      {
+       "w": "movie",
+       "start": 56.851,
+       "end": 57.125
+      },
+      {
+       "w": "version.",
+       "start": 57.137,
+       "end": 57.636
+      },
+      {
+       "w": "Your",
+       "start": 58.454,
+       "end": 58.667
+      },
+      {
+       "w": "history",
+       "start": 58.679,
+       "end": 59.084
+      },
+      {
+       "w": "knows",
+       "start": 59.095,
+       "end": 59.393
+      },
+      {
+       "w": "the",
+       "start": 59.405,
+       "end": 59.5
+      },
+      {
+       "w": "real",
+       "start": 59.512,
+       "end": 59.784
+      },
+      {
+       "w": "one.",
+       "start": 59.796,
+       "end": 60.094
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Estimate from history, not from hope, and pad for the interruptions you already know about.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 60.914,
+     "end": 65.49,
+     "words": [
+      {
+       "w": "Estimate",
+       "start": 60.914,
+       "end": 61.366
+      },
+      {
+       "w": "from",
+       "start": 61.378,
+       "end": 61.509
+      },
+      {
+       "w": "history,",
+       "start": 61.521,
+       "end": 61.972
+      },
+      {
+       "w": "not",
+       "start": 62.173,
+       "end": 62.352
+      },
+      {
+       "w": "from",
+       "start": 62.364,
+       "end": 62.507
+      },
+      {
+       "w": "hope,",
+       "start": 62.519,
+       "end": 62.839
+      },
+      {
+       "w": "and",
+       "start": 63.053,
+       "end": 63.172
+      },
+      {
+       "w": "pad",
+       "start": 63.184,
+       "end": 63.517
+      },
+      {
+       "w": "for",
+       "start": 63.528,
+       "end": 63.636
+      },
+      {
+       "w": "the",
+       "start": 63.648,
+       "end": 63.719
+      },
+      {
+       "w": "interruptions",
+       "start": 63.731,
+       "end": 64.349
+      },
+      {
+       "w": "you",
+       "start": 64.361,
+       "end": 64.468
+      },
+      {
+       "w": "already",
+       "start": 64.48,
+       "end": 64.848
+      },
+      {
+       "w": "know",
+       "start": 64.86,
+       "end": 65.062
+      },
+      {
+       "w": "about.",
+       "start": 65.074,
+       "end": 65.49
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "بنابراین: شهود شما نسخه ایده‌آل را برنامه‌ریزی می‌کند. تاریخچه شما نسخه واقعی را می‌داند.",
+     "start": 55.12,
+     "end": 60.361
+    },
+    {
+     "text": "از روی تاریخ تخمین بزنید، نه از روی امید، و وقفه‌هایی را که از قبل می‌دانید، پوشش دهید.",
+     "start": 60.361,
+     "end": 65.49
+    }
+   ]
+  },
+  {
+   "id": "c9",
+   "beat": "ending",
+   "start": 65.83,
+   "dur": 3.29,
+   "lines": [
+    {
+     "text": "What did you finish on time this month? Anything?",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 65.83,
+     "end": 69.12,
+     "words": [
+      {
+       "w": "What",
+       "start": 65.91,
+       "end": 66.1
+      },
+      {
+       "w": "did",
+       "start": 66.112,
+       "end": 66.231
+      },
+      {
+       "w": "you",
+       "start": 66.243,
+       "end": 66.338
+      },
+      {
+       "w": "finish",
+       "start": 66.35,
+       "end": 66.695
+      },
+      {
+       "w": "on",
+       "start": 66.707,
+       "end": 66.838
+      },
+      {
+       "w": "time",
+       "start": 66.85,
+       "end": 67.088
+      },
+      {
+       "w": "this",
+       "start": 67.1,
+       "end": 67.267
+      },
+      {
+       "w": "month?",
+       "start": 67.279,
+       "end": 67.648
+      },
+      {
+       "w": "Anything?",
+       "start": 68.467,
+       "end": 69.026
+      }
+     ],
+     "timing": "measured"
+    }
+   ],
+   "fa": [
+    {
+     "text": "این ماه چه کاری را به موقع تمام کردی؟ هر کاری؟",
+     "start": 65.83,
+     "end": 69.12
+    }
+   ]
+  }
+ ],
+ "word_timing": {
+  "measured_lines": 16,
+  "lines": 16
+ }
+}

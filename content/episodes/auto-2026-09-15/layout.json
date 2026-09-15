@@ -1,0 +1,656 @@
+{
+ "en": [
+  {
+   "text": "Why does everything take twice as long as you promised yourself?",
+   "start": 0.55,
+   "end": 3.56,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    80,
+    270,
+    999,
+    510
+   ]
+  },
+  {
+   "text": "You plan the week, and it looks doable. Even relaxed.",
+   "start": 3.9,
+   "end": 8.703,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    144,
+    270,
+    936,
+    430
+   ]
+  },
+  {
+   "text": "Then Thursday arrives and half the list is untouched.",
+   "start": 8.703,
+   "end": 12.43,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    92,
+    270,
+    988,
+    430
+   ]
+  },
+  {
+   "text": "It's not laziness. It's a bias so reliable it has a name: the planning fallacy.",
+   "start": 12.43,
+   "end": 18.0,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    92,
+    270,
+    987,
+    510
+   ]
+  },
+  {
+   "text": "When we plan, we imagine the best-case version of the task.",
+   "start": 18.34,
+   "end": 22.56,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    79,
+    270,
+    1000,
+    430
+   ]
+  },
+  {
+   "text": "We picture ourselves focused, healthy, and uninterrupted.",
+   "start": 22.56,
+   "end": 26.09,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    104,
+    270,
+    976,
+    430
+   ]
+  },
+  {
+   "text": "We forget the interruptions, because they are not part of the story we tell.",
+   "start": 26.43,
+   "end": 30.35,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    109,
+    270,
+    971,
+    510
+   ]
+  },
+  {
+   "text": "Think about the last essay, tax form, or apartment move.",
+   "start": 30.69,
+   "end": 34.958,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    83,
+    270,
+    996,
+    430
+   ]
+  },
+  {
+   "text": "Your guess before, and the real time after. Notice the gap.",
+   "start": 34.958,
+   "end": 40.005,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    73,
+    270,
+    1007,
+    430
+   ]
+  },
+  {
+   "text": "The gap is rarely small, and it almost always points the same way.",
+   "start": 40.005,
+   "end": 43.72,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    86,
+    270,
+    993,
+    510
+   ]
+  },
+  {
+   "text": "Try this: before you estimate, ask how long similar tasks took last time.",
+   "start": 44.06,
+   "end": 49.59,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    109,
+    270,
+    970,
+    510
+   ]
+  },
+  {
+   "text": "Use that number, not the hopeful one.",
+   "start": 49.59,
+   "end": 51.76,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    163,
+    270,
+    917,
+    430
+   ]
+  },
+  {
+   "text": "Then add the interruptions you already know will come.",
+   "start": 52.1,
+   "end": 54.78,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    84,
+    270,
+    996,
+    430
+   ]
+  },
+  {
+   "text": "So: your gut plans the movie version. Your history knows the real one.",
+   "start": 55.12,
+   "end": 60.914,
+   "rows": 3,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    78,
+    270,
+    1002,
+    510
+   ]
+  },
+  {
+   "text": "Estimate from history, not from hope, and pad for the interruptions you already know about.",
+   "start": 60.914,
+   "end": 65.49,
+   "rows": 3,
+   "font": 42,
+   "direction": "ltr",
+   "bbox": [
+    85,
+    270,
+    995,
+    510
+   ]
+  },
+  {
+   "text": "What did you finish on time this month? Anything?",
+   "start": 65.83,
+   "end": 69.12,
+   "rows": 2,
+   "font": 50,
+   "direction": "ltr",
+   "bbox": [
+    117,
+    270,
+    963,
+    430
+   ]
+  }
+ ],
+ "fa": [
+  {
+   "text": "چرا همه چیز دو برابر زمانی که به خودت قول دادی طول میکشه؟",
+   "start": 0.55,
+   "end": 3.56,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    139,
+    1308,
+    885,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "شما برای هفته برنامه‌ریزی می‌کنید، و به نظر می‌رسد که شدنی است. حتی با آرامش.",
+   "start": 3.9,
+   "end": 8.524,
+   "rows": 2,
+   "font": 46,
+   "direction": "rtl",
+   "bbox": [
+    85,
+    1328,
+    939,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "سپس پنجشنبه از راه می‌رسد و نیمی از لیست دست نخورده باقی مانده است.",
+   "start": 8.524,
+   "end": 12.577,
+   "rows": 2,
+   "font": 50,
+   "direction": "rtl",
+   "bbox": [
+    92,
+    1314,
+    931,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "این تنبلی نیست. این یک سوگیریِ آنقدر قابل",
+   "start": 12.577,
+   "end": 15.047477777777777,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    132,
+    1308,
+    892,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "اعتماد است که اسمی هم دارد: مغالطه‌ی برنامه‌ریزی.",
+   "start": 15.047477777777777,
+   "end": 18.0,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    153,
+    1308,
+    871,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "وقتی برنامه‌ریزی می‌کنیم، بهترین حالت ممکنِ انجام کار را تصور می‌کنیم.",
+   "start": 18.34,
+   "end": 22.856,
+   "rows": 2,
+   "font": 50,
+   "direction": "rtl",
+   "bbox": [
+    92,
+    1314,
+    932,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "ما خودمان را متمرکز، سالم و بی‌وقفه تصور می‌کنیم.",
+   "start": 22.856,
+   "end": 26.09,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    97,
+    1308,
+    927,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "ما وقفه‌ها را فراموش می‌کنیم، چون آنها بخشی از داستانی که تعریف می‌کنیم نیستند.",
+   "start": 26.43,
+   "end": 30.35,
+   "rows": 2,
+   "font": 44,
+   "direction": "rtl",
+   "bbox": [
+    90,
+    1336,
+    934,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "به آخرین انشا، فرم مالیات یا نقل مکان به آپارتمان فکر کنید.",
+   "start": 30.69,
+   "end": 34.774,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    80,
+    1308,
+    944,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "حدس شما قبل و زمان واقعی بعد از آن. به فاصله بین حدس‌ها توجه کنید.",
+   "start": 34.774,
+   "end": 39.312,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    85,
+    1308,
+    938,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "این شکاف به ندرت کوچک است، و تقریباً همیشه به یک سمت اشاره دارد.",
+   "start": 39.312,
+   "end": 43.72,
+   "rows": 2,
+   "font": 50,
+   "direction": "rtl",
+   "bbox": [
+    91,
+    1314,
+    933,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "این را امتحان کنید: قبل از اینکه تخمین بزنید،",
+   "start": 44.06,
+   "end": 46.510322580645166,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    152,
+    1308,
+    872,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "بپرسید دفعه قبل کارهای مشابه چقدر طول کشیده است.",
+   "start": 46.510322580645166,
+   "end": 49.124,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    82,
+    1308,
+    941,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "از آن عدد استفاده کنید، نه از عدد امیدوارکننده.",
+   "start": 49.124,
+   "end": 51.76,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    132,
+    1308,
+    891,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "سپس وقفه‌هایی را که می‌دانید پیش خواهد آمد، اضافه کنید.",
+   "start": 52.1,
+   "end": 54.78,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    100,
+    1308,
+    923,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "بنابراین: شهود شما نسخه ایده‌آل را برنامه‌ریزی می‌کند. تاریخچه شما نسخه واقعی را می‌داند.",
+   "start": 55.12,
+   "end": 60.361,
+   "rows": 2,
+   "font": 42,
+   "direction": "rtl",
+   "bbox": [
+    90,
+    1342,
+    933,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "از روی تاریخ تخمین بزنید، نه از روی امید، و وقفه‌هایی را که از قبل می‌دانید، پوشش دهید.",
+   "start": 60.361,
+   "end": 65.49,
+   "rows": 2,
+   "font": 42,
+   "direction": "rtl",
+   "bbox": [
+    93,
+    1342,
+    931,
+    1520
+   ],
+   "overflow": false
+  },
+  {
+   "text": "این ماه چه کاری را به موقع تمام کردی؟ هر کاری؟",
+   "start": 65.83,
+   "end": 69.12,
+   "rows": 2,
+   "font": 52,
+   "direction": "rtl",
+   "bbox": [
+    142,
+    1308,
+    882,
+    1520
+   ],
+   "overflow": false
+  }
+ ],
+ "policy": {
+  "width": 1080,
+  "height": 1920,
+  "safe_top": 270,
+  "safe_bottom": 1520,
+  "right_button_column_x": 960,
+  "right_button_column_y": [
+   1100,
+   1700
+  ],
+  "en_top": 270,
+  "en_row_height": 80,
+  "en_max_rows": 3,
+  "en_max_width": 950,
+  "en_font_size": 50,
+  "fa_bottom": 1520,
+  "fa_max_width": 780,
+  "fa_max_rows": 2,
+  "fa_font_max": 52,
+  "fa_font_min": 40,
+  "scene_zone": [
+   560,
+   1340
+  ],
+  "min_contrast_ratio": 4.5
+ },
+ "font_fallbacks": 0,
+ "total": 70.32,
+ "fps": 30,
+ "width": 1080,
+ "height": 1920,
+ "safe_mode": false,
+ "beats": [
+  {
+   "beat": "hook",
+   "start": 0.0
+  },
+  {
+   "beat": "problem",
+   "start": 3.9
+  },
+  {
+   "beat": "explain",
+   "start": 18.34
+  },
+  {
+   "beat": "example",
+   "start": 30.69
+  },
+  {
+   "beat": "technique",
+   "start": 44.06
+  },
+  {
+   "beat": "ending",
+   "start": 55.12
+  }
+ ],
+ "qa_frames": [
+  {
+   "beat": "hook",
+   "pos": "s",
+   "t": 0.6
+  },
+  {
+   "beat": "hook",
+   "pos": "m",
+   "t": 1.95
+  },
+  {
+   "beat": "hook",
+   "pos": "e",
+   "t": 3.4
+  },
+  {
+   "beat": "problem",
+   "pos": "s",
+   "t": 4.5
+  },
+  {
+   "beat": "problem",
+   "pos": "m",
+   "t": 11.12
+  },
+  {
+   "beat": "problem",
+   "pos": "e",
+   "t": 17.84
+  },
+  {
+   "beat": "explain",
+   "pos": "s",
+   "t": 18.94
+  },
+  {
+   "beat": "explain",
+   "pos": "m",
+   "t": 24.515
+  },
+  {
+   "beat": "explain",
+   "pos": "e",
+   "t": 30.19
+  },
+  {
+   "beat": "example",
+   "pos": "s",
+   "t": 31.290000000000003
+  },
+  {
+   "beat": "example",
+   "pos": "m",
+   "t": 37.375
+  },
+  {
+   "beat": "example",
+   "pos": "e",
+   "t": 43.56
+  },
+  {
+   "beat": "technique",
+   "pos": "s",
+   "t": 44.660000000000004
+  },
+  {
+   "beat": "technique",
+   "pos": "m",
+   "t": 49.59
+  },
+  {
+   "beat": "technique",
+   "pos": "e",
+   "t": 54.62
+  },
+  {
+   "beat": "ending",
+   "pos": "s",
+   "t": 55.72
+  },
+  {
+   "beat": "ending",
+   "pos": "m",
+   "t": 62.72
+  },
+  {
+   "beat": "ending",
+   "pos": "e",
+   "t": 69.82
+  }
+ ],
+ "previews": [
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-15/preview_start.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-15/preview_middle.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-15/preview_end.jpg"
+ ],
+ "contact_sheet": "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-15/qa_contact_sheet.jpg"
+}
