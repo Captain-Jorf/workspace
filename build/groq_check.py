@@ -170,12 +170,34 @@ def error_category(msg):
     return ""
 
 
+def annotation_text(text):
+    """Encode a SAFE one-liner as a GitHub Actions annotation message.
+
+    Newlines/carriage returns/percent signs are escaped the way the workflow
+    command parser expects, and the text goes through the central scrubber, so
+    an annotation can never carry a credential. Annotation values are visible in
+    the run UI and through the REST API even when the raw log archive is not.
+    """
+    safe = common.scrub_secrets(str(text))
+    safe = " / ".join(part.strip() for part in safe.splitlines() if part.strip())
+    return safe.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")[:1500]
+
+
+def emit_annotation(level, reason):
+    """Emit a workflow annotation on CI so a red run is diagnosable safely."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    title = "groq-connection-check"
+    print(f"::{level} title={title}::{annotation_text(reason)}")
+
+
 def print_failure(reason, extra_hints=()):
     """Print a fail-closed failure block. Never falls back to mock or static."""
     print(f"Groq connection: FAILED ({reason})")
     for line in extra_hints:
         print(line)
     print("Mock used: false")
+    emit_annotation("error", f"Groq connection FAILED: {reason}")
 
 
 MOCK_BANNER = (
@@ -215,6 +237,10 @@ def print_success_summary(hostname, models, producer, reviewer, approved):
               "reviewer": reviewer, "approved": str(bool(approved)).lower()}
     for line in SUCCESS_SUMMARY_ORDER:
         print(line.format(**values))
+    emit_annotation("notice", "Groq connection: OK "
+                              f"host={hostname} models={models} producer={producer} "
+                              f"reviewer={reviewer} approved={str(bool(approved)).lower()} "
+                              "mock=false")
 
 
 def run_real(producer_model, reviewer_model):

@@ -85,31 +85,5 @@ jobs:
           unset MOCK_GROQ || true
           python3 build/groq_check.py \
             --producer-model "$PRODUCER_MODEL" \
-            --reviewer-model "$REVIEWER_MODEL" >check.out 2>&1
-          code=$?
-          echo "----- step output (exit=$code) -----"
-          cat check.out
-          echo "----- end -----"
-          # The runner log archive host is unreachable from this session, but
-          # check-run annotations are readable through the REST API. Re-emit the
-          # WHOLE output as one annotation, after running it through the central
-          # scrubber plus an explicit credential guard.
-          python3 - "$code" << 'PY'
-          import os, sys
-          sys.path.insert(0, "build")
-          import common
-          code = sys.argv[1]
-          try:
-              with open("check.out", encoding="utf-8", errors="replace") as f:
-                  txt = f.read()
-          except Exception as e:
-              txt = "<unreadable output: %s>" % type(e).__name__
-          txt = common.scrub_secrets(txt) or "<empty output>"
-          enc = txt.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          key = (os.environ.get("GROQ_API_KEY") or "").strip()
-          if key and (key in enc or key in txt):
-              enc = "<withheld: the scrubber did not clear the credential>"
-          level = "notice" if code == "0" else "error"
-          print("::%s title=groq-check safe output (exit=%s)::%s" % (level, code, enc[:6000]))
-          PY
-          exit $code
+            --reviewer-model "$REVIEWER_MODEL"
+          exit $?
