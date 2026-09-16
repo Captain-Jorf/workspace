@@ -83,7 +83,24 @@ jobs:
         run: |
           set -uo pipefail
           unset MOCK_GROQ || true
-          python3 build/groq_check.py \
-            --producer-model "$PRODUCER_MODEL" \
-            --reviewer-model "$REVIEWER_MODEL"
-          exit $?
+          # DIAGNOSTIC SAMPLING: the real check is green on most runs but went
+          # red once with exit code 6 (EXIT_JSON = structured-output validation)
+          # while every HTTP call returned 200. That pre-dated the annotation
+          # emitter, so the exact reason was lost. Sample the real check several
+          # times in one run so an intermittent red is captured WITH its safe
+          # one-line reason. Each attempt is 3 tiny read-only Groq calls on a
+          # fixed non-sensitive packet; nothing is created or published.
+          SAMPLES=6
+          worst=0
+          for i in $(seq 1 "$SAMPLES"); do
+            echo "===== real check sample $i/$SAMPLES ====="
+            python3 build/groq_check.py \
+              --producer-model "$PRODUCER_MODEL" \
+              --reviewer-model "$REVIEWER_MODEL"
+            code=$?
+            echo "----- sample $i exit=$code -----"
+            if [ "$code" -gt "$worst" ]; then worst=$code; fi
+            sleep 3
+          done
+          echo "worst exit code across $SAMPLES real samples: $worst"
+          exit $worst
