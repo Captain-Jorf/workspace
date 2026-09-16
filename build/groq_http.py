@@ -49,6 +49,7 @@ Error taxonomy (safe, no secrets):
     other 403                  -> permission-or-account-restriction (no retry)
     429                        -> rate-limited (Retry-After honored, bounded)
     5xx / timeout / network    -> upstream-error / network-unreachable (bounded retry)
+    HTML page instead of JSON   -> edge-html-response (bounded retry)
 
 Safe logging: hostname, HTTP status, attempt numbers and a scrubbed,
 truncated error body. Never the key, never the Authorization header, never a
@@ -89,6 +90,14 @@ RATE_LIMITED = "rate-limited"
 UPSTREAM_ERROR = "upstream-error"
 NETWORK_UNREACHABLE = "network-unreachable"
 INVALID_RESPONSE = "invalid-response"
+# A whole HTML *page* where a Groq JSON answer was expected. Captured from a real
+# run against api.groq.com (run 35042629998, reviewer call):
+#   "Groq HTTP 409: invalid-response host=api.groq.com attempt=1
+#    detail=<!DOCTYPE html> / <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" ..."
+# That page is the CDN/edge error template, not an application response, so the
+# request never got a real answer: it is transient infrastructure noise and is
+# retried a bounded number of times, then fails RED (never a mock, never a guess).
+EDGE_HTML_RESPONSE = "edge-html-response"
 
 CLOUDFLARE_ERROR_CODE = 1010
 
@@ -101,6 +110,12 @@ REQUEST_TIMEOUT = 60
 MODELS_TIMEOUT = 20
 PROBE_TIMEOUT = 15
 ERROR_BODY_LOG_LIMIT = 200
+
+# Appended to edge-html-response errors: states plainly what it means, so nobody
+# "fixes" it by rotating GROQ_API_KEY or by falling back to mock content.
+EDGE_HTML_HINT = (" — the edge returned an HTML page instead of a Groq JSON "
+                  "answer (transient CDN/edge condition; retried). The API key "
+                  "is not the cause and no mock content was substituted.")
 
 # --------------------------------------------------------------------- exceptions
 
@@ -262,8 +277,14 @@ def detect_cloudflare_code(body):
 
 
 def classify(status, body="", headers=None):
-    """Map an HTTP failure to a (category, cf_code) pair. Never raises."""
-    codes = detect_cloudflare_code(body) if status == 403 else set()
+    """Map an HTTP failure to a (category, cf_code) pair. Never raises.
+
+    Order matters: the credential- and edge-block-specific statuses are matched
+    first so a Cloudflare 403/1010 can never be softened into a retry, and the
+    "this was an HTML page, not an API answer" case is only reached for the
+    remaining statuses (e.g. the real-world 409 above).
+    """
+    codes = detect_cloudflare_code(body)
     cf_edge = looks_like_cloudflare(headers, body)
     if status == 403 and (CLOUDFLARE_ERROR_CODE in codes or (cf_edge and 1010 in codes)):
         return CLOUDFLARE_CLIENT_BLOCKED, CLOUDFLARE_ERROR_CODE
@@ -275,10 +296,39 @@ def classify(status, body="", headers=None):
         return RATE_LIMITED, None
     if isinstance(status, int) and 500 <= status <= 599:
         return UPSTREAM_ERROR, None
+    if is_html_body(body):
+        return EDGE_HTML_RESPONSE, (CLOUDFLARE_ERROR_CODE if CLOUDFLARE_ERROR_CODE in codes else None)
     return INVALID_RESPONSE, None
 
 
 # --------------------------------------------------------------------- safe text
+
+
+_HTML_MARKERS = ("<!doctype html", "<html", "<head", "<body", "<!--[if")
+
+
+def is_html_body(text):
+    """True when a response body is an HTML page rather than a JSON answer."""
+    head = (text or "")[:4096].strip().lower()
+    if not head:
+        return False
+    return any(m in head for m in _HTML_MARKERS)
+
+
+def error_detail_snippet(raw_body, headers=None):
+    """Safe, SHORT tail for an error message.
+
+    JSON-ish bodies are scrubbed and truncated as before. An HTML page is only
+    summarised (kind, size, whether the edge was Cloudflare) — dumping markup
+    into a log or annotation is noise and hides the one useful fact: the answer
+    did not come from the Groq application at all.
+    """
+    raw = raw_body or ""
+    if is_html_body(raw):
+        return (f"body=html-page bytes={len(raw)} "
+                f"cloudflare_edge={str(bool(looks_like_cloudflare(headers, raw))).lower()}")
+    body = safe_body(raw)
+    return f"detail={body}" if body else ""
 
 
 def scrub(text):
@@ -304,6 +354,26 @@ def _read_body(exc, limit=4096):
 def safe_body(raw, limit=ERROR_BODY_LOG_LIMIT):
     """Scrub + truncate an error body so it is safe to log."""
     return scrub((raw or "")[: max(limit * 4, limit)])[:limit]
+
+def _read_full_body(resp):
+    """Read a SUCCESS response body fully, once. Never raises.
+
+    `resp.read()` is tried first (some test doubles take no limit argument),
+    then a bounded read. The text is parsed as JSON by the caller; on failure it
+    is classified, so an edge HTML page can be told apart from real garbage.
+    """
+    for reader in (lambda: resp.read(), lambda: resp.read(8 * 1024 * 1024)):
+        try:
+            raw = reader()
+            if isinstance(raw, bytes):
+                return raw.decode("utf-8", "replace")
+            return str(raw or "")
+        except TypeError:
+            continue
+        except Exception:  # noqa: BLE001 — unreadable body is classified as invalid
+            return ""
+    return ""
+
 
 def _read_response_body(resp, limit=2048):
     """Read a success-response body defensively (file-like objects vary)."""
@@ -359,6 +429,8 @@ def request(method, url, payload=None, timeout=REQUEST_TIMEOUT, with_auth=True,
     - other 403 -> permission-or-account-restriction, no retry.
     - 429 -> rate-limited, Retry-After honored, at most `max_rate_retries`.
     - 5xx / timeout / network -> bounded retry, then raises.
+    - an HTML page where JSON was expected (any status, including 2xx) ->
+      edge-html-response, bounded retry, then raises RED. Never a mock.
 
     Returns (parsed_json, meta). `meta` is safe: mock/host/http_status/attempt
     and the request header NAMES that were sent (never their values).
@@ -386,14 +458,13 @@ def request(method, url, payload=None, timeout=REQUEST_TIMEOUT, with_auth=True,
         try:
             with _open(req, timeout) as r:
                 status = getattr(r, "status", 200)
-                try:
-                    resp = json.load(r)
-                except Exception:  # noqa: BLE001 — non-JSON body on a 2xx
-                    raise GroqAPIError(
-                        INVALID_RESPONSE,
-                        f"Groq invalid response envelope: host={hostname} "
-                        f"http_status={status} attempt={attempt}",
-                        http_status=status, attempts=attempt)
+                ok_body = _read_full_body(r)
+                ok_headers = getattr(r, "headers", None)
+            try:
+                resp = json.loads(ok_body)
+            except Exception:  # noqa: BLE001 — non-JSON body on a 2xx
+                resp = None
+            if isinstance(resp, (dict, list)):
                 return resp, {
                     "mock": False,
                     "host": hostname,
@@ -403,6 +474,25 @@ def request(method, url, payload=None, timeout=REQUEST_TIMEOUT, with_auth=True,
                     "request_headers": header_names,
                     "user_agent_acceptable": True,
                 }
+            category, cf_code = classify(status, ok_body, ok_headers)
+            if category == EDGE_HTML_RESPONSE:
+                # The edge answered 2xx with a PAGE (e.g. a Cloudflare challenge
+                # or error template) instead of JSON. Transient -> bounded retry.
+                last_err = f"HTTP {status} html-page"
+                if attempt < max_attempts:
+                    time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+                    continue
+                raise GroqAPIError(
+                    EDGE_HTML_RESPONSE,
+                    f"Groq HTTP {status}: {EDGE_HTML_RESPONSE} host={hostname} "
+                    f"attempts={attempt} " + error_detail_snippet(ok_body, ok_headers)
+                    + EDGE_HTML_HINT,
+                    http_status=status, cf_code=cf_code, retryable=True, attempts=attempt)
+            raise GroqAPIError(
+                INVALID_RESPONSE,
+                f"Groq invalid response envelope: host={hostname} "
+                f"http_status={status} attempt={attempt}",
+                http_status=status, attempts=attempt)
         except urllib.error.HTTPError as e:
             raw_body = _read_body(e)
             body = safe_body(raw_body)
@@ -444,15 +534,17 @@ def request(method, url, payload=None, timeout=REQUEST_TIMEOUT, with_auth=True,
                 wait = parse_retry_after(e.headers) or RETRY_BASE_SECONDS * (2 ** (rate_retries - 1))
                 time.sleep(min(wait, RETRY_AFTER_CAP_SECONDS))
                 continue
-            if category == UPSTREAM_ERROR:
+            if category in (UPSTREAM_ERROR, EDGE_HTML_RESPONSE):
                 last_err = f"HTTP {e.code}"
                 if attempt < max_attempts:
                     time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
                     continue
+                snippet = error_detail_snippet(raw_body, e.headers)
                 raise GroqAPIError(
-                    UPSTREAM_ERROR,
-                    f"Groq HTTP {e.code}: {UPSTREAM_ERROR} host={hostname} "
-                    f"attempts={attempt}" + (f" detail={body}" if body else ""),
+                    category,
+                    f"Groq HTTP {e.code}: {category} host={hostname} "
+                    f"attempts={attempt} " + snippet
+                    + (EDGE_HTML_HINT if category == EDGE_HTML_RESPONSE else ""),
                     http_status=e.code, retryable=True, attempts=attempt)
             raise GroqAPIError(
                 category,

@@ -132,6 +132,22 @@ REJECTING_REVIEWER_JSON = json.dumps({
     "blocking_errors": ["hook_quality weak"],
 })
 
+# A generic CDN/edge error PAGE — captured shape from a real api.groq.com run
+# (35042629998): HTTP 409 whose body was HTML instead of a Groq JSON answer.
+# Note it carries NO Cloudflare error code, so it must not be mistaken for the
+# 403/1010 client block.
+EDGE_409_HTML = """<!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head><title>edge | request failed</title></head>
+<body>
+<div id="cf-error-details"><h1>Something went wrong at the edge.</h1>
+<p>The origin returned an unexpected response. Please retry shortly.</p>
+</div></body></html>
+"""
+
 SERVED_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"]
 
 
@@ -154,7 +170,7 @@ class EdgeHandler(BaseHTTPRequestHandler):
     """Stub Groq endpoint sitting behind a Cloudflare-style UA filter."""
 
     # ok | cf1010 | cf1010_json | e401 | e403_other | r429 | r429_once | e500 |
-    # timeout | revision
+    # timeout | revision | e409html | e409html_once | html200
     mode = "ok"
     edge_ua_filter = True      # emulate Cloudflare Browser Integrity Check
     recorded = []              # every request the edge actually saw
@@ -246,6 +262,15 @@ class EdgeHandler(BaseHTTPRequestHandler):
             return self._send({"error": "rate"}, code=429, retry_after=1, cloudflare=True)
         if mode == "e500":
             return self._send({"error": "boom"}, code=500, cloudflare=True)
+        if mode == "e409html":
+            return self._send(None, code=409, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
+        if mode == "e409html_once" and EdgeHandler.get_count == 1:
+            return self._send(None, code=409, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
+        if mode == "html200":
+            return self._send(None, code=200, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self._send(None, code=401, raw=GROQ_401_JSON.encode())
         return self._send({"object": "list", "data": [{"id": m} for m in SERVED_MODELS]})
@@ -276,6 +301,15 @@ class EdgeHandler(BaseHTTPRequestHandler):
             return self._send({"error": "rate"}, code=429, retry_after=1, cloudflare=True)
         if mode == "r429_once" and EdgeHandler.post_count == 1:
             return self._send({"error": "rate"}, code=429, retry_after=1, cloudflare=True)
+        if mode == "e409html":
+            return self._send(None, code=409, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
+        if mode == "e409html_once" and EdgeHandler.post_count == 1:
+            return self._send(None, code=409, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
+        if mode == "html200":
+            return self._send(None, code=200, raw=EDGE_409_HTML.encode(),
+                              ctype="text/html; charset=UTF-8", cloudflare=True)
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self._send(None, code=401, raw=GROQ_401_JSON.encode())
         is_reviewer = "GroqReviewer" in raw
@@ -745,7 +779,8 @@ class MockGatingTests(EdgeServerMixin, unittest.TestCase):
     """Stage 5/6: real by default, mock only on an explicit flag, never in cron."""
 
     def test_connection_check_never_falls_back_to_mock_on_a_real_failure(self):
-        for mode in ("cf1010", "cf1010_json", "e401", "e403_other", "e500", "r429"):
+        for mode in ("cf1010", "cf1010_json", "e401", "e403_other", "e500", "r429",
+                     "e409html", "html200"):
             EdgeHandler.mode = mode
             EdgeHandler.edge_ua_filter = False
             r = run_check(env=clean_env(GROQ_API_KEY=FAKE_KEY, GROQ_BASE_URL=self.base))
@@ -939,6 +974,141 @@ class DailyPipelineHonestyTests(EdgeServerMixin, unittest.TestCase):
             self.assertEqual(report["selection"]["producer_model"], "openai/gpt-oss-120b")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class EdgeHtmlResponseTests(EdgeServerMixin, unittest.TestCase):
+    """A real api.groq.com failure mode captured AFTER the 1010 fix.
+
+    Run 35042629998 (session branch, real key, no mock) went red with:
+
+        reviewer: Groq HTTP 409: invalid-response host=api.groq.com attempt=1
+                  detail=<!DOCTYPE html> / <!--[if lt IE 7]> ...
+
+    The body was the CDN/edge error PAGE, not a Groq answer, and 409 was not in
+    the retryable set, so the very first transient blip failed the check. An
+    HTML page means the request never got an application-level answer: it is
+    transient infrastructure noise, so it gets the same bounded retry as a 5xx
+    and then fails RED (never a mock, never a guessed classification).
+    """
+
+    def test_classify_maps_html_pages_to_edge_html_response(self):
+        cases = [
+            (409, EDGE_409_HTML, {"Server": "cloudflare"}, groq_http.EDGE_HTML_RESPONSE),
+            (400, EDGE_409_HTML, {}, groq_http.EDGE_HTML_RESPONSE),
+            (200, EDGE_409_HTML, {"CF-RAY": "x"}, groq_http.EDGE_HTML_RESPONSE),
+            (404, "<html><body>nope</body></html>", {}, groq_http.EDGE_HTML_RESPONSE),
+        ]
+        for status, body, headers, expected in cases:
+            self.assertEqual(groq_http.classify(status, body, headers)[0], expected,
+                             f"status={status}")
+
+    def test_credential_and_block_statuses_keep_priority_over_html(self):
+        """A 403/1010 page must stay no-retry; 401/429/5xx keep their category."""
+        self.assertEqual(groq_http.classify(403, CLOUDFLARE_1010_HTML,
+                                            {"Server": "cloudflare"}),
+                         (groq_http.CLOUDFLARE_CLIENT_BLOCKED, 1010))
+        self.assertEqual(groq_http.classify(401, EDGE_409_HTML, {})[0],
+                         groq_http.INVALID_OR_MISSING_API_KEY)
+        self.assertEqual(groq_http.classify(403, EDGE_409_HTML, {})[0],
+                         groq_http.PERMISSION_OR_ACCOUNT_RESTRICTION)
+        self.assertEqual(groq_http.classify(429, EDGE_409_HTML, {})[0],
+                         groq_http.RATE_LIMITED)
+        self.assertEqual(groq_http.classify(500, EDGE_409_HTML, {})[0],
+                         groq_http.UPSTREAM_ERROR)
+        self.assertEqual(groq_http.classify(400, '{"error":"bad"}', {})[0],
+                         groq_http.INVALID_RESPONSE)
+
+    def test_is_html_body_detection(self):
+        for html in (EDGE_409_HTML, "<html><body>x</body></html>",
+                     "  <!DOCTYPE html><head></head></html>"):
+            self.assertTrue(groq_http.is_html_body(html), html[:30])
+        for other in ('{"error":"boom"}', "", "   ", "[1,2,3]", "plain text"):
+            self.assertFalse(groq_http.is_html_body(other), other[:30])
+
+    def test_409_html_on_post_is_bounded_then_red(self):
+        """The exact captured failure: reviewer POST, 409 + HTML page."""
+        EdgeHandler.mode = "e409html"
+        EdgeHandler.edge_ua_filter = False
+        with mock.patch.dict(os.environ, clean_env(GROQ_API_KEY=FAKE_KEY,
+                                                   GROQ_BASE_URL=self.base), clear=True):
+            with mock.patch("time.sleep"):
+                with self.assertRaises(groq_http.GroqAPIError) as ctx:
+                    llm_provider.call_groq_chat("GroqReviewer prompt", SERVED_MODELS[1])
+        self.assertEqual(ctx.exception.category, groq_http.EDGE_HTML_RESPONSE)
+        self.assertEqual(ctx.exception.http_status, 409)
+        self.assertTrue(ctx.exception.retryable)
+        self.assertEqual(ctx.exception.attempts, groq_http.MAX_ATTEMPTS)
+        posts = self.by_path("/openai/v1/chat/completions", "POST")
+        self.assertEqual(len(posts), groq_http.MAX_ATTEMPTS,
+                         "bounded retry, exactly MAX_ATTEMPTS requests")
+        # Every retry still carries the explicit project signature.
+        for req in posts:
+            self.assert_project_ua(req, "retry")
+            self.assertEqual(req["accept"], "application/json")
+            self.assertEqual(req["content_type"], "application/json")
+            self.assertTrue(req["has_authorization"])
+        # The message summarises the page; it never dumps markup or secrets.
+        msg = str(ctx.exception)
+        self.assertIn("edge-html-response", msg)
+        self.assertIn("body=html-page", msg)
+        self.assertIn("cloudflare_edge=true", msg)
+        self.assertNotIn("<html", msg)
+        self.assertNotIn("<!DOCTYPE", msg)
+        self.assertNotIn("no-js", msg)
+        self.assert_no_secret_anywhere(msg)
+
+    def test_html_page_on_a_200_is_also_bounded_then_red(self):
+        """A 2xx challenge/error page is not a valid envelope either."""
+        EdgeHandler.mode = "html200"
+        EdgeHandler.edge_ua_filter = False
+        with mock.patch.dict(os.environ, clean_env(GROQ_API_KEY=FAKE_KEY,
+                                                   GROQ_BASE_URL=self.base), clear=True):
+            with mock.patch("time.sleep"):
+                with self.assertRaises(groq_http.GroqAPIError) as ctx:
+                    llm_provider.discover_models()
+        self.assertEqual(ctx.exception.category, groq_http.EDGE_HTML_RESPONSE)
+        self.assertEqual(ctx.exception.http_status, 200)
+        self.assertEqual(len(self.by_path("/openai/v1/models")), groq_http.MAX_ATTEMPTS)
+        self.assert_no_secret_anywhere(str(ctx.exception))
+
+    def test_transient_html_page_recovers_on_retry_and_stays_real(self):
+        """One blip, then a real answer: the retry must recover, not fail."""
+        EdgeHandler.mode = "e409html_once"
+        EdgeHandler.edge_ua_filter = False
+        with mock.patch.dict(os.environ, clean_env(GROQ_API_KEY=FAKE_KEY,
+                                                   GROQ_BASE_URL=self.base), clear=True):
+            with mock.patch("time.sleep"):
+                models, meta = llm_provider.discover_models()
+        self.assertEqual(list(models), SERVED_MODELS)
+        self.assertEqual(meta["mock"], False)
+        self.assertEqual(meta["attempt"], 2, "recovered on the bounded retry")
+        self.assertEqual(len(self.by_path("/openai/v1/models")), 2)
+
+    def test_connection_check_is_red_and_never_mocks_on_html_edge(self):
+        EdgeHandler.mode = "e409html"
+        EdgeHandler.edge_ua_filter = False
+        r = run_check(env=clean_env(GROQ_API_KEY=FAKE_KEY, GROQ_BASE_URL=self.base))
+        combined = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Mock used: false", combined)
+        self.assertNotIn("Mock used: true", combined)
+        self.assertNotIn("MOCK MODE", combined)
+        self.assertNotIn("Groq connection: OK", combined)
+        self.assertIn("edge-html-response", combined)
+        self.assert_no_secret_anywhere(combined)
+
+    def test_daily_pipeline_falls_back_to_static_not_mock(self):
+        """The daily path may static-fallback on an upstream/edge failure."""
+        EdgeHandler.mode = "e409html"
+        EdgeHandler.edge_ua_filter = False
+        with mock.patch.dict(os.environ, clean_env(GROQ_API_KEY=FAKE_KEY,
+                                                   GROQ_BASE_URL=self.base), clear=True):
+            with mock.patch("time.sleep"):
+                with self.assertRaises(groq_http.GroqAPIError) as ctx:
+                    llm_provider.GroqProducer(model="auto").produce(
+                        groq_check.build_evidence_packet(), _discovered=None)
+        self.assertEqual(ctx.exception.category, groq_http.EDGE_HTML_RESPONSE)
+        self.assert_no_secret_anywhere(str(ctx.exception))
 
 
 class PublishingInvariantsTests(unittest.TestCase):

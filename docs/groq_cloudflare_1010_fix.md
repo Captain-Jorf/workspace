@@ -114,6 +114,11 @@ unauthenticated request.
 | any other HTTP 403 | `permission-or-account-restriction` | no retry, red |
 | HTTP 429 | `rate-limited` | `Retry-After` honored (capped at 30 s), at most 2 retries, then red |
 | HTTP 5xx / timeout / network | `upstream-error` / `network-unreachable` | bounded retry (1 + 2), connection check red; the daily pipeline may fall back to `static-fallback` |
+| an HTML **page** where JSON was expected (any status, including 2xx) | `edge-html-response` | bounded retry (1 + 2), then red; the message says plainly that the edge returned a page and that the API key is **not** the cause; **no mock** |
+| HTTP 200 with `content == ""` on a reasoning model | *(not an HTTP error — see §7.1)* | exactly one bounded retry with a larger completion budget, then red |
+
+Credential- and block-specific statuses are matched **before** the HTML-page
+case, so a Cloudflare 403/1010 can never be softened into something retryable.
 
 Detection reads the code from either shape: the Cloudflare HTML block page
 (`Error code: 1010`, `cf-code-label`) and a JSON edge envelope
@@ -246,6 +251,80 @@ server** that emulates the Cloudflare edge — including a faithful
 * `daily-trend-draft` was not run;
 * `GROQ_API_KEY` was **not** rotated and was never printed or retrieved;
 * the real connection check was **not** replaced by a mock.
+
+## 7. Two further failure modes found by live verification on the real API
+
+Fixing 403/1010 was necessary but not sufficient. Once the real check could
+actually reach Groq (same key, never rotated), two **different** intermittent
+failures appeared. Both were captured from live runs on the session branch and
+both are now handled explicitly, with tests.
+
+### 7.1 HTTP 200 with empty content — reasoning-model budget (`openai/gpt-oss-*`)
+
+Captured from run `35038594879` (6 real samples, annotation emitter in place):
+
+```text
+reviewer: Groq empty message content: host=api.groq.com
+          model=openai/gpt-oss-20b http_status=200 attempt=1
+```
+
+Every HTTP call returned **200**. `openai/gpt-oss-20b` / `-120b` are *reasoning*
+models: the hidden chain-of-thought is drawn from the **same** completion budget
+as the visible answer. When reasoning consumes the budget, Groq answers 200 with
+`choices[0].message.content == ""`, the reasoning text in `message.reasoning`
+and `finish_reason == "length"` — no error code and no error body to classify, so
+the old code saw an empty string and failed the check.
+
+Remedy (per <https://console.groq.com/docs/reasoning>), implemented in
+`build/llm_provider.py`:
+
+* send `max_completion_tokens` instead of the deprecated `max_tokens`;
+* send `reasoning_effort: "low"` **only** to the families whose docs accept it
+  (GPT-OSS 20B/120B, Qwen 3.8 27B). Qwen 3.6 27B accepts only `none`/`default`
+  and non-reasoning models accept no such parameter at all — sending it to them
+  makes Groq answer HTTP 400, so the gate is deliberately narrow;
+* raise the reasoning budget to a floor of 1024 (cap 4096) and lift the call-site
+  budgets: Producer `1500 → 2200`, Reviewer `800 → 1400`;
+* when a completion comes back empty *because reasoning consumed the budget*,
+  retry exactly **once** with a doubled budget — still a real API call, never a
+  fixture; any other empty answer raises immediately (fail closed);
+* tolerant JSON extraction: fenced ```json``` blocks and prose-wrapped objects
+  (first balanced `{...}`) are both accepted before giving up;
+* diagnostics carry only counts and content **length** — never the reasoning
+  text, never the key.
+
+Covered by `tests/test_groq_reasoning_models.py` (20 tests).
+
+### 7.2 HTTP 409 whose body was an HTML page
+
+Captured from run `35042629998` — the same run also produced a fully green
+sample (`Groq connection: OK … mock=false`), proving §7.1 was fixed:
+
+```text
+reviewer: Groq HTTP 409: invalid-response host=api.groq.com attempt=1
+          detail=<!DOCTYPE html> / <!--[if lt IE 7]> <html class="no-js ie6 oldie" …
+```
+
+The body was the CDN/edge error **page**, not a Groq answer, and `409` was not in
+the retryable set — so the first transient blip failed the whole check at
+`attempt=1`.
+
+Remedy, implemented in `build/groq_http.py`:
+
+* new category `edge-html-response` for any response (including a 2xx) whose body
+  is an HTML page rather than JSON;
+* bounded retry exactly like a 5xx, then **red** — never a mock, never a guessed
+  classification;
+* the error message summarises the page (`body=html-page bytes=… cloudflare_edge=…`)
+  instead of dumping markup into a log or annotation;
+* credential/block statuses keep priority, so 401, 403, 403+1010 and 429 are
+  classified exactly as before;
+* every retry still sends the explicit project `User-Agent`, `Accept`,
+  `Authorization` and (POST) `Content-Type` — asserted per recorded request.
+
+Covered by `tests/test_groq_http_client.py::EdgeHtmlResponseTests` (8 tests),
+including the case where one blip is followed by a real answer and the retry
+recovers with `mock: false`.
 
 ## 6. Verification after merge
 
