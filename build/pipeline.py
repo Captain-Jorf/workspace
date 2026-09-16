@@ -27,6 +27,7 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import qa_supervisor
 
 PY = sys.executable
 B = os.path.dirname(os.path.abspath(__file__))
@@ -256,9 +257,40 @@ def produce(a):
                     continue
                 raise Stage("script", "pre-render script gate: " + "; ".join(gate_issues)
                             + " — skipped before TTS/render (no media, no Buffer)")
+
+            # 2c. FULL deterministic PRE-RENDER TEXT QA gate (issue #22, run
+            # 35054292820: a [source_quality] claim-word blocker — "researchers"
+            # in the SPOKEN script with no Tier A/B evidence in the calendar
+            # packet — was discovered only AFTER a wasted TTS+render cycle).
+            # Every deterministic final-QA blocker that can be evaluated from
+            # text alone runs here on the script + topic + the reviewer artifact
+            # through the EXACT qa_supervisor functions (single-sourced, no
+            # copied rules, QA thresholds untouched); media-only checks —
+            # rendered audio/video properties, subtitle geometry, frames,
+            # posters, Buffer readiness, duplicates/quarantine against memory —
+            # stay in the final supervisor, which remains mandatory and
+            # authoritative. A structured reviewer approval can never override
+            # these blockers. On failure: the existing ONE allowed script retry
+            # (the producer re-runs its bounded ladder, ending in the validated
+            # Static English Fallback), then the run is SKIPPED before TTS,
+            # timing, subtitle rendering, FFmpeg, media upload and Buffer.
+            text_gate = qa_supervisor.pre_render_text_gate(script, topic, ep_dir=ep)
+            if text_gate["blocking"]:
+                if st["retries"]["script"] == 0:
+                    print("[pipeline] pre-render text QA: " + "; ".join(text_gate["blocking"])
+                          + " → retry producer ONCE (variant 1) before any TTS/render", flush=True)
+                    st["retries"]["script"] = 1
+                    st["gate"] = {"stage": "text-qa", "issues": text_gate["blocking"][:8],
+                                  "words": common.spoken_word_count(script),
+                                  "estimated_seconds": common.estimate_spoken_seconds(script)}
+                    variant = 1
+                    continue
+                raise Stage("qa", "pre-render text QA: " + "; ".join(text_gate["blocking"][:8])
+                            + " — skipped before TTS/render (no media, no Buffer)")
             st["gate"] = {"stage": "script", "ok": True,
                           "words": common.spoken_word_count(script),
-                          "estimated_seconds": common.estimate_spoken_seconds(script)}
+                          "estimated_seconds": common.estimate_spoken_seconds(script),
+                          "text_blocking": [], "text_warnings": len(text_gate["warnings"])}
             save_state(tag, st)
 
             # 3. tts + timing

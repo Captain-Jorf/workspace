@@ -365,6 +365,99 @@ def scrub_secrets(text):
 def env_flag_exact_true(name):
     return os.environ.get(name, "") == "true"
 
+# ------------------------------------------------------------------ evidence grounding
+# Single-sourced tier derivation and claim-word matching (issue #22).
+#
+# The QA supervisor's source_quality blocker and the deterministic PRE-RENDER
+# text gate use THESE functions — there is no second implementation and no
+# second keyword list anywhere in the pipeline. The claim-word patterns are
+# exactly policy source_policy.require_evidence_for_claim_words; the tier of a
+# source is derived (never taken from a stored "tier" field the model could
+# claim for itself) with source_tier below. Nothing here can invent a citation,
+# URL, author, statistic or tier: grounding is only ever established from what
+# the sanitized packet itself provides.
+def source_tier(url, label, pol):
+    """Tier of one source by URL domain / dated-label pattern, per policy tiers.
+
+    Moved verbatim from qa_supervisor (issue #22) so the pre-render text gate,
+    the evidence packet and final QA share ONE matcher. A stored "tier" field is
+    never consulted — only what the URL/label actually proves.
+    """
+    tiers = pol["source_policy"]["tiers"]
+    u = (url or "").lower()
+    if u:
+        for t in ("A", "B", "C"):
+            for dom in tiers.get(t, []):
+                if dom.lower() in u:
+                    return t
+        # Tech discovery tier
+        for dom in pol["source_policy"]["tiers"].get("TECH_DISCOVERY", []):
+            if dom.lower() in u:
+                return "C"
+        return "C"
+    if re.search(r"\(\d{4}\)", label or "") or re.search(r"\b(19|20)\d{2}\b", label or ""):
+        return "A"
+    return "?"
+
+def claim_word_matches(text, pol):
+    """The source_quality claim-word matcher — the exact patterns QA blocks.
+
+    Returns the policy claim-word patterns present in `text` as whole
+    (case-insensitive, word-boundary) matches. Single implementation shared by
+    final QA (qa_supervisor.check_sources), the pre-render text gate and the
+    producer/revision guidance: prompts never carry their own keyword list.
+    """
+    low = (text or "").lower()
+    return [w for w in pol["source_policy"]["require_evidence_for_claim_words"]
+            if re.search(rf"\b{re.escape(w)}\b", low)]
+
+def best_tier(tiers):
+    """Best of a list of tiers ('A' beats 'B' beats 'C' beats '?'); '' when empty.
+
+    Unknown tier strings rank last — they can never look better than a real tier.
+    """
+    return min(tiers, key=lambda t: "ABC?".index(t) if t in ("A", "B", "C", "?") else 9) if tiers else "?"
+
+def packet_evidence_urls(packet):
+    """The URLs a sanitized evidence packet itself provides. The ONLY source
+    URLs an LLM output may carry; anything else is an invented citation and is
+    rejected deterministically (producer citation guard)."""
+    urls = set()
+    for key in ("discovery_source", "evidence_source"):
+        u = str(((packet or {}).get(key) or {}).get("url") or "").strip()
+        if u:
+            urls.add(u)
+    return urls
+
+def ungrounded_source_urls(sources, packet):
+    """Script source URLs the evidence packet does NOT provide (invented citations)."""
+    allowed = packet_evidence_urls(packet)
+    out, seen = [], set()
+    for s in sources or []:
+        u = str((s or {}).get("url") or "").strip()
+        if u and u not in allowed and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+def packet_evidence_tier(packet, pol=None):
+    """Best evidence tier the PACKET itself carries, derived with source_tier —
+    same matcher as final QA, never a stored/claimed tier."""
+    pol = pol or policy()
+    tiers = []
+    e = (packet or {}).get("evidence_source") or {}
+    if e.get("label") or e.get("url"):
+        tiers.append(source_tier(e.get("url", ""), e.get("label", ""), pol))
+    d = (packet or {}).get("discovery_source") or {}
+    if d.get("url"):
+        tiers.append(source_tier(d["url"], d.get("name", ""), pol))
+    return best_tier(tiers) if tiers else "?"
+
+def packet_has_tier_ab_evidence(packet, pol=None):
+    """True when the sanitized packet carries a Tier A/B evidence source — the
+    same bar the source_quality blocker applies to claim words."""
+    return packet_evidence_tier(packet, pol) in ("A", "B")
+
 # ------------------------------------------------------------------ numeric-claim grounding
 # Single source of truth for "what counts as a numeric claim" in narration.
 # The QA supervisor (check_sources → source_quality blocker) and the producer's

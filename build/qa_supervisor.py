@@ -13,6 +13,11 @@ Independent gate before Buffer. Checks:
 - Reviewer report if present: score>=85, no blocking, tech+metacog true
 - Duplicate, Buffer readiness, etc.
 
+This module also exposes the deterministic PRE-RENDER TEXT QA gate
+(pre_render_text_gate) — the exact blocker functions above, run on script text
+BEFORE TTS/render by build/pipeline.py and build/content_producer.py. Final QA
+stays mandatory and authoritative for everything about rendered media.
+
 Exit 0 approved, 20 rejected, 21 cannot evaluate.
 """
 import argparse
@@ -251,34 +256,26 @@ def check_topic(rep, script, topic, pol):
     rep.details["topic"] = {"field_terms": hits}
 
 def source_tier(url, label, pol):
-    tiers = pol["source_policy"]["tiers"]
-    u = (url or "").lower()
-    if u:
-        for t in ("A", "B", "C"):
-            for dom in tiers.get(t, []):
-                if dom.lower() in u:
-                    return t
-        # Tech discovery tier
-        for dom in pol["source_policy"]["tiers"].get("TECH_DISCOVERY", []):
-            if dom.lower() in u:
-                return "C"
-        return "C"
-    if re.search(r"\(\d{4}\)", label or "") or re.search(r"\b(19|20)\d{2}\b", label or ""):
-        return "A"
-    return "?"
+    """DELEGATED single source (issue #22): tier derivation now lives in
+    common.source_tier so the pre-render text gate, the evidence packet and
+    final QA share ONE matcher. This alias keeps the QA-supervisor API intact."""
+    return common.source_tier(url, label, pol)
 
 def check_sources(rep, script, topic, pol, skip_network):
     srcs = script.get("sources", [])
-    claim_words = pol["source_policy"]["require_evidence_for_claim_words"]
     text = " ".join(l["t"] for ch in script["chunks"] for l in ch["en"]).lower()
-    claims = [w for w in claim_words if re.search(rf"\b{re.escape(w)}\b", text)]
+    # Shared matcher (common.claim_word_matches) built on the policy pattern list
+    # itself — the producer's pre-gate, the pre-render text gate and this QA
+    # blocker read the SAME implementation and can never diverge, and no second
+    # keyword list exists anywhere.
+    claims = common.claim_word_matches(text, pol)
     # Shared matcher (common.find_numeric_claims) so the producer's pre-gate and
     # this QA blocker can never diverge. Threshold unchanged: any statistic that
     # is not explicitly backed by verified evidence blocks the reel.
     numbers = common.find_numeric_claims(text)
     ev = [s for s in srcs if s.get("role") == "evidence"] or srcs
     tiers = [source_tier(s.get("url"), s.get("label"), pol) for s in ev]
-    best = min(tiers, key=lambda t: "ABC?".index(t)) if tiers else "?"
+    best = common.best_tier(tiers)
     rep.details["sources"] = {"evidence": len(ev), "best_tier": best, "claim_words": claims, "numbers": numbers}
     mode = script.get("meta", {}).get("evidence_mode")
     if claims and best not in ("A", "B"):
@@ -554,14 +551,27 @@ def check_frames(rep, ep, layout, pol):
     rep.details["frames"] = {"sampled": checked, "min_contrast": round(worst,2) if checked else None}
 
 def check_caption(rep, caption_path, script, pol):
-    cp = pol["caption_policy"]
     if not caption_path or not os.path.exists(caption_path):
         rep.block("caption_quality", "caption missing")
         return
     with open(caption_path, encoding="utf-8") as fh:
-        txt = fh.read()
+        check_caption_text(rep, fh.read(), script, pol)
+
+def check_caption_text(rep, caption_full_text, script, pol):
+    """Caption/hashtag blockers on the caption TEXT itself (issue #22).
+
+    Extracted verbatim from check_caption so the PRE-RENDER text gate can run
+    the EXACT same blockers on the caption the deterministic assembler would
+    produce, before any media exists. check_caption (final QA) delegates here —
+    there is only one implementation. `caption_full_text` uses the file shape
+    written by build/caption.py: body, blank line, one hashtag line.
+    """
+    cp = pol["caption_policy"]
+    if not caption_full_text:
+        rep.block("caption_quality", "caption missing")
+        return
     body_lines, tag_lines = [], []
-    for ln in txt.splitlines():
+    for ln in caption_full_text.splitlines():
         (tag_lines if ln.strip().startswith("#") else body_lines).append(ln)
     body = "\n".join(body_lines).strip()
     tags = " ".join(tag_lines).split()
@@ -662,7 +672,8 @@ def check_buffer_readiness(rep, public_url, caption_path, skip_network, video):
     rep.details["buffer"] = {"public_url": public_url, "http": code, "mime": ctype, "bytes": length}
 
 def check_reviewer(rep, script, topic, ep_dir, pol):
-    # Load reviewer_report.json if present
+    # Load reviewer_report.json if present, then run the shared core — the exact
+    # same implementation the PRE-RENDER text gate uses (issue #22).
     rev_path = os.path.join(ep_dir, "reviewer_report.json")
     if not os.path.exists(rev_path):
         rep.details["reviewer"] = {"present": False}
@@ -670,44 +681,148 @@ def check_reviewer(rep, script, topic, ep_dir, pol):
     try:
         data = common.load_json(rev_path, {})
         out = data.get("output") or data
-        approved = out.get("approved")
-        score = out.get("score", 0)
-        tech_rel = out.get("technology_relevance")
-        meta_rel = out.get("metacognition_relevance")
-        blocking = out.get("blocking_errors", [])
-        unsupported = out.get("unsupported_claims", [])
-
-        # Boundary fix (run 35050738918 / reel-2026-09-17): reviewer_check used to
-        # mirror ONLY the reviewer's structured fields and never looked at the
-        # script, so a reviewer-approved 106-word script passed this check and
-        # reached rendering. Structured reviewer output cannot override a
-        # deterministic check: an approval of a script that violates the QA word
-        # range (counted with the same single-sourced logic the gate uses) is
-        # itself a blocking error.
-        words = common.spoken_word_count(script)
-        lo, hi = pol["length"]["narration_words"]
-        if approved and not (lo <= words <= hi):
-            rep.block("reviewer_check", f"reviewer approved a script with {words} spoken words "
-                      f"outside policy {lo}-{hi} — structured approval cannot override "
-                      f"deterministic checks (the script must not reach rendering this way)")
-        rep.details["reviewer_words"] = {"spoken_words": words, "policy_range": [lo, hi]}
-
-        if not approved:
-            rep.block("reviewer_check", f"reviewer not approved (score {score})")
-        if score < 85:
-            rep.block("reviewer_check", f"reviewer score {score} < 85")
-        if tech_rel is False:
-            rep.block("reviewer_check", "reviewer says technology_relevance false")
-        if meta_rel is False:
-            rep.block("reviewer_check", "reviewer says metacognition_relevance false")
-        if blocking:
-            rep.block("reviewer_check", f"reviewer blocking_errors {blocking}")
-        if unsupported:
-            rep.block("reviewer_check", f"reviewer unsupported_claims {unsupported}")
-
-        rep.details["reviewer"] = {"present": True, "approved": approved, "score": score, "tech": tech_rel, "metacog": meta_rel, "blocking": blocking}
     except Exception as e:
         rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
+        return
+    try:
+        check_reviewer_output(rep, script, topic, out, pol)
+    except Exception as e:
+        rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
+
+def check_reviewer_output(rep, script, topic, out, pol):
+    """Structured-Reviewer blockers on an already-parsed reviewer output dict.
+
+    A structured Reviewer approval can NEVER override a deterministic check:
+    the word-range contradiction rule below is enforced identically by final QA
+    and by the pre-render text gate (one implementation, shared by both)."""
+    approved = out.get("approved")
+    score = out.get("score", 0)
+    tech_rel = out.get("technology_relevance")
+    meta_rel = out.get("metacognition_relevance")
+    blocking = out.get("blocking_errors", [])
+    unsupported = out.get("unsupported_claims", [])
+
+    # Boundary fix (run 35050738918 / reel-2026-09-17): reviewer_check used to
+    # mirror ONLY the reviewer's structured fields and never looked at the
+    # script, so a reviewer-approved 106-word script passed this check and
+    # reached rendering. Structured reviewer output cannot override a
+    # deterministic check: an approval of a script that violates the QA word
+    # range (counted with the same single-sourced logic the gate uses) is
+    # itself a blocking error.
+    words = common.spoken_word_count(script)
+    lo, hi = pol["length"]["narration_words"]
+    if approved and not (lo <= words <= hi):
+        rep.block("reviewer_check", f"reviewer approved a script with {words} spoken words "
+                  f"outside policy {lo}-{hi} — structured approval cannot override "
+                  f"deterministic checks (the script must not reach rendering this way)")
+    rep.details["reviewer_words"] = {"spoken_words": words, "policy_range": [lo, hi]}
+
+    if not approved:
+        rep.block("reviewer_check", f"reviewer not approved (score {score})")
+    if score < 85:
+        rep.block("reviewer_check", f"reviewer score {score} < 85")
+    if tech_rel is False:
+        rep.block("reviewer_check", "reviewer says technology_relevance false")
+    if meta_rel is False:
+        rep.block("reviewer_check", "reviewer says metacognition_relevance false")
+    if blocking:
+        rep.block("reviewer_check", f"reviewer blocking_errors {blocking}")
+    if unsupported:
+        rep.block("reviewer_check", f"reviewer unsupported_claims {unsupported}")
+
+    rep.details["reviewer"] = {"present": True, "approved": approved, "score": score, "tech": tech_rel,
+                               "metacog": meta_rel, "blocking": blocking}
+
+# ------------------------------------------------------------------ PRE-RENDER TEXT QA gate
+# Issue #22 (run 35054292820, reel-2026-09-18): the pipeline only pre-checked
+# word count/duration before media, so a [source_quality] claim-word blocker
+# ("researchers" in the SPOKEN script with no Tier A/B evidence in the calendar
+# packet) was discovered by the final supervisor only AFTER TTS, timing,
+# subtitles, FFmpeg and poster rendering. Every deterministic blocker that can
+# be decided from TEXT alone now also runs BEFORE any media exists — through
+# the exact check functions below, not through copies or approximations of them.
+#
+# Media-only checks stay in final QA and remain mandatory and authoritative:
+# subtitle_layout (rendered layout.json geometry), audio_quality, video_quality
+# (actual MP4 properties + posters), frame contrast sampling, buffer_readiness
+# (public URL), duplicate_check / quarantine (editorial-memory state at publish
+# time). Warnings stay warnings: only rep.blocking entries are hard here.
+
+TEXT_QA_GATE_CHECKS = ["content_language", "english_only", "technology_relevance",
+                       "metacognition_relevance", "topic_relevance", "source_quality",
+                       "script_quality", "english_quality", "caption_quality",
+                       "reviewer_check"]
+
+# Final-QA checks that CANNOT be evaluated before media exists — they keep
+# running exclusively in the full supervisor. (duplicate_check is deliberately
+# here too: it reads editorial memory as it stands at PUBLISH time, not at
+# script time, so it is evaluated by final QA, not by the pre-render gate.)
+TEXT_QA_MEDIA_ONLY_CHECKS = ["subtitle_layout", "audio_quality", "video_quality",
+                             "buffer_readiness", "duplicate_check"]
+
+def build_caption_text(script, pol=None):
+    """The EXACT caption text build/caption.py will write for this script
+    (deterministic assembler — no media), so the pre-render gate evaluates the
+    same caption bytes final QA will read from output/auto-<tag>_caption.txt."""
+    try:
+        import caption as caption_mod
+        cap, tag = caption_mod.build(script)
+        cap = caption_mod.fit(cap, tag)
+        return cap + "\n\n" + tag + "\n"
+    except Exception:
+        return ""
+
+def pre_render_text_gate(script, topic=None, pol=None, *, ep_dir=None,
+                         reviewer_output=None, caption_text=None):
+    """Deterministic PRE-RENDER text gate — runs the exact final-QA blocker
+    functions from TEXT_QA_GATE_CHECKS on a script before TTS, timing,
+    subtitle rendering, FFmpeg or media upload. Returns the supervisor-shaped
+    dict {"blocking": [...], "warnings": [...], "checks": {...}, "words": n,
+    "estimated_seconds": s}; an empty "blocking" list means text-clean.
+
+      * every check is the SAME function object final QA uses (the gate calls
+        the module-level names, verified by the parity tests);
+      * the QA thresholds and the reviewer ≥85 bar are untouched;
+      * warnings are reported but NEVER promoted to blockers;
+      * media-only checks are NOT run here — final QA stays mandatory and
+        authoritative for everything about rendered media;
+      * reviewer contradictions: if `reviewer_output` is given (producer, the
+        structured review in hand) or `ep_dir` holds reviewer_report.json
+        (pipeline, the artifact the producer wrote), check_reviewer_output
+        enforces "a structured approval never overrides deterministic QA" —
+        including the reviewer's own blocking_errors / unsupported_claims lists.
+
+    Word range (150-260) and the duration preflight are additionally enforced
+    by the caller-side fast gate (common.pre_render_issues) — the strict band
+    is TIGHTER than QA's hard-fail band on purpose; check_script runs here with
+    its own unchanged thresholds.
+    """
+    pol = pol or common.policy()
+    topic = topic or {}
+    rep = Report(pol)
+    check_content_language(rep, script, pol)
+    check_english_only(rep, script, pol)
+    check_technology_relevance(rep, script, topic, pol)
+    check_metacognition_relevance(rep, script, pol)
+    check_topic(rep, script, topic, pol)
+    check_sources(rep, script, topic, pol, skip_network=True)
+    check_script(rep, script, pol)
+    check_english(rep, script, pol)
+    check_caption_text(rep, caption_text if caption_text is not None else build_caption_text(script, pol),
+                       script, pol)
+    if reviewer_output is not None:
+        try:
+            check_reviewer_output(rep, script, topic, reviewer_output, pol)
+        except Exception as e:
+            rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
+    elif ep_dir:
+        check_reviewer(rep, script, topic, ep_dir, pol)
+    else:
+        rep.details["reviewer"] = {"present": False}
+    return {"blocking": list(rep.blocking), "warnings": list(rep.warnings),
+            "checks": dict(rep.checks),
+            "words": common.spoken_word_count(script),
+            "estimated_seconds": common.estimate_spoken_seconds(script, pol)}
 
 def evaluate(a, pol):
     rep = Report(pol)
