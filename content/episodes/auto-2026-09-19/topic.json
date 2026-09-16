@@ -1,0 +1,60 @@
+{
+ "content_date": "2026-09-19",
+ "content_id": "reel-2026-09-19",
+ "title": "Your user interviews proved you right. Did they? Confirmation bias",
+ "normalized_topic": "user interviews proved right they confirmation bias",
+ "pillar": "PRODUCT",
+ "technology_angle": "PRODUCT — tech",
+ "discovery_source": {
+  "name": "content-calendar",
+  "url": "",
+  "tier": "cal"
+ },
+ "evidence_source": {
+  "label": "Nickerson (1998), Confirmation bias",
+  "tier": "B"
+ },
+ "evidence_mode": "calendar",
+ "score": 10,
+ "max_similarity_recent": 0.0,
+ "fallback_reason": "calendar-only mode",
+ "calendar": {
+  "id": 14,
+  "pillar": "PRODUCT",
+  "technology_angle": "confirmation bias in user research",
+  "title": "Your user interviews proved you right. Did they? Confirmation bias",
+  "hook": "Your user interviews proved you right. Did they?",
+  "beats": [
+   "hypothesis → leading question → yes",
+   "confirmation bias diagram",
+   "what would prove you wrong",
+   "loop"
+  ],
+  "sources": [
+   "Nickerson (1998), Confirmation bias",
+   "NN/g user research guidelines"
+  ],
+  "cta": "When did you last seek evidence you were wrong?"
+ },
+ "ranked_trends": [],
+ "rejected": [],
+ "recent_pillars": [
+  "ATTENTION",
+  "CODING",
+  "AI_JUDGMENT"
+ ],
+ "generated_utc": "2026-09-16T05:19:18+00:00",
+ "content_language": "en",
+ "language": "en",
+ "trend_policy": {
+  "allowed_domains": [
+   "AI",
+   "software",
+   "coding",
+   "product",
+   "digital behavior",
+   "future of work"
+  ],
+  "discovery_is_not_evidence": true
+ }
+}

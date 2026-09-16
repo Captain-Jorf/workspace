@@ -1,0 +1,133 @@
+{
+ "approved": true,
+ "score": 100,
+ "min_score": 85,
+ "checks": {
+  "content_language": "pass",
+  "english_only": "pass",
+  "technology_relevance": "pass",
+  "metacognition_relevance": "pass",
+  "topic_relevance": "pass",
+  "source_quality": "pass",
+  "script_quality": "pass",
+  "english_quality": "pass",
+  "subtitle_layout": "pass",
+  "audio_quality": "pass",
+  "video_quality": "pass",
+  "caption_quality": "pass",
+  "duplicate_check": "pass",
+  "buffer_readiness": "warn",
+  "reviewer_check": "pass"
+ },
+ "warnings": [
+  "[buffer_readiness] public URL not provided (pre-push)"
+ ],
+ "blocking_errors": [],
+ "details": {
+  "content_language": {
+   "policy": "en",
+   "meta": "en",
+   "env": "en"
+  },
+  "english_only": {
+   "fa_lines": 0,
+   "persian_ratio": 0.0,
+   "engine": ""
+  },
+  "technology": {
+   "technology_angle": "confirmation bias in product and user research for software",
+   "hits": 4,
+   "concept": "confirmation bias"
+  },
+  "metacognition": {
+   "concept": "confirmation bias",
+   "hits": 4
+  },
+  "topic": {
+   "field_terms": 14
+  },
+  "sources": {
+   "evidence": 2,
+   "best_tier": "A",
+   "claim_words": [
+    "proven"
+   ],
+   "numbers": []
+  },
+  "script": {
+   "words": 200,
+   "hook_words": 8,
+   "beats": [
+    "hook",
+    "problem",
+    "explain",
+    "explain",
+    "example",
+    "technique",
+    "technique",
+    "ending",
+    "ending"
+   ]
+  },
+  "english": {
+   "informality": 5,
+   "avg": 11.1
+  },
+  "layout": {
+   "en_lines": 18,
+   "fa_lines": 0,
+   "en_bottom_max": 434
+  },
+  "video": {
+   "w": 1080,
+   "h": 1920,
+   "duration": 75.73,
+   "fps": 30.0,
+   "size_mb": 27.91,
+   "codec": "h264"
+  },
+  "audio": {
+   "mean_db": -19.6,
+   "peak_db": -1.5,
+   "wps": 2.81
+  },
+  "frames": {
+   "sampled": 18,
+   "min_contrast": 16.36
+  },
+  "caption": {
+   "chars": 941,
+   "hashtags": 5
+  },
+  "duplicates": {
+   "compared": 8,
+   "script_hash": "5a4579e1a157"
+  },
+  "buffer": {
+   "public_url": null
+  },
+  "reviewer_words": {
+   "spoken_words": 200,
+   "policy_range": [
+    150,
+    260
+   ]
+  },
+  "reviewer": {
+   "present": true,
+   "approved": true,
+   "score": 95,
+   "tech": true,
+   "metacog": true,
+   "blocking": []
+  }
+ },
+ "content_id": "reel-2026-09-19",
+ "content_date": "2026-09-19",
+ "topic": "Your user interviews proved you right. Did they? Confirmation bias",
+ "script_hash": "5a4579e1a157a3e3faf2fa8b2b69f7f5f1e9fb7f5c39a4fbd697f506145a1c86",
+ "video_hash": "61ef11d40ab6c7696ad1404a78e060407993cd0882eb11432dfb2181119ddaba",
+ "evaluated_utc": "2026-09-16T05:22:32+00:00",
+ "supervisor_version": "2.0-english-only",
+ "language": "en"
+}

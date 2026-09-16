@@ -1,0 +1,409 @@
+{
+ "en": [
+  {
+   "text": "Your user interviews proved you right. Did they?",
+   "start": 0.63,
+   "end": 3.782,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    105,
+    200,
+    974,
+    356
+   ]
+  },
+  {
+   "text": "You had a product hypothesis and you went looking for evidence in user research.",
+   "start": 4.27,
+   "end": 8.21,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    69,
+    200,
+    1010,
+    434
+   ]
+  },
+  {
+   "text": "You found it, because you were looking for it in software feedback.",
+   "start": 9.029,
+   "end": 12.374,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    127,
+    200,
+    953,
+    434
+   ]
+  },
+  {
+   "text": "It's not dishonesty. It's your brain protecting the first idea.",
+   "start": 13.196,
+   "end": 17.291,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    65,
+    200,
+    1015,
+    356
+   ]
+  },
+  {
+   "text": "Confirmation bias means we notice what fits our idea and ignore what doesn't.",
+   "start": 17.77,
+   "end": 21.889,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    75,
+    200,
+    1005,
+    434
+   ]
+  },
+  {
+   "text": "In product user research, the question you ask shapes the answer you get.",
+   "start": 22.708,
+   "end": 26.624,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    83,
+    200,
+    996,
+    434
+   ]
+  },
+  {
+   "text": "That's not curiosity; it's your judgment defending itself.",
+   "start": 27.05,
+   "end": 30.276,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    94,
+    200,
+    986,
+    356
+   ]
+  },
+  {
+   "text": "You hear 'yes' because you asked in a way that invites yes.",
+   "start": 31.095,
+   "end": 34.476,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    107,
+    200,
+    972,
+    434
+   ]
+  },
+  {
+   "text": "You ask 'Would you use this software feature?' and they say 'sure, maybe.'",
+   "start": 34.95,
+   "end": 39.164,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    89,
+    200,
+    991,
+    434
+   ]
+  },
+  {
+   "text": "That's not evidence for product decisions. That's politeness.",
+   "start": 39.983,
+   "end": 43.947,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    155,
+    200,
+    924,
+    434
+   ]
+  },
+  {
+   "text": "A leading question is a survey that agrees with you in advance.",
+   "start": 44.769,
+   "end": 47.852,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    58,
+    200,
+    1022,
+    434
+   ]
+  },
+  {
+   "text": "Try this: before any product interview, write what would prove you wrong.",
+   "start": 48.36,
+   "end": 52.336,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    100,
+    200,
+    979,
+    434
+   ]
+  },
+  {
+   "text": "Then ask questions that could give you that answer.",
+   "start": 53.155,
+   "end": 55.512,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    66,
+    200,
+    1014,
+    356
+   ]
+  },
+  {
+   "text": "Monitor whether you're asking to understand the user or only to agree with yourself.",
+   "start": 55.99,
+   "end": 60.121,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    69,
+    200,
+    1011,
+    434
+   ]
+  },
+  {
+   "text": "If you can't be proven wrong, you're not doing research.",
+   "start": 60.94,
+   "end": 63.832,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    71,
+    200,
+    1009,
+    356
+   ]
+  },
+  {
+   "text": "So: write what would prove you wrong before you start.",
+   "start": 64.35,
+   "end": 67.302,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    100,
+    200,
+    979,
+    356
+   ]
+  },
+  {
+   "text": "If you can't be proven wrong, it's not research.",
+   "start": 68.121,
+   "end": 70.823,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    71,
+    200,
+    1009,
+    356
+   ]
+  },
+  {
+   "text": "When did you last seek evidence that you were wrong in product research?",
+   "start": 71.31,
+   "end": 74.452,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    63,
+    200,
+    1016,
+    434
+   ]
+  }
+ ],
+ "fa": [],
+ "policy": {
+  "width": 1080,
+  "height": 1920,
+  "safe_top": 200,
+  "safe_bottom": 1450,
+  "right_button_column_x": 960,
+  "right_button_column_y": [
+   1100,
+   1700
+  ],
+  "en_top": 200,
+  "en_row_height": 78,
+  "en_max_rows": 3,
+  "en_max_width": 980,
+  "en_font_size": 54,
+  "scene_zone": [
+   500,
+   1300
+  ],
+  "min_contrast_ratio": 4.5,
+  "note": "FA layer removed, space used for bigger diagram, code visual, evidence card, confidence meter, decision tree, prediction graph, human-AI network"
+ },
+ "font_fallbacks": 0,
+ "total": 75.74,
+ "fps": 30,
+ "width": 1080,
+ "height": 1920,
+ "safe_mode": false,
+ "beats": [
+  {
+   "beat": "hook",
+   "start": 0.0
+  },
+  {
+   "beat": "problem",
+   "start": 4.19
+  },
+  {
+   "beat": "explain",
+   "start": 17.69
+  },
+  {
+   "beat": "example",
+   "start": 34.87
+  },
+  {
+   "beat": "technique",
+   "start": 48.28
+  },
+  {
+   "beat": "ending",
+   "start": 64.27
+  }
+ ],
+ "qa_frames": [
+  {
+   "beat": "hook",
+   "pos": "s",
+   "t": 0.6
+  },
+  {
+   "beat": "hook",
+   "pos": "m",
+   "t": 2.095
+  },
+  {
+   "beat": "hook",
+   "pos": "e",
+   "t": 3.6900000000000004
+  },
+  {
+   "beat": "problem",
+   "pos": "s",
+   "t": 4.79
+  },
+  {
+   "beat": "problem",
+   "pos": "m",
+   "t": 10.940000000000001
+  },
+  {
+   "beat": "problem",
+   "pos": "e",
+   "t": 17.19
+  },
+  {
+   "beat": "explain",
+   "pos": "s",
+   "t": 18.290000000000003
+  },
+  {
+   "beat": "explain",
+   "pos": "m",
+   "t": 26.28
+  },
+  {
+   "beat": "explain",
+   "pos": "e",
+   "t": 34.37
+  },
+  {
+   "beat": "example",
+   "pos": "s",
+   "t": 35.47
+  },
+  {
+   "beat": "example",
+   "pos": "m",
+   "t": 41.575
+  },
+  {
+   "beat": "example",
+   "pos": "e",
+   "t": 47.78
+  },
+  {
+   "beat": "technique",
+   "pos": "s",
+   "t": 48.88
+  },
+  {
+   "beat": "technique",
+   "pos": "m",
+   "t": 56.275
+  },
+  {
+   "beat": "technique",
+   "pos": "e",
+   "t": 63.769999999999996
+  },
+  {
+   "beat": "ending",
+   "pos": "s",
+   "t": 64.86999999999999
+  },
+  {
+   "beat": "ending",
+   "pos": "m",
+   "t": 70.005
+  },
+  {
+   "beat": "ending",
+   "pos": "e",
+   "t": 75.24
+  }
+ ],
+ "previews": [
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-19/preview_start.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-19/preview_middle.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-19/preview_end.jpg"
+ ],
+ "contact_sheet": "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-19/qa_contact_sheet.jpg"
+}

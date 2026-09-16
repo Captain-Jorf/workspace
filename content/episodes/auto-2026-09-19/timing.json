@@ -1,0 +1,1265 @@
+{
+ "total": 75.74,
+ "lead": 0.55,
+ "tail": 1.2,
+ "gap": 0.34,
+ "chunks": [
+  {
+   "id": "c1",
+   "beat": "hook",
+   "start": 0.55,
+   "dur": 3.3,
+   "lines": [
+    {
+     "text": "Your user interviews proved you right. Did they?",
+     "scene": "hook",
+     "beat": "hook",
+     "start": 0.55,
+     "end": 3.85,
+     "words": [
+      {
+       "w": "Your",
+       "start": 0.63,
+       "end": 0.868
+      },
+      {
+       "w": "user",
+       "start": 0.88,
+       "end": 1.201
+      },
+      {
+       "w": "interviews",
+       "start": 1.213,
+       "end": 1.713
+      },
+      {
+       "w": "proved",
+       "start": 1.725,
+       "end": 2.022
+      },
+      {
+       "w": "you",
+       "start": 2.034,
+       "end": 2.141
+      },
+      {
+       "w": "right.",
+       "start": 2.153,
+       "end": 2.522
+      },
+      {
+       "w": "Did",
+       "start": 3.342,
+       "end": 3.52
+      },
+      {
+       "w": "they?",
+       "start": 3.532,
+       "end": 3.782
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "beat": "problem",
+   "start": 4.19,
+   "dur": 13.16,
+   "lines": [
+    {
+     "text": "You had a product hypothesis and you went looking for evidence in user research.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 4.19,
+     "end": 9.029,
+     "words": [
+      {
+       "w": "You",
+       "start": 4.27,
+       "end": 4.424
+      },
+      {
+       "w": "had",
+       "start": 4.436,
+       "end": 4.579
+      },
+      {
+       "w": "a",
+       "start": 4.591,
+       "end": 4.651
+      },
+      {
+       "w": "product",
+       "start": 4.662,
+       "end": 5.031
+      },
+      {
+       "w": "hypothesis",
+       "start": 5.043,
+       "end": 5.829
+      },
+      {
+       "w": "and",
+       "start": 5.841,
+       "end": 5.984
+      },
+      {
+       "w": "you",
+       "start": 5.996,
+       "end": 6.091
+      },
+      {
+       "w": "went",
+       "start": 6.103,
+       "end": 6.258
+      },
+      {
+       "w": "looking",
+       "start": 6.27,
+       "end": 6.532
+      },
+      {
+       "w": "for",
+       "start": 6.543,
+       "end": 6.746
+      },
+      {
+       "w": "evidence",
+       "start": 6.758,
+       "end": 7.139
+      },
+      {
+       "w": "in",
+       "start": 7.151,
+       "end": 7.27
+      },
+      {
+       "w": "user",
+       "start": 7.282,
+       "end": 7.603
+      },
+      {
+       "w": "research.",
+       "start": 7.615,
+       "end": 8.21
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "You found it, because you were looking for it in software feedback.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 9.029,
+     "end": 13.196,
+     "words": [
+      {
+       "w": "You",
+       "start": 9.029,
+       "end": 9.208
+      },
+      {
+       "w": "found",
+       "start": 9.22,
+       "end": 9.529
+      },
+      {
+       "w": "it,",
+       "start": 9.541,
+       "end": 9.66
+      },
+      {
+       "w": "because",
+       "start": 9.91,
+       "end": 10.243
+      },
+      {
+       "w": "you",
+       "start": 10.255,
+       "end": 10.339
+      },
+      {
+       "w": "were",
+       "start": 10.351,
+       "end": 10.422
+      },
+      {
+       "w": "looking",
+       "start": 10.434,
+       "end": 10.755
+      },
+      {
+       "w": "for",
+       "start": 10.767,
+       "end": 10.982
+      },
+      {
+       "w": "it",
+       "start": 10.993,
+       "end": 11.065
+      },
+      {
+       "w": "in",
+       "start": 11.077,
+       "end": 11.208
+      },
+      {
+       "w": "software",
+       "start": 11.22,
+       "end": 11.708
+      },
+      {
+       "w": "feedback.",
+       "start": 11.72,
+       "end": 12.374
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "It's not dishonesty. It's your brain protecting the first idea.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 13.196,
+     "end": 17.35,
+     "words": [
+      {
+       "w": "It's",
+       "start": 13.196,
+       "end": 13.398
+      },
+      {
+       "w": "not",
+       "start": 13.41,
+       "end": 13.648
+      },
+      {
+       "w": "dishonesty.",
+       "start": 13.66,
+       "end": 14.422
+      },
+      {
+       "w": "It's",
+       "start": 15.243,
+       "end": 15.422
+      },
+      {
+       "w": "your",
+       "start": 15.434,
+       "end": 15.577
+      },
+      {
+       "w": "brain",
+       "start": 15.589,
+       "end": 15.886
+      },
+      {
+       "w": "protecting",
+       "start": 15.898,
+       "end": 16.374
+      },
+      {
+       "w": "the",
+       "start": 16.386,
+       "end": 16.458
+      },
+      {
+       "w": "first",
+       "start": 16.47,
+       "end": 16.803
+      },
+      {
+       "w": "idea.",
+       "start": 16.815,
+       "end": 17.291
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "beat": "explain",
+   "start": 17.69,
+   "dur": 8.94,
+   "lines": [
+    {
+     "text": "Confirmation bias means we notice what fits our idea and ignore what doesn't.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 17.69,
+     "end": 22.708,
+     "words": [
+      {
+       "w": "Confirmation",
+       "start": 17.77,
+       "end": 18.472
+      },
+      {
+       "w": "bias",
+       "start": 18.484,
+       "end": 18.901
+      },
+      {
+       "w": "means",
+       "start": 18.912,
+       "end": 19.198
+      },
+      {
+       "w": "we",
+       "start": 19.21,
+       "end": 19.305
+      },
+      {
+       "w": "notice",
+       "start": 19.317,
+       "end": 19.698
+      },
+      {
+       "w": "what",
+       "start": 19.71,
+       "end": 19.865
+      },
+      {
+       "w": "fits",
+       "start": 19.877,
+       "end": 20.139
+      },
+      {
+       "w": "our",
+       "start": 20.151,
+       "end": 20.305
+      },
+      {
+       "w": "idea",
+       "start": 20.317,
+       "end": 20.77
+      },
+      {
+       "w": "and",
+       "start": 20.782,
+       "end": 20.901
+      },
+      {
+       "w": "ignore",
+       "start": 20.912,
+       "end": 21.27
+      },
+      {
+       "w": "what",
+       "start": 21.282,
+       "end": 21.424
+      },
+      {
+       "w": "doesn't.",
+       "start": 21.436,
+       "end": 21.889
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "In product user research, the question you ask shapes the answer you get.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 22.708,
+     "end": 26.63,
+     "words": [
+      {
+       "w": "In",
+       "start": 22.708,
+       "end": 22.874
+      },
+      {
+       "w": "product",
+       "start": 22.886,
+       "end": 23.291
+      },
+      {
+       "w": "user",
+       "start": 23.303,
+       "end": 23.636
+      },
+      {
+       "w": "research,",
+       "start": 23.648,
+       "end": 24.172
+      },
+      {
+       "w": "the",
+       "start": 24.362,
+       "end": 24.458
+      },
+      {
+       "w": "question",
+       "start": 24.47,
+       "end": 24.886
+      },
+      {
+       "w": "you",
+       "start": 24.898,
+       "end": 25.017
+      },
+      {
+       "w": "ask",
+       "start": 25.029,
+       "end": 25.339
+      },
+      {
+       "w": "shapes",
+       "start": 25.351,
+       "end": 25.696
+      },
+      {
+       "w": "the",
+       "start": 25.708,
+       "end": 25.791
+      },
+      {
+       "w": "answer",
+       "start": 25.803,
+       "end": 26.172
+      },
+      {
+       "w": "you",
+       "start": 26.184,
+       "end": 26.279
+      },
+      {
+       "w": "get.",
+       "start": 26.291,
+       "end": 26.624
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "beat": "explain",
+   "start": 26.97,
+   "dur": 7.56,
+   "lines": [
+    {
+     "text": "That's not curiosity; it's your judgment defending itself.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 26.97,
+     "end": 31.095,
+     "words": [
+      {
+       "w": "That's",
+       "start": 27.05,
+       "end": 27.323
+      },
+      {
+       "w": "not",
+       "start": 27.335,
+       "end": 27.55
+      },
+      {
+       "w": "curiosity;",
+       "start": 27.562,
+       "end": 28.3
+      },
+      {
+       "w": "it's",
+       "start": 28.562,
+       "end": 28.704
+      },
+      {
+       "w": "your",
+       "start": 28.716,
+       "end": 28.835
+      },
+      {
+       "w": "judgment",
+       "start": 28.847,
+       "end": 29.24
+      },
+      {
+       "w": "defending",
+       "start": 29.252,
+       "end": 29.704
+      },
+      {
+       "w": "itself.",
+       "start": 29.716,
+       "end": 30.276
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "You hear 'yes' because you asked in a way that invites yes.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 31.095,
+     "end": 34.53,
+     "words": [
+      {
+       "w": "You",
+       "start": 31.095,
+       "end": 31.273
+      },
+      {
+       "w": "hear",
+       "start": 31.285,
+       "end": 31.595
+      },
+      {
+       "w": "'yes'",
+       "start": 31.762,
+       "end": 32.131
+      },
+      {
+       "w": "because",
+       "start": 32.25,
+       "end": 32.559
+      },
+      {
+       "w": "you",
+       "start": 32.571,
+       "end": 32.702
+      },
+      {
+       "w": "asked",
+       "start": 32.714,
+       "end": 33.047
+      },
+      {
+       "w": "in",
+       "start": 33.059,
+       "end": 33.119
+      },
+      {
+       "w": "a",
+       "start": 33.131,
+       "end": 33.19
+      },
+      {
+       "w": "way",
+       "start": 33.202,
+       "end": 33.404
+      },
+      {
+       "w": "that",
+       "start": 33.416,
+       "end": 33.571
+      },
+      {
+       "w": "invites",
+       "start": 33.583,
+       "end": 34.0
+      },
+      {
+       "w": "yes.",
+       "start": 34.012,
+       "end": 34.476
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "beat": "example",
+   "start": 34.87,
+   "dur": 13.07,
+   "lines": [
+    {
+     "text": "You ask 'Would you use this software feature?' and they say 'sure, maybe.'",
+     "scene": "example",
+     "beat": "example",
+     "start": 34.87,
+     "end": 39.983,
+     "words": [
+      {
+       "w": "You",
+       "start": 34.95,
+       "end": 35.14
+      },
+      {
+       "w": "ask",
+       "start": 35.152,
+       "end": 35.545
+      },
+      {
+       "w": "'Would",
+       "start": 35.676,
+       "end": 35.831
+      },
+      {
+       "w": "you",
+       "start": 35.842,
+       "end": 35.961
+      },
+      {
+       "w": "use",
+       "start": 35.973,
+       "end": 36.223
+      },
+      {
+       "w": "this",
+       "start": 36.235,
+       "end": 36.402
+      },
+      {
+       "w": "software",
+       "start": 36.414,
+       "end": 36.866
+      },
+      {
+       "w": "feature?'",
+       "start": 36.878,
+       "end": 37.307
+      },
+      {
+       "w": "and",
+       "start": 37.592,
+       "end": 37.664
+      },
+      {
+       "w": "they",
+       "start": 37.676,
+       "end": 37.795
+      },
+      {
+       "w": "say",
+       "start": 37.807,
+       "end": 38.116
+      },
+      {
+       "w": "'sure,",
+       "start": 38.247,
+       "end": 38.581
+      },
+      {
+       "w": "maybe.'",
+       "start": 38.747,
+       "end": 39.164
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "That's not evidence for product decisions. That's politeness.",
+     "scene": "example",
+     "beat": "example",
+     "start": 39.983,
+     "end": 44.769,
+     "words": [
+      {
+       "w": "That's",
+       "start": 39.983,
+       "end": 40.257
+      },
+      {
+       "w": "not",
+       "start": 40.269,
+       "end": 40.507
+      },
+      {
+       "w": "evidence",
+       "start": 40.519,
+       "end": 40.9
+      },
+      {
+       "w": "for",
+       "start": 40.912,
+       "end": 41.042
+      },
+      {
+       "w": "product",
+       "start": 41.054,
+       "end": 41.4
+      },
+      {
+       "w": "decisions.",
+       "start": 41.412,
+       "end": 42.126
+      },
+      {
+       "w": "That's",
+       "start": 42.947,
+       "end": 43.209
+      },
+      {
+       "w": "politeness.",
+       "start": 43.221,
+       "end": 43.947
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "A leading question is a survey that agrees with you in advance.",
+     "scene": "example",
+     "beat": "example",
+     "start": 44.769,
+     "end": 47.94,
+     "words": [
+      {
+       "w": "A",
+       "start": 44.769,
+       "end": 44.876
+      },
+      {
+       "w": "leading",
+       "start": 44.888,
+       "end": 45.197
+      },
+      {
+       "w": "question",
+       "start": 45.209,
+       "end": 45.673
+      },
+      {
+       "w": "is",
+       "start": 45.685,
+       "end": 45.792
+      },
+      {
+       "w": "a",
+       "start": 45.804,
+       "end": 45.864
+      },
+      {
+       "w": "survey",
+       "start": 45.876,
+       "end": 46.328
+      },
+      {
+       "w": "that",
+       "start": 46.34,
+       "end": 46.471
+      },
+      {
+       "w": "agrees",
+       "start": 46.483,
+       "end": 46.852
+      },
+      {
+       "w": "with",
+       "start": 46.864,
+       "end": 46.983
+      },
+      {
+       "w": "you",
+       "start": 46.995,
+       "end": 47.138
+      },
+      {
+       "w": "in",
+       "start": 47.15,
+       "end": 47.221
+      },
+      {
+       "w": "advance.",
+       "start": 47.233,
+       "end": 47.852
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "beat": "technique",
+   "start": 48.28,
+   "dur": 7.29,
+   "lines": [
+    {
+     "text": "Try this: before any product interview, write what would prove you wrong.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 48.28,
+     "end": 53.155,
+     "words": [
+      {
+       "w": "Try",
+       "start": 48.36,
+       "end": 48.633
+      },
+      {
+       "w": "this:",
+       "start": 48.645,
+       "end": 49.002
+      },
+      {
+       "w": "before",
+       "start": 49.3,
+       "end": 49.669
+      },
+      {
+       "w": "any",
+       "start": 49.681,
+       "end": 49.836
+      },
+      {
+       "w": "product",
+       "start": 49.848,
+       "end": 50.241
+      },
+      {
+       "w": "interview,",
+       "start": 50.252,
+       "end": 50.705
+      },
+      {
+       "w": "write",
+       "start": 51.002,
+       "end": 51.217
+      },
+      {
+       "w": "what",
+       "start": 51.229,
+       "end": 51.383
+      },
+      {
+       "w": "would",
+       "start": 51.395,
+       "end": 51.526
+      },
+      {
+       "w": "prove",
+       "start": 51.538,
+       "end": 51.776
+      },
+      {
+       "w": "you",
+       "start": 51.788,
+       "end": 51.919
+      },
+      {
+       "w": "wrong.",
+       "start": 51.931,
+       "end": 52.336
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Then ask questions that could give you that answer.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 53.155,
+     "end": 55.57,
+     "words": [
+      {
+       "w": "Then",
+       "start": 53.155,
+       "end": 53.464
+      },
+      {
+       "w": "ask",
+       "start": 53.476,
+       "end": 53.75
+      },
+      {
+       "w": "questions",
+       "start": 53.762,
+       "end": 54.262
+      },
+      {
+       "w": "that",
+       "start": 54.274,
+       "end": 54.405
+      },
+      {
+       "w": "could",
+       "start": 54.417,
+       "end": 54.56
+      },
+      {
+       "w": "give",
+       "start": 54.572,
+       "end": 54.726
+      },
+      {
+       "w": "you",
+       "start": 54.738,
+       "end": 54.845
+      },
+      {
+       "w": "that",
+       "start": 54.857,
+       "end": 55.024
+      },
+      {
+       "w": "answer.",
+       "start": 55.036,
+       "end": 55.512
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c7",
+   "beat": "technique",
+   "start": 55.91,
+   "dur": 8.02,
+   "lines": [
+    {
+     "text": "Monitor whether you're asking to understand the user or only to agree with yourself.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 55.91,
+     "end": 60.94,
+     "words": [
+      {
+       "w": "Monitor",
+       "start": 55.99,
+       "end": 56.466
+      },
+      {
+       "w": "whether",
+       "start": 56.478,
+       "end": 56.704
+      },
+      {
+       "w": "you're",
+       "start": 56.716,
+       "end": 56.882
+      },
+      {
+       "w": "asking",
+       "start": 56.894,
+       "end": 57.263
+      },
+      {
+       "w": "to",
+       "start": 57.275,
+       "end": 57.371
+      },
+      {
+       "w": "understand",
+       "start": 57.382,
+       "end": 57.906
+      },
+      {
+       "w": "the",
+       "start": 57.918,
+       "end": 57.968
+      },
+      {
+       "w": "user",
+       "start": 57.966,
+       "end": 58.466
+      },
+      {
+       "w": "or",
+       "start": 58.478,
+       "end": 58.68
+      },
+      {
+       "w": "only",
+       "start": 58.692,
+       "end": 58.93
+      },
+      {
+       "w": "to",
+       "start": 58.942,
+       "end": 59.073
+      },
+      {
+       "w": "agree",
+       "start": 59.085,
+       "end": 59.382
+      },
+      {
+       "w": "with",
+       "start": 59.394,
+       "end": 59.525
+      },
+      {
+       "w": "yourself.",
+       "start": 59.537,
+       "end": 60.121
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "If you can't be proven wrong, you're not doing research.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 60.94,
+     "end": 63.93,
+     "words": [
+      {
+       "w": "If",
+       "start": 60.94,
+       "end": 61.083
+      },
+      {
+       "w": "you",
+       "start": 61.094,
+       "end": 61.213
+      },
+      {
+       "w": "can't",
+       "start": 61.225,
+       "end": 61.475
+      },
+      {
+       "w": "be",
+       "start": 61.487,
+       "end": 61.583
+      },
+      {
+       "w": "proven",
+       "start": 61.594,
+       "end": 61.975
+      },
+      {
+       "w": "wrong,",
+       "start": 61.987,
+       "end": 62.321
+      },
+      {
+       "w": "you're",
+       "start": 62.559,
+       "end": 62.678
+      },
+      {
+       "w": "not",
+       "start": 62.69,
+       "end": 62.928
+      },
+      {
+       "w": "doing",
+       "start": 62.94,
+       "end": 63.213
+      },
+      {
+       "w": "research.",
+       "start": 63.225,
+       "end": 63.832
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c8",
+   "beat": "ending",
+   "start": 64.27,
+   "dur": 6.62,
+   "lines": [
+    {
+     "text": "So: write what would prove you wrong before you start.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 64.27,
+     "end": 68.121,
+     "words": [
+      {
+       "w": "So:",
+       "start": 64.35,
+       "end": 64.838
+      },
+      {
+       "w": "write",
+       "start": 65.135,
+       "end": 65.362
+      },
+      {
+       "w": "what",
+       "start": 65.373,
+       "end": 65.54
+      },
+      {
+       "w": "would",
+       "start": 65.552,
+       "end": 65.683
+      },
+      {
+       "w": "prove",
+       "start": 65.695,
+       "end": 65.933
+      },
+      {
+       "w": "you",
+       "start": 65.945,
+       "end": 66.088
+      },
+      {
+       "w": "wrong",
+       "start": 66.1,
+       "end": 66.397
+      },
+      {
+       "w": "before",
+       "start": 66.409,
+       "end": 66.719
+      },
+      {
+       "w": "you",
+       "start": 66.731,
+       "end": 66.814
+      },
+      {
+       "w": "start.",
+       "start": 66.826,
+       "end": 67.302
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "If you can't be proven wrong, it's not research.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 68.121,
+     "end": 70.89,
+     "words": [
+      {
+       "w": "If",
+       "start": 68.121,
+       "end": 68.264
+      },
+      {
+       "w": "you",
+       "start": 68.276,
+       "end": 68.395
+      },
+      {
+       "w": "can't",
+       "start": 68.407,
+       "end": 68.669
+      },
+      {
+       "w": "be",
+       "start": 68.681,
+       "end": 68.776
+      },
+      {
+       "w": "proven",
+       "start": 68.788,
+       "end": 69.169
+      },
+      {
+       "w": "wrong,",
+       "start": 69.181,
+       "end": 69.538
+      },
+      {
+       "w": "it's",
+       "start": 69.8,
+       "end": 69.943
+      },
+      {
+       "w": "not",
+       "start": 69.954,
+       "end": 70.204
+      },
+      {
+       "w": "research.",
+       "start": 70.216,
+       "end": 70.823
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c9",
+   "beat": "ending",
+   "start": 71.23,
+   "dur": 3.31,
+   "lines": [
+    {
+     "text": "When did you last seek evidence that you were wrong in product research?",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 71.23,
+     "end": 74.54,
+     "words": [
+      {
+       "w": "When",
+       "start": 71.31,
+       "end": 71.488
+      },
+      {
+       "w": "did",
+       "start": 71.5,
+       "end": 71.607
+      },
+      {
+       "w": "you",
+       "start": 71.619,
+       "end": 71.726
+      },
+      {
+       "w": "last",
+       "start": 71.738,
+       "end": 72.024
+      },
+      {
+       "w": "seek",
+       "start": 72.036,
+       "end": 72.31
+      },
+      {
+       "w": "evidence",
+       "start": 72.322,
+       "end": 72.714
+      },
+      {
+       "w": "that",
+       "start": 72.726,
+       "end": 72.845
+      },
+      {
+       "w": "you",
+       "start": 72.857,
+       "end": 72.953
+      },
+      {
+       "w": "were",
+       "start": 72.964,
+       "end": 73.095
+      },
+      {
+       "w": "wrong",
+       "start": 73.107,
+       "end": 73.405
+      },
+      {
+       "w": "in",
+       "start": 73.417,
+       "end": 73.5
+      },
+      {
+       "w": "product",
+       "start": 73.512,
+       "end": 73.845
+      },
+      {
+       "w": "research?",
+       "start": 73.857,
+       "end": 74.452
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  }
+ ],
+ "language": "en",
+ "word_timing": {
+  "measured_lines": 18,
+  "lines": 18
+ }
+}

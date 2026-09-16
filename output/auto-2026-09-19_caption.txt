@@ -1,0 +1,23 @@
+Your user interviews proved you right. Did they?
+
+You had a product hypothesis and you went looking for evidence in user research. You found it, because you were looking for it in software feedback.
+
+🧠 WHAT'S GOING ON
+→ Confirmation bias means we notice what fits our idea and ignore what doesn't.
+→ In product user research, the question you ask shapes the answer you get.
+→ That's not curiosity; it's your judgment defending itself.
+→ You hear 'yes' because you asked in a way that invites yes.
+
+✦ TRY THIS
+→ Try this: before any product interview, write what would prove you wrong.
+→ Then ask questions that could give you that answer.
+→ Monitor whether you're asking to understand the user or only to agree with yourself.
+→ If you can't be proven wrong, you're not doing research.
+
+📚 SOURCES
+1. Nickerson (1998), Confirmation bias
+2. NN/g user research guidelines
+
+When did you last seek evidence that you were wrong in product research?
+
+#metacognition #metacognitionhq #productmanagement #startup #cognitivescience
