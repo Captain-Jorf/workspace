@@ -193,8 +193,33 @@
    "reason": "[source_quality] claim words ['researchers'] without tier A/B",
    "hook_type": "question",
    "updated_utc": "2026-09-16T04:11:09+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-19",
+   "content_date": "2026-09-19",
+   "topic": "Your user interviews proved you right. Did they? Confirmation bias",
+   "normalized_topic": "user interviews proved right they confirmation bias",
+   "pillar": "PRODUCT",
+   "tags": [
+    "confirmation-bias",
+    "user-research"
+   ],
+   "cta_type": "share-experience",
+   "playbook": "confirmation-bias-research",
+   "source_url": null,
+   "script_hash": "5a4579e1a157a3e3faf2fa8b2b69f7f5f1e9fb7f5c39a4fbd697f506145a1c86",
+   "video_hash": "61ef11d40ab6c7696ad1404a78e060407993cd0882eb11432dfb2181119ddaba",
+   "qa_score": 100,
+   "buffer_post_id": null,
+   "status": "approved-dry-run",
+   "run_id": "35058904480",
+   "technology_angle": "confirmation bias in product and user research for software",
+   "metacognition_concept": "confirmation bias",
+   "reason": "",
+   "hook_type": "question",
+   "updated_utc": "2026-09-16T05:22:52+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-16T04:11:09+00:00"
+ "updated_utc": "2026-09-16T05:22:52+00:00"
 }
