@@ -115,7 +115,7 @@ unauthenticated request.
 | HTTP 429 | `rate-limited` | `Retry-After` honored (capped at 30 s), at most 2 retries, then red |
 | HTTP 5xx / timeout / network | `upstream-error` / `network-unreachable` | bounded retry (1 + 2), connection check red; the daily pipeline may fall back to `static-fallback` |
 | an HTML **page** where JSON was expected (any status, including 2xx) | `edge-html-response` | bounded retry (1 + 2), then red; the message says plainly that the edge returned a page and that the API key is **not** the cause; **no mock** |
-| HTTP 200 with `content == ""` on a reasoning model | *(not an HTTP error — see §7.1)* | exactly one bounded retry with a larger completion budget, then red |
+| HTTP 200 with `content == ""` on a reasoning model | *(not an HTTP error — see §6.1)* | exactly one bounded retry with a larger completion budget, then red |
 
 Credential- and block-specific statuses are matched **before** the HTML-page
 case, so a Cloudflare 403/1010 can never be softened into something retryable.
@@ -208,10 +208,10 @@ request in the tests.
 ## 4. Tests
 
 ```bash
-python3 -m unittest discover -s tests          # 205 tests, 0 failures, 0 errors
+python3 -m unittest discover -s tests          # 233 tests, 0 failures, 0 errors
 ```
 
-`tests/test_groq_http_client.py` (39 new tests) drives a **local HTTP stub
+`tests/test_groq_http_client.py` (47 new tests) drives a **local HTTP stub
 server** that emulates the Cloudflare edge — including a faithful
 `Error code: 1010` block page with `Server: cloudflare` + `CF-RAY`. It covers:
 
@@ -229,7 +229,13 @@ server** that emulates the Cloudflare edge — including a faithful
 * 401 → `invalid-or-missing-api-key`; other 403 → `permission-or-account-restriction`;
 * 429 → `Retry-After` honored, 1 + 2 attempts max;
 * 5xx and timeout → bounded retries, then red;
-* the connection check never falls back to mock across six failure modes;
+* the connection check never falls back to mock across **eight** failure modes
+  (403/1010 HTML + JSON, 401, other 403, 5xx, 429, 409-with-HTML-page,
+  HTML-page-on-200);
+* `edge-html-response`: the captured 409+HTML case is retried a bounded number of
+  times, the project `User-Agent`/`Accept`/`Authorization`/`Content-Type` are
+  re-asserted on **every** retry, one blip followed by a real answer recovers with
+  `mock: false`, and no markup or secret ever reaches the message;
 * mock needs an explicit flag, makes no network call, and is refused on a
   scheduled production run;
 * the daily pipeline records `static-fallback` only on a Cloudflare block,
@@ -240,6 +246,13 @@ server** that emulates the Cloudflare edge — including a faithful
   exact-string `"true"`, and nothing in `build/` or the workflows writes it;
 * scrubber unit tests for the full key value and identifiable fragments;
 * no new third-party HTTP dependency.
+
+`tests/test_groq_reasoning_models.py` (20 new tests) covers §6.1: payload shape
+(`max_completion_tokens`, never `max_tokens`), `reasoning_effort: "low"` gating per
+model family, the 1024 floor / 4096 cap, exactly one bounded retry on a
+budget-exhausted empty answer, no retry (and no fixture) for any other empty
+answer, a llama-only account receiving no `reasoning_effort`, mock mode never
+touching the transport, and secret-/reasoning-text-free diagnostics.
 
 ## 5. What was deliberately NOT done in this change
 
@@ -252,14 +265,14 @@ server** that emulates the Cloudflare edge — including a faithful
 * `GROQ_API_KEY` was **not** rotated and was never printed or retrieved;
 * the real connection check was **not** replaced by a mock.
 
-## 7. Two further failure modes found by live verification on the real API
+## 6. Two further failure modes found by live verification on the real API
 
 Fixing 403/1010 was necessary but not sufficient. Once the real check could
 actually reach Groq (same key, never rotated), two **different** intermittent
 failures appeared. Both were captured from live runs on the session branch and
 both are now handled explicitly, with tests.
 
-### 7.1 HTTP 200 with empty content — reasoning-model budget (`openai/gpt-oss-*`)
+### 6.1 HTTP 200 with empty content — reasoning-model budget (`openai/gpt-oss-*`)
 
 Captured from run `35038594879` (6 real samples, annotation emitter in place):
 
@@ -295,10 +308,10 @@ Remedy (per <https://console.groq.com/docs/reasoning>), implemented in
 
 Covered by `tests/test_groq_reasoning_models.py` (20 tests).
 
-### 7.2 HTTP 409 whose body was an HTML page
+### 6.2 HTTP 409 whose body was an HTML page
 
 Captured from run `35042629998` — the same run also produced a fully green
-sample (`Groq connection: OK … mock=false`), proving §7.1 was fixed:
+sample (`Groq connection: OK … mock=false`), proving §6.1 was fixed:
 
 ```text
 reviewer: Groq HTTP 409: invalid-response host=api.groq.com attempt=1
@@ -326,7 +339,37 @@ Covered by `tests/test_groq_http_client.py::EdgeHtmlResponseTests` (8 tests),
 including the case where one blip is followed by a real answer and the retry
 recovers with `mock: false`.
 
-## 6. Verification after merge
+### 6.3 Live verification log (real key, no mock, same session)
+
+All runs below executed the **real** `build/groq_check.py` against `api.groq.com`
+with the repository's `GROQ_API_KEY` secret — never rotated during this work, and
+never printed. Each result was read back through the check-run annotations API
+(Actions log archives are not reachable from this environment).
+
+| Run | Commit | Result | Evidence |
+| --- | --- | --- | --- |
+| `35030569096` | `main` (pre-fix) | red | `model discovery: Groq HTTP 403 … error code: 1010` |
+| `35036315345` | `7c2627b` | **green** | first real proof: probe `status=401` (was 403/1010), `models=13`, both chat probes 200 |
+| `35036542551` | `7c2627b` | red, exit 6 | predated the annotation emitter → exact reason lost |
+| `35038217064` | `67d32ec` | **green** | `Groq connection: OK … models=13 … mock=false` |
+| `35038594879` | `edb50d8` | red, exit 6 | captured §6.1: `reviewer: Groq empty message content … http_status=200 attempt=1` |
+| `35042629998` | `186a057` | red, exit 6 | §6.1 gone (one sample fully green), captured §6.2: `Groq HTTP 409 … <!DOCTYPE html>` |
+| `35043097993` | `eeb59ee` | **green** | **6/6 real samples green**, each emitting `Groq connection: OK host=api.groq.com models=13 producer=openai/gpt-oss-120b reviewer=openai/gpt-oss-20b approved=false mock=false` |
+
+The green runs were produced by a temporary push-trigger workflow on the session
+branch only (`tmp-groq-real-check-session-branch.yml`), needed because this
+session's token has no repository permissions — `gh workflow run
+groq-connection-check` and `gh run rerun` both answer `HTTP 403: Resource not
+accessible by integration`. That file referenced no publishing secret, ran only
+the read-only check with `contents: read`, and was deleted in the very next
+commit; `tests/test_groq_http_client.py::test_no_temporary_branch_trigger_left_behind`
+fails on purpose while any such file exists, which is how its removal is proven.
+
+`approved=false` in the summary is the reviewer's verdict on the fixed,
+deliberately trivial test packet — the connection check asserts connectivity and
+structured output, not editorial approval, and exits 0 either way.
+
+## 7. Verification after merge
 
 ```bash
 # real, fail-closed connection check on main (mock defaults to false)
