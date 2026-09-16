@@ -457,22 +457,41 @@ def build_evidence_packet(topic, policy, recent_topics=None, recent_ctas=None):
     # NO statistics, so the producer must never introduce percentages, study
     # results or precise numbers. The value list below is derived from the
     # packet itself (common.packet_numeric_evidence) — normally empty.
+    ev_label = sanitize_untrusted((cal.get("sources") or [""])[0][:200] if cal.get("sources") else "", 200)
+    disc_url = discovery.get("url", "")[:300]
     numeric_evidence = sorted(common.packet_numeric_evidence(
         {"trusted_excerpt": trusted_excerpt,
-         "evidence_source": {"label": (cal.get("sources") or [""])[0][:200] if cal.get("sources") else ""},
+         "evidence_source": {"label": ev_label},
          "discovery_source": {"name": discovery.get("name", "")}}))
+
+    # EVIDENCE GROUNDING (issue #22): the packet's tier is DERIVED with QA's own
+    # matcher (common.source_tier via common.best_tier), never asserted from the
+    # mere existence of a calendar entry. The old `"A" if cal else "C"` claimed
+    # Tier A for every calendar topic — the prompt then permitted research
+    # attribution while the supervisor's matcher evaluated the script's sources
+    # as tier "?" and blocked the reel after a wasted render. A tier here is
+    # only ever as strong as the URL/dated label the packet actually carries;
+    # nothing is invented, and a discovery source counts as evidence only when
+    # its own URL lands in a policy Tier A/B domain (HN/Trends stay discovery).
+    tier_candidates = []
+    if ev_label:
+        tier_candidates.append(common.source_tier("", ev_label, policy))
+    if disc_url:
+        tier_candidates.append(common.source_tier(disc_url, discovery.get("name", ""), policy))
+    evidence_tier = common.best_tier(tier_candidates) if tier_candidates else "?"
+    has_ab = evidence_tier in ("A", "B")
 
     packet = {
         "topic": sanitize_untrusted(topic.get("title",""), 200),
         "technology_angle": sanitize_untrusted(topic.get("technology_angle") or topic.get("pillar",""), 200),
         "discovery_source": {
             "name": sanitize_untrusted(discovery.get("name",""), 100),
-            "url": discovery.get("url","")[:300],
+            "url": disc_url,
             "tier": discovery.get("tier",""),
         },
         "evidence_source": {
-            "label": sanitize_untrusted((cal.get("sources") or [""])[0][:200] if cal.get("sources") else "", 200),
-            "tier": "A" if cal else "C",
+            "label": ev_label,
+            "tier": evidence_tier,
         },
         "trusted_excerpt": sanitize_untrusted(trusted_excerpt, 600),
         "numeric_evidence": numeric_evidence,
@@ -480,6 +499,14 @@ def build_evidence_packet(topic, policy, recent_topics=None, recent_ctas=None):
                                    if numeric_evidence else
                                    "NONE — this evidence packet contains no statistics, percentages or "
                                    "study numbers, so the script must not introduce any"),
+        # Derived with the QA matcher — the single source for claim-word patterns
+        # (policy source_policy.require_evidence_for_claim_words). Prompts quote
+        # this list; they never maintain a keyword list of their own.
+        "evidence_tier": evidence_tier,
+        "has_tier_ab_evidence": has_ab,
+        "claim_word_patterns": list(policy.get("source_policy", {}).get("require_evidence_for_claim_words", [])),
+        "source_urls_allowed": sorted(common.packet_evidence_urls(
+            {"discovery_source": {"url": disc_url}, "evidence_source": {"url": ""}})),
         "allowed_claims": policy.get("source_policy", {}).get("require_evidence_for_claim_words", [])[:10],
         "unsupported_claims": ["no fake stats", "no invented citation", "no medical advice"],
         "recent_topics": [sanitize_untrusted(t, 100) for t in (recent_topics or [])[:5]],
@@ -684,6 +711,11 @@ class GroqProducer(LLMProvider):
             safe_items = [sanitize_untrusted(str(x), 200) for x in revision_items[:8]]
             wr = evidence_packet.get("word_range") or [150, 260]
             wt = evidence_packet.get("word_target") or [175, 210]
+            flagged_patterns = ", ".join(f"\u201c{p}\u201d"
+                                         for p in (evidence_packet.get("claim_word_patterns") or [])[:10])
+            allowed_urls = evidence_packet.get("source_urls_allowed") or []
+            url_note = ("only these packet-provided urls may appear: " + ", ".join(allowed_urls)
+                        if allowed_urls else "the packet provides NO source urls — every 'url' must stay empty")
             revision_block = (
                 "\nRevision requirements from the independent reviewer AND the deterministic "
                 "pre-render gate (address EVERY one of them):\n- "
@@ -694,6 +726,11 @@ class GroqProducer(LLMProvider):
                 "or REWRITE the sentence so it carries no number at all. The evidence packet's numeric "
                 "evidence is: " + str(evidence_packet.get("numeric_evidence_note", "")) + ". "
                 "NEVER keep a number by adding, adjusting or inventing a citation/URL.\n"
+                "- Attribution fix rule (issue #22): if research-attribution wording is flagged (claim words — "
+                + flagged_patterns + "…), REMOVE the attribution: rewrite the sentence as a direct, "
+                "appropriately qualified observation. NEVER add, keep, adjust or invent a citation, paper, "
+                "author name, URL or evidence tier to justify it — the deterministic citation guard rejects "
+                "every source URL the packet itself does not provide, and " + url_note + ".\n"
                 "- Length fix rule: the deterministic pre-render gate requires the TOTAL of all narration "
                 f"lines to be inside {wr[0]}-{wr[1]} spoken words, targeting ~{wt[0]}-{wt[1]} (that is what "
                 "makes the rendered video fit 60-120 s at the configured narration rate). Fix length with "
@@ -705,6 +742,30 @@ class GroqProducer(LLMProvider):
                 "no academic connectors.\n"
             )
 
+        # Evidence-grounded attribution rule (issue #22): the claim-word list is
+        # the QA policy's OWN pattern list (single source — never a second list);
+        # what the producer may say depends on the tier the packet DERIVABLY
+        # carries, i.e. exactly the bar the source_quality blocker applies.
+        claim_patterns = evidence_packet.get("claim_word_patterns") or []
+        pattern_blob = ", ".join(f"\u201c{p}\u201d" for p in claim_patterns)
+        if evidence_packet.get("has_tier_ab_evidence"):
+            attribution_rule = (
+                "Research attribution is allowed ONLY because this packet DERIVABLY carries Tier "
+                f"{evidence_packet.get('evidence_tier')} evidence: \"{evidence_packet.get('evidence_source',{}).get('label','')}\". "
+                "Attribute only to that exact source, by name, without numbers — reference research by name "
+                "only (e.g. \u201cMark et al. (2008), cost of interrupted work\u201d), never \u201cstudies show X%\u201d, and never to any "
+                "source the packet does not list.")
+        else:
+            attribution_rule = (
+                "This packet contains NO Tier A/B evidence (derived tier: "
+                f"{evidence_packet.get('evidence_tier', '?')}), so research attribution has nothing to stand on: "
+                "the narration must not contain ANY of the claim-word patterns the QA source_quality matcher "
+                "blocks — they are: " + pattern_blob + ". This includes the bare word \u201cresearchers\u201d. State each point as "
+                "a direct, appropriately qualified observation instead of attributed research (honest hedging; "
+                "no fabricated certainty), and NEVER add, cite or invent a paper, author, URL or \u201ctier\u201d to justify "
+                "an attribution — a deterministic citation guard rejects any source URL the packet does not provide, "
+                "and the deterministic pre-render text QA gate would block the script anyway (before any render), "
+                "burning the one allowed Revision.")
         prompt = f"""
 You are GroqProducer for @metacognition.hq — Metacognition for the AI age.
 {revision_block}
@@ -725,7 +786,8 @@ Task: Create an English-only reel script JSON for a 70-105 s spoken video (hard 
 The TOTAL of every narration line must be {evidence_packet.get('word_target',[175,210])[0]}-{evidence_packet.get('word_target',[175,210])[1]} spoken words (absolute allowed range {evidence_packet.get('word_range',[150,260])[0]}-{evidence_packet.get('word_range',[150,260])[1]}) — a DETERMINISTIC PRE-RENDER GATE counts the actual words in your narration lines; scripts outside the range are rejected BEFORE TTS/rendering, and word counts you report are ignored. Conversational English, strong hook in 3 sec, no 'In today's video', no filler, no fake stats/citation, no medical advice, one main idea, one tech example, one practical technique, network visual relevant to tech, natural CTA.
 
 HARD RULES (a violation is an automatic rejection):
-1. Numeric grounding — calendar/evergreen generation must NOT introduce percentages, statistics, study results, survey figures or any precise numeric claim unless the numeric evidence above explicitly lists it. {evidence_packet.get('numeric_evidence_note','')}. Reference research by name only, without numbers (e.g. "researchers studying LLM uncertainty"), and never with "studies show X%". Do NOT invent or guess URLs — including arXiv or DOI links: leave source "url" empty unless the packet provides it.
+1. Numeric grounding — calendar/evergreen generation must NOT introduce percentages, statistics, study results, survey figures or any precise numeric claim unless the numeric evidence above explicitly lists it. {evidence_packet.get('numeric_evidence_note','')}. Never with "studies show X%". Do NOT invent or guess URLs — including arXiv or DOI links: leave source "url" empty unless the packet provides it.
+1b. Attribution grounding — {attribution_rule}
 2. Conversational spoken English — use natural contractions (don't, it's, you'll, that's, can't, let's) wherever grammatical. Short spoken sentences; every narration line at most {evidence_packet['editorial_policy'].get('max_words_per_line', 20)} words; break long or formal constructions into short sentences. Never use academic connectors (furthermore, moreover, thus, hence, utilize, in conclusion, it is imperative). Natural, not sloppy: contractions must be grammatical, no slang, no filler.
 3. Scope — exactly ONE main idea and ONE actionable technique. Touch the technology angle (AI, software, coding, product, digital behavior) explicitly in the narration.
 4. CTA diversity — recent reels used these CTA types: {', '.join(evidence_packet.get('recent_cta_types', []) or ['(none recorded)'])}. Write the ending as a CTA of a DIFFERENT type from the most recent one. Allowed CTA types: {', '.join(evidence_packet.get('cta_types_allowed', ['question', 'try-it', 'share-experience', 'save']))} (question = ask a direct question; try-it = ask the viewer to try the technique; share-experience = ask for a personal story/experience; save = ask to save/bookmark the reel).
@@ -805,6 +867,10 @@ class GroqReviewer(LLMProvider):
         self.model = reviewer
         self.selection = report
 
+        claim_blob = ", ".join("\u201c" + str(p) + "\u201d"
+                               for p in (evidence_packet.get("claim_word_patterns") or [])[:10])
+        tier_note = ("Tier A/B evidence present" if evidence_packet.get("has_tier_ab_evidence")
+                     else "NO Tier A/B evidence")
         prompt = f"""
 You are GroqReviewer for @metacognition.hq — independent, English-only.
 
@@ -823,6 +889,7 @@ Check:
 - metacognition_relevance: does it have real metacognitive concept?
 - source_grounding: claims have evidence? No fake URL/citation?
 - NUMERIC CLAIMS (blocker): every percentage, statistic, study result or precise number in the narration must be EXPLICITLY listed in the numeric evidence above. {evidence_packet.get('numeric_evidence_note','')}. ANY such claim that is not in that list is an unsupported claim: add it to unsupported_claims AND blocking_errors, set source_grounding=false and approved=false. Do NOT approve a number by inventing or adjusting a citation, and do NOT assume a study backs a number.
+- CLAIM ATTRIBUTIONS (blocker, issue #22): the deterministic QA source_quality blocker rejects research-attribution wording in the spoken narration whenever the script carries no Tier A/B evidence, and this packet's DERIVED evidence tier is {evidence_packet.get('evidence_tier', '?')} ({tier_note}). The patterns it matches are the policy's own list: {claim_blob} (…), matched word-boundary and case-insensitive — "researchers" alone counts. If the packet has NO Tier A/B evidence, you MUST NOT approve any of that wording: add each matched pattern to unsupported_claims AND blocking_errors, set source_grounding=false and approved=false. A structured approval cannot override the deterministic gate and never grounds a claim by itself — approving ungrounded attribution only burns the one allowed Revision and ends at qa-failed. The valid fix is REMOVING the attribution (rewrite as a direct, appropriately qualified observation); inventing a citation/URL/author/tier to justify it is rejected by the deterministic citation guard.
 - hook_quality, spoken_english_quality, novelty, practical_value, safety
 - spoken_english_quality: must be natural spoken English — natural contractions present (don't, it's, you'll, that's, can't, let's), short sentences, no line over 20 words, no academic/formal constructions (furthermore, moreover, thus, hence, utilize, in conclusion). If missing, put it in required_changes.
 - LENGTH (blocker): add up the ACTUAL spoken words across ALL narration lines. The pipeline's deterministic pre-render gate hard-rejects anything outside {evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]} words (target ~{evidence_packet.get('word_target', [175, 210])[0]}-{evidence_packet.get('word_target', [175, 210])[1]}; that is what makes the render fit 60-120 s). A 106-word script for example MUST be rejected: if the narration is clearly outside the range, set approved=false, add "spoken words outside {evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]}" to blocking_errors, and put "fix narration word count with real content" into required_changes. Your approval CANNOT override the deterministic count — approving an out-of-range script only burns the one allowed revision. Ignore any word count the producer claims and never accept padding (filler lines, repeated CTA, silence notes) as a fix.

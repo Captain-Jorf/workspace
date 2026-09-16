@@ -17,6 +17,16 @@
   is VALIDATED and used; if even the fallback fails, the producer skips BEFORE
   rendering (exit 3, no script.json). Structured reviewer approval never overrides
   the gate. No padding, no extra retries, no paid services.
+- Issue #22 extension: the pre-render gate is now the FULL deterministic TEXT QA
+  gate — it runs qa_supervisor.pre_render_text_gate (the exact final-QA blocker
+  functions: source-quality claim words + unsupported statistics, English-only,
+  banned English terms, script-beat/hook/word blockers, technology, metacognition,
+  topic relevance, caption/hashtag blockers, structured Reviewer contradictions)
+  plus an invented-citation guard (source URLs must exist in the sanitized packet).
+  Calendar evidence sources are grounded into the LLM script so the QA tier
+  matcher sees what the packet actually provides — tiers are DERIVED, never
+  trusted from a model-claimed field, and nothing (citation, URL, author, stat or
+  tier) is ever invented to make a blocker pass.
 - On quota 429 (Retry-After honored, max 2 retries) / auth / outage → static fallback
 - Metadata: language=en, generation_mode=groq or static-fallback
 
@@ -33,6 +43,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import llm_provider
+import qa_supervisor as qa
 
 HANDLE = "@metacognition.hq"
 
@@ -408,38 +419,140 @@ def numeric_guard(llm_output, evidence_packet, ctx=""):
               flush=True)
     return bad
 
+def citation_guard(sources, evidence_packet, ctx=""):
+    """Invented-citation guard (issue #22, deterministic — mirrors the QA "no fake
+    citation" source_quality principle at generation time).
+
+    A source URL inside an LLM script may ONLY be a URL the sanitized evidence
+    packet itself provides. Anything else — a guessed arXiv/DOI link, a "fixed"
+    tier, a conveniently added paper — is an invented citation and blocks
+    adoption, because the pre-render gate would otherwise let a model escape an
+    attribution blocker simply by fabricating evidence. No domain allowlist, no
+    network check: the packet is the only ground truth. Returns the ungrounded
+    URLs (empty = clean).
+    """
+    bad = common.ungrounded_source_urls(sources, evidence_packet)
+    if bad:
+        shown = [common.scrub_secrets(str(u))[:60] for u in bad]
+        print(f"[producer] citation pre-gate ({ctx}): source URLs the evidence packet does not "
+              f"provide {shown} — rejecting LLM output (invented citation; leave 'url' empty "
+              f"unless the packet provides it)", flush=True)
+    return bad
+
 # --------------------------------------------------------------------- pre-render gate
-def gate_report(script, pol, ctx):
-    """Deterministic PRE-RENDER gate on a built script — the SAME single-sourced
-    word count QA uses (common.spoken_word_count) plus the duration preflight from
-    the configured narration rate. Never trusts a model-reported word count and
-    never pads: a bad report routes through the one allowed Revision, then the
-    validated Static English Fallback, then skip. Counts only are reported — the
+def gate_report(script, pol, ctx, topic=None, packet=None, reviewer_output=None):
+    """Deterministic PRE-RENDER gate on a built script — ONE combined verdict:
+
+      1. the fast length gate: the SAME single-sourced word count QA uses
+         (common.spoken_word_count) in the required 150-260 band plus the
+         duration preflight from the configured narration rate;
+      2. the full PRE-RENDER TEXT QA gate (issue #22): qa_pre_render_text_gate —
+         every deterministic final-QA blocker decidable from text alone
+         (source-quality claim words, unsupported statistics, English-only,
+         banned English terms, script-beat/hook blockers, technology,
+         metacognition and topic relevance, caption/hashtag blockers and
+         structured Reviewer contradictions) through the EXACT QA functions in
+         build/qa_supervisor.py — no second implementation, no copied rules.
+
+    Never trusts a model-reported word count and never pads: a bad report routes
+    through the one allowed Revision, then the validated Static English
+    Fallback, then skip. Counts and structured blocker codes are reported — the
     narration text never enters the report.
     """
     p = common.pre_render_params(pol)
     words = common.spoken_word_count(script)
     est = common.estimate_spoken_seconds(script, pol)
-    issues = common.pre_render_issues(script, pol)
+    length_issues = common.pre_render_issues(script, pol)
+    text = qa.pre_render_text_gate(script, topic, pol, reviewer_output=reviewer_output)
+    issues = list(length_issues) + list(text["blocking"])
     in_target = p["target_min"] <= words <= p["target_max"]
     rep = {"ctx": ctx, "words": words, "estimated_seconds": est,
            "required_words": [p["words_min"], p["words_max"]],
            "target_words": [p["target_min"], p["target_max"]],
-           "target_ok": in_target, "issues": issues}
+           "target_ok": in_target, "issues": issues,
+           "length_issues": length_issues, "text_blocking": list(text["blocking"]),
+           "text_warnings": list(text["warnings"])}
     if issues:
         print(f"[producer] pre-render gate ({ctx}): {issues} (words={words}, est={est:.1f}s) "
               f"— structured approval cannot override this deterministic check", flush=True)
     else:
         print(f"[producer] pre-render gate ({ctx}): ok words={words} est={est:.1f}s "
-              f"target_ok={in_target}", flush=True)
+              f"target_ok={in_target} text_qa=clean", flush=True)
     return rep
 
+def text_qa_revision_instructions(blocking):
+    """Safe STRUCTURED blocker codes for the ONE allowed Revision (issue #22).
+
+    Every item is generated from deterministic QA blocker codes — never raw web
+    text or evidence content. Each claim-word item states the hard rule: the
+    unsupported attribution must be REMOVED (or rewritten as a direct,
+    appropriately qualified observation when editorially valid), and NO citation,
+    URL, author, statistic or tier may be invented to justify keeping it.
+    """
+    out = []
+    for b in blocking or []:
+        check = b[1:b.index("]")].strip() if b.startswith("[") and "]" in b else ""
+        msg = b.split("] ", 1)[1] if "] " in b else b
+        if check == "source_quality" and "claim words" in msg:
+            out.append(
+                "evidence blocker (deterministic pre-render text QA — the exact QA source_quality "
+                f"rule): {msg}. The sanitized evidence packet contains NO Tier A/B evidence, so the "
+                "narration must not attribute anything to researchers, studies, science, experts, "
+                "data or experiments. REMOVE the attribution: rewrite each affected sentence as a "
+                "direct, appropriately qualified observation (hedged honestly, no fabricated certainty) "
+                "or drop the claim. Do NOT add, restore, adjust or invent a citation, paper, author name, "
+                "URL, statistic or evidence tier to justify the wording — invented evidence is itself an "
+                "automatic rejection by the deterministic citation guard.")
+        elif check == "source_quality" and "limited-claims" in msg:
+            out.append("evidence blocker: limited-claims mode must not make research claims — remove every "
+                       "attribution from the narration without adding a citation.")
+        elif check == "source_quality" and ("statistics" in msg or "cannot be verified" in msg):
+            out.append("evidence blocker (statistics): the flagged numbers are not in the packet's numeric "
+                       "evidence — remove them or rewrite the sentence without the number; never keep a "
+                       "number by inventing a citation (the numeric fix rule also applies).")
+        elif check == "source_quality" and "fake" in msg:
+            out.append("evidence blocker: the flagged citation/URL fails QA's fake-source rule — remove it "
+                       "entirely; a source URL may only be one the evidence packet itself provides.")
+        elif check == "source_quality" and "certainty" in msg:
+            out.append(f"evidence blocker: remove the unsupported-certainty phrase from the narration ({msg}) "
+                       "and rewrite the line as a direct, appropriately qualified observation.")
+        elif check in ("english_quality",):
+            out.append(f"language blocker (deterministic pre-render text QA): {msg} — rewrite the line in "
+                       "plain conversational English without the banned expression or URL.")
+        elif check in ("content_language", "english_only"):
+            out.append(f"language blocker (deterministic pre-render text QA): {msg} — production is "
+                       "English-only; remove the non-English/forbidden content entirely.")
+        elif check == "caption_quality":
+            out.append(f"caption blocker (deterministic pre-render text QA): {msg} — fix the caption text "
+                       "within caption_policy and hashtag_policy (brand tags kept, spam tags dropped, body "
+                       "length in range); never delete the CTA just to fit.")
+        elif check == "reviewer_check":
+            out.append("reviewer contradiction (deterministic pre-render text QA): the structured Reviewer "
+                       f"report itself flags this ({msg}) — fix the underlying content; a score or an "
+                       "approval flag cannot override deterministic QA blockers.")
+        elif check in ("technology_relevance", "metacognition_relevance", "topic_relevance"):
+            out.append(f"relevance blocker (deterministic pre-render text QA): {msg} — name the concrete "
+                       "technology context and the genuine metacognitive mechanism in the narration itself; "
+                       "never pad with filler to satisfy a keyword count.")
+        elif check == "script_quality":
+            if "words" in msg:
+                continue  # the length/duration item already carries the word contract
+            out.append(f"script blocker (deterministic pre-render text QA): {msg} — fix the script itself "
+                       "(beats, hook, actionable technique, placeholders, banned wording); never by padding.")
+        else:
+            out.append(f"deterministic pre-render text QA blocker [{check}]: {msg} — fix the content; never "
+                       "by padding and never by adding or inventing citations.")
+    return out
+
 def gate_revision_instructions(rep):
-    """The length/duration items sent to the ONE allowed Revision. Explicit so the
-    model fixes the budget with real content: one main idea, one actionable
-    technique, conversational English, 175-210 spoken words."""
+    """The length/duration items sent to the ONE allowed Revision — ONLY for the
+    length problems the fast gate actually found (issue #22: a claim-word-only
+    failure must not receive a bogus duration lecture). Explicit so the model
+    fixes the budget with real content: one main idea, one actionable technique,
+    conversational English, 175-210 spoken words."""
     p = common.pre_render_params()
     words, est = rep["words"], rep["estimated_seconds"]
+    length_issues = rep.get("length_issues", rep.get("issues", []))
     out = []
     if words < p["words_min"] or words > p["words_max"]:
         side = "EXPAND" if words < p["words_min"] else "CONDENSE"
@@ -452,7 +565,7 @@ def gate_revision_instructions(rep):
             "context, its genuine metacognitive mechanism, its example, its practical exercise — instead of "
             "adding topics. Never pad with filler, disclaimers or a repeated CTA; the gate counts actual "
             "words and ignores any word count you report.")
-    else:
+    elif any("estimated spoken duration" in i for i in length_issues):
         out.append(
             f"duration blocker (deterministic pre-render gate): estimated spoken duration {est:.1f}s is not "
             f"safe for the final 60-120s render — fix it with the word budget (target {p['target_min']}-"
@@ -560,7 +673,11 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
     cal = topic.get("calendar") or {}
     if cal:
         for s in cal.get("sources", [])[:3]:
-            sources.append({"label": s, "url": "", "tier": "A", "role": "evidence"})
+            # Tier DERIVED with QA's own matcher (single source: common.source_tier)
+            # — a stored tier is never asserted, and an undated calendar label is
+            # honestly "?" so the claim-word blocker stays real (issue #22).
+            sources.append({"label": s, "url": "", "tier": common.source_tier("", s, pol),
+                            "role": "evidence"})
     disc = topic.get("discovery_source") or {}
     if disc.get("url"):
         sources.append({"label": disc.get("name", "discovery"), "url": disc["url"], "tier": disc.get("tier", "C"), "role": "discovery"})
@@ -661,11 +778,39 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
         idx += 1
 
     tag = topic["content_date"]
-    sources = llm_output.get("sources", []) or []
-    # Ensure sources have tier
-    for s in sources:
-        if "tier" not in s:
-            s["tier"] = "B"
+    sources = list(llm_output.get("sources", []) or [])
+    # Evidence grounding (issue #22, run 35054292820 / reel-2026-09-18): the LLM
+    # path used to ship ONLY the model's own source list, so the calendar packet's
+    # curated evidence never reached the QA tier matcher — a dated Mark et al.
+    # citation existed in the packet yet the script evaluated best tier "?" and
+    # the narration "researchers" blocked AFTER rendering. The packet's evidence
+    # entries are therefore merged into script["sources"] verbatim (label copied
+    # from the calendar — nothing is invented), and every stored "tier" is
+    # DERIVED with QA's own matcher because QA ignores claimed tiers by design.
+    cal = topic.get("calendar") or {}
+    grounded = []
+    for s in cal.get("sources", [])[:3]:
+        grounded.append({"label": s, "url": "", "tier": common.source_tier("", s, pol),
+                         "role": "evidence"})
+    disc = topic.get("discovery_source") or {}
+    if disc.get("url"):
+        grounded.append({"label": disc.get("name", "discovery"), "url": disc["url"],
+                         "tier": disc.get("tier", "C"), "role": "discovery"})
+    seen = set()
+    merged = []
+    for s in grounded + sources:
+        if not isinstance(s, dict):
+            continue
+        key = (str(s.get("label", "")).strip(), str(s.get("url", "")).strip())
+        if key in seen:
+            continue
+        seen.add(key)
+        s = dict(s)
+        # Never trust a model-claimed tier: QA re-derives it from url/label with
+        # the same matcher, so the recorded field must say the same thing.
+        s["tier"] = common.source_tier(s.get("url", ""), s.get("label", ""), pol)
+        merged.append(s)
+    sources = merged
 
     # Caption from LLM or build. Hashtags are normalized deterministically:
     # brand tags (hashtag_policy.always, incl. #metacognitionhq) are guaranteed,
@@ -780,15 +925,23 @@ def main():
             # Validate and build script
             script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
             generation_mode = "groq"
+            # Invented-citation guard (issue #22): a model that "fixes" an
+            # attribution blocker by adding a plausible-but-unsupported URL is
+            # rejected the same way a fake statistic is — the packet is the only
+            # ground truth for source URLs.
+            citation_bad = citation_guard(script.get("sources", []), evidence_packet, ctx="first output")
             # Deterministic PRE-RENDER gate on the Producer's first output. Runs
-            # BEFORE TTS/subtitle/render, counts the actual narration with the QA
-            # word logic (common.spoken_word_count) and is never overridden by the
-            # reviewer's structured approval. Fix for reel-2026-09-17: a
-            # reviewer-approved 106-word script reached rendering and cost a full
-            # TTS+render cycle before QA blocked it.
-            gate1 = gate_report(script, pol, "first output")
+            # BEFORE TTS/subtitle/render: the fast length gate (QA single-sourced
+            # word count + duration preflight, reel-2026-09-17 fix) AND the full
+            # deterministic TEXT QA gate — the exact final-QA blocker functions
+            # including source_quality claim words (issue #22 / reel-2026-09-18:
+            # "researchers" in the spoken script with no Tier A/B evidence was
+            # only caught after a wasted render). Never overridden by the
+            # reviewer's structured approval.
+            gate1 = gate_report(script, pol, "first output", topic=topic, packet=evidence_packet)
             producer_report["gate_first"] = {k: gate1[k] for k in
-                                             ("words", "estimated_seconds", "target_ok", "issues")}
+                                             ("words", "estimated_seconds", "target_ok", "issues",
+                                              "text_blocking")}
             rejected_by_gate = bool(gate1["issues"])
 
             # Reviewer step
@@ -803,18 +956,27 @@ def main():
                                                        _discovered=discovered,
                                                        producer_model=prod.model)
                     reviewer_report = {"model": rev.model, "raw": review_raw, "output": review_out}
+                    # Requirement (issue #22): the Reviewer must not approve
+                    # evidence-requiring claim words when no qualifying evidence
+                    # exists. Its own structured report is checked too — an
+                    # "approved: true" flag cannot contradict a non-empty
+                    # blocking_errors / unsupported_claims list, so those lists
+                    # reject the candidate exactly like a missing approval does.
                     reviewer_rejected = (not review_out.get("approved", False)
-                                         or review_out.get("score", 0) < 85)
+                                         or review_out.get("score", 0) < 85
+                                         or bool(review_out.get("blocking_errors"))
+                                         or bool(review_out.get("unsupported_claims")))
             except Exception as e:
                 print(f"[producer] reviewer error, will fallback if needed: "
                       f"{common.scrub_secrets(str(e))}")
 
             # Rejection is any of: reviewer rejection, the deterministic numeric
-            # pre-gate, or the deterministic pre-render gate. A reviewer APPROVAL
-            # cannot keep an out-of-range script — structured output never
-            # overrides deterministic checks — and the out-of-range Producer
-            # output must be routed through the one allowed Revision.
-            if reviewer_rejected or numeric_bad or rejected_by_gate:
+            # pre-gate, the citation guard, or the deterministic pre-render TEXT
+            # QA gate. A reviewer APPROVAL cannot keep an out-of-range or
+            # ungrounded script — structured output never overrides deterministic
+            # checks — and the failing Producer output is routed through the one
+            # allowed Revision.
+            if reviewer_rejected or numeric_bad or citation_bad or rejected_by_gate:
                 if rev is None:
                     # No reviewer → no compliant final review; go straight to the
                     # validated static fallback (no unbounded retries, no new steps
@@ -828,8 +990,30 @@ def main():
                         required_changes.append(
                             f"remove or rewrite the unsupported numeric claim '{n}' — "
                             "do not keep it by adding a citation")
+                    for u in (citation_bad or []):
+                        required_changes.append(
+                            f"remove the source URL '{common.scrub_secrets(str(u))[:60]}' — the evidence "
+                            "packet does not provide it; a citation may only be one the packet lists, and "
+                            "leave 'url' empty otherwise — never invent or guess URLs, papers, authors or "
+                            "evidence tiers")
                     if rejected_by_gate:
                         required_changes += gate_revision_instructions(gate1)
+                        # issue #22: safe STRUCTURED blocker codes from the pre-render
+                        # text QA gate (claim words etc.), never raw web text
+                        required_changes += text_qa_revision_instructions(gate1["text_blocking"])
+                    if not required_changes and reviewer_rejected:
+                        # Structured contradiction: approved/score looked fine
+                        # but the reviewer's OWN blocking_errors or
+                        # unsupported_claims lists are non-empty — that is a
+                        # rejection, and it must still consume the one allowed
+                        # Revision with a safe instruction (no invented
+                        # evidence), never silently ship the rejected script.
+                        required_changes = [
+                            "the reviewer's structured report contradicts its approval (non-empty "
+                            "blocking_errors/unsupported_claims) — remove the unsupported attribution "
+                            "from the narration and rewrite those lines as direct, appropriately "
+                            "qualified observations; NEVER answer by inventing citations, URLs, author "
+                            "names, statistics or evidence tiers"]
                     if required_changes:
                         evidence_packet["revision_request"] = required_changes
                         try:
@@ -841,29 +1025,44 @@ def main():
                                 raise ValueError("mock revision rejected in daily path")
                             numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
                             script2 = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
-                            gate2 = gate_report(script2, pol, "revision")
+                            citation_bad2 = citation_guard(script2.get("sources", []), evidence_packet,
+                                                            ctx="revision")
+                            gate2 = gate_report(script2, pol, "revision", topic=topic, packet=evidence_packet)
                             review_out2, review_raw2 = rev.review(llm_out2, evidence_packet,
                                                                   _discovered=discovered,
                                                                   producer_model=prod.model)
                             if isinstance(review_raw2, dict) and review_raw2.get("mock"):
                                 raise ValueError("mock reviewer output rejected in daily path")
+                            reviewer2_blocks = bool(review_out2.get("blocking_errors")
+                                                     or review_out2.get("unsupported_claims"))
                             review_ok2 = (review_out2.get("approved") and review_out2.get("score", 0) >= 85
                                           and review_out2.get("technology_relevance")
-                                          and review_out2.get("metacognition_relevance"))
-                            if review_ok2 and not numeric_bad2 and not gate2["issues"]:
+                                          and review_out2.get("metacognition_relevance")
+                                          and not reviewer2_blocks)
+                            if (review_ok2 and not numeric_bad2 and not citation_bad2
+                                    and not gate2["issues"]):
                                 script = script2
                                 generation_mode = "groq"
                                 reviewer_report = {"model": rev.model, "raw": review_raw2,
                                                    "output": review_out2, "revision": True}
                             else:
-                                # Second rejection, surviving numbers, or the one
-                                # allowed Revision still outside 150-260 → the
+                                # Second rejection, surviving numbers or invented
+                                # citations, or the one allowed Revision still
+                                # failing the deterministic pre-render gate → the
                                 # validated Static English Fallback decides.
                                 reasons = []
                                 if not review_ok2:
-                                    reasons.append(f"Reviewer rejected after revision: {review_out2}")
+                                    reasons.append("Reviewer rejected after revision "
+                                                   f"(approved={bool(review_out2.get('approved'))}, "
+                                                   f"score={review_out2.get('score')}, "
+                                                   f"blocking={review_out2.get('blocking_errors') or []}, "
+                                                   f"unsupported={review_out2.get('unsupported_claims') or []})")
                                 if numeric_bad2:
                                     reasons.append(f"numeric claims survived the revision: {numeric_bad2}")
+                                if citation_bad2:
+                                    reasons.append("the revision invented citation URLs the evidence packet "
+                                                   f"does not provide: {[str(u)[:60] for u in citation_bad2]}"
+                                                   " — invented evidence is rejected")
                                 if gate2["issues"]:
                                     reasons.append("script still fails the pre-render gate after the one "
                                                    f"allowed revision: {gate2['issues']}")
@@ -929,10 +1128,11 @@ def main():
     # VALIDATED, not trusted: if even it fails the gate, this stage skips before
     # rendering — no script.json is written, so TTS/subtitles/render never see a
     # known-bad script, and no padding is applied to dodge the gate.
-    gate_final = gate_report(script, pol, f"final ({generation_mode})")
+    gate_final = gate_report(script, pol, f"final ({generation_mode})",
+                             topic=topic, packet=evidence_packet)
     producer_report["gate"] = {k: gate_final[k] for k in
                                ("words", "estimated_seconds", "required_words",
-                                "target_words", "target_ok", "issues")}
+                                "target_words", "target_ok", "issues", "text_blocking")}
     os.makedirs(a.out, exist_ok=True)
     if gate_final["issues"]:
         print(f"[producer] PRE-RENDER GATE: skipping before render — {'; '.join(gate_final['issues'])} "
