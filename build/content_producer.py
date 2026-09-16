@@ -7,6 +7,16 @@
 - Uses GroqProducer/Reviewer via build/llm_provider.py, with StaticEnglishFallback
 - Evidence packet sanitized, untrusted web content must not inject prompt
 - Max daily: 1 Producer, 1 Reviewer, if rejected max 1 Revision + final Reviewer
+- Deterministic PRE-RENDER script gate (reel-2026-09-17 fix): the ACTUAL spoken words
+  are counted with the QA single-sourced logic (common.spoken_word_count, never a
+  model-reported count) and must sit in 150-260 with a duration preflight (estimated
+  from the configured narration rate) safe for the 60-120 s render. An out-of-range
+  Producer output goes through the ONE allowed Revision with explicit instructions
+  (one main idea, one actionable technique, conversational English, 175-210 words);
+  if the Revision was used and it is still out of range, the Static English Fallback
+  is VALIDATED and used; if even the fallback fails, the producer skips BEFORE
+  rendering (exit 3, no script.json). Structured reviewer approval never overrides
+  the gate. No padding, no extra retries, no paid services.
 - On quota 429 (Retry-After honored, max 2 retries) / auth / outage → static fallback
 - Metadata: language=en, generation_mode=groq or static-fallback
 
@@ -37,7 +47,7 @@ PLAYBOOKS = {
         "hook": "When does your AI assistant make you think less?",
         "problem": ["You ask AI for code, it gives you an answer instantly.", "It feels productive, and you move on without checking.", "The speed hides the need to verify."],
         "explain": ["Your brain treats the AI's fluency as your own understanding.", "That's automation bias: trusting the tool because it sounds confident.", "The more you use it, the less you verify.", "Fluency is not accuracy, but it feels like it."],
-        "example": ["Think of the last time autocomplete finished your function.", "Did you read it line by line, or just accept it?", "Most people accept, because checking feels slower."],
+        "example": ["Think of the last time autocomplete finished your function.", "Did you read it line by line, or just accept it?", "Most people accept, because checking feels slower.", "If it never surprised you, you probably never checked it."],
         "technique": ["Try this: before you accept AI code, explain it out loud in one sentence.", "Then run one edge-case test yourself.", "If you can't explain it, you haven't learned it.", "Make that pause your new habit."],
         "ending": "Where did AI make you skip the thinking this week?",
         "cta_type": "share-experience",
@@ -52,7 +62,7 @@ PLAYBOOKS = {
         "hook": "Why does AI sound so sure, even when it's wrong?",
         "problem": ["AI answers in a calm, confident voice.", "That confidence feels like evidence, but it's just style.", "You trust the tone, not the facts."],
         "explain": ["Language models are trained to be fluent, not calibrated.", "Fluency and accuracy are two different skills.", "Your job is to add the calibration they don't have.", "Without you, fluent errors slip through."],
-        "example": ["Ask AI for a library function that doesn't exist. It will invent one, confidently.", "Your brain wants to trust the fluency.", "That's when you need to pause and check."],
+        "example": ["Ask AI for a library function that doesn't exist. It will invent one, confidently.", "Your brain wants to trust the tone instead of understanding.", "You'll ship the invented name, and the traceback will find it.", "You can't know which answers are right just by how sure they sound.", "That's when you need to pause and check."],
         "technique": ["Try this: whenever AI gives you a fact, ask 'how would I verify this in 30 seconds?'", "Open the docs, run the code, check one source.", "Make verification the habit, not trust.", "One quick check beats blind trust."],
         "ending": "What did AI state confidently that you had to correct recently?",
         "cta_type": "question",
@@ -65,9 +75,9 @@ PLAYBOOKS = {
         "metacognition_concept": "illusion of competence",
         "hook": "You finished the tutorial. Can you build it from scratch?",
         "problem": ["Watching someone code feels like learning to code.", "Until you close the video and the blank file stares back."],
-        "explain": ["Tutorials give you the answers before you feel the problem.", "That removes the struggle your memory needs to grow.", "Fluency while watching is not skill when building."],
+        "explain": ["Tutorials give you the answers before you feel the problem.", "That removes the struggle your memory needs to grow.", "Fluency while watching is not skill when building.", "Recognition is not recall, and the video keeps recognizing for you."],
         "example": ["You followed a React tutorial and it worked.", "Next day, try to recreate the same component without the video. Notice the gap."],
-        "technique": ["Try this: after any tutorial, close it and rebuild one small piece from memory.", "When you get stuck, peek only for the next step, then close again.", "That peek is the real learning."],
+        "technique": ["Try this: after any tutorial, close it and rebuild one small piece from memory.", "When you get stuck, peek only for the next step, then close again.", "If you can't rebuild it, that's your syllabus, not your failure.", "That peek is the real learning."],
         "ending": "Which tutorial left you feeling skilled until you tried alone?",
         "cta_type": "question",
         "web": ["WATCH", "FEELS EASY", "BLANK FILE", "GAP", "REBUILD", "LEARN"],
@@ -75,13 +85,13 @@ PLAYBOOKS = {
     "cognitive-offloading": {
         "pillar": "HUMAN_AI",
         "tags": ["cognitive-offloading", "AI", "memory"],
-        "technology_angle": "cognitive offloading to AI and memory",
+        "technology_angle": "cognitive offloading to AI and software memory",
         "metacognition_concept": "cognitive offloading",
         "hook": "If AI remembers everything, what does your brain stop doing?",
-        "problem": ["You used to remember the function signature.", "Now you ask AI every time, and it works, so why bother?", "The shortcut works, so the memory never gets used."],
+        "problem": ["You used to remember the function signature.", "Now you ask AI every time, and it works, so why bother?", "The shortcut works, so the memory never gets used.", "You don't notice the muscle going quiet."],
         "explain": ["Offloading is useful: it saves mental effort for harder problems.", "But your brain learns what you practice recalling.", "If you never recall it, the memory quietly fades.", "Useful offloading is a choice, not a default."],
-        "example": ["Think of phone numbers: you stopped memorizing them when your phone did.", "Same thing happens with code patterns you always ask AI for.", "You recognize them, but can't write them."],
-        "technique": ["Try this: keep a 'no-AI' list of 10 things you want to remember.", "For those, recall first, then check AI.", "For everything else, offload happily.", "That list is your memory insurance."],
+        "example": ["Think of phone numbers: you stopped memorizing them when your phone did.", "Same thing happens with API and code patterns you always ask AI for.", "You recognize them, but can't write them."],
+        "technique": ["Try this: keep a 'no-AI' list of ten things you want to remember.", "For those, explain it out loud first, then check AI.", "For everything else, offload happily.", "That list is your memory insurance."],
         "ending": "What have you offloaded so much you can't do without AI anymore?",
         "cta_type": "question",
         "web": ["OFFLOAD", "SAVES EFFORT", "MEMORY", "FADES", "RECALL", "CHOOSE"],
@@ -93,7 +103,7 @@ PLAYBOOKS = {
         "metacognition_concept": "planning fallacy",
         "hook": "Why does every software task take twice as long as you promised?",
         "problem": ["You plan the sprint and it looks doable. Even relaxed.", "Then Thursday arrives and half the code tickets are still open."],
-        "explain": ["When we plan software, we imagine the best-case version: focused, healthy, uninterrupted coding.", "We forget interruptions because they aren't part of the product story we tell.", "That's the planning fallacy in software engineering, and it's reliable."],
+        "explain": ["When we plan software, we imagine the best-case version: focused, healthy, uninterrupted coding.", "We forget interruptions because they aren't part of the product story we tell.", "The best case quietly assumes no reviews, no incidents, no flaky tests.", "That's the planning fallacy in software engineering, and it's reliable."],
         "example": ["Think about the last feature you estimated. Your guess before, and the real time after.", "The gap almost always points the same way in software teams."],
         "technique": ["Try this: before you estimate, ask how long similar software tasks took last time.", "Use that number, not the hopeful one.", "Then add the interruptions you already know will come."],
         "ending": "What software task did you finish on time this month? Anything?",
@@ -107,9 +117,9 @@ PLAYBOOKS = {
         "metacognition_concept": "confirmation bias",
         "hook": "Your user interviews proved you right. Did they?",
         "problem": ["You had a product hypothesis and you went looking for evidence in user research.", "You found it, because you were looking for it in software feedback."],
-        "explain": ["Confirmation bias means we notice what fits our idea and ignore what doesn't.", "In product user research, the question you ask shapes the answer you get.", "You hear 'yes' because you asked in a way that invites yes."],
-        "example": ["You ask 'Would you use this software feature?' and they say 'sure, maybe.'", "That's not evidence for product decisions. That's politeness."],
-        "technique": ["Try this: before any product interview, write what would prove you wrong.", "Then ask questions that could give you that answer.", "If you can't be proven wrong, you're not doing research."],
+        "explain": ["Confirmation bias means we notice what fits our idea and ignore what doesn't.", "In product user research, the question you ask shapes the answer you get.", "That's not curiosity; it's your judgment defending itself.", "You hear 'yes' because you asked in a way that invites yes."],
+        "example": ["You ask 'Would you use this software feature?' and they say 'sure, maybe.'", "That's not evidence for product decisions. That's politeness.", "A leading question is a survey that agrees with you in advance."],
+        "technique": ["Try this: before any product interview, write what would prove you wrong.", "Then ask questions that could give you that answer.", "Monitor whether you're asking to understand the user or only to agree with yourself.", "If you can't be proven wrong, you're not doing research."],
         "ending": "When did you last seek evidence that you were wrong in product research?",
         "cta_type": "question",
         "web": ["HYPOTHESIS", "SEARCH", "YES", "BIAS", "PROVE WRONG", "LEARN"],
@@ -121,9 +131,10 @@ PLAYBOOKS = {
         "metacognition_concept": "Goodhart's law",
         "hook": "When your metric became the target, what did your team stop measuring?",
         "problem": ["You set a metric: daily active users, story points, lines of code.", "People hit the metric, and the product got worse.", "The metric was hit, but the goal was missed."],
-        "explain": ["Goodhart's law: when a measure becomes a target, it stops being a good measure.", "People optimize for what you measure, not what you meant.", "The metric becomes the game.", "And the game replaces the work."],
+        "explain": ["Goodhart's law: when a measure becomes a target, it stops being a good measure.", "People optimize for what you measure, not what you meant.", "The metric becomes the game, and nobody monitors the thing it replaced.",
+                    "The number climbs while the learning flatlines.", "And the game replaces the work."],
         "example": ["You measure PRs merged, so PRs get smaller and more trivial.", "The number goes up. Learning doesn't.", "You optimized the number, not the outcome."],
-        "technique": ["Try this: for every metric you track, write what it could make people fake.", "Then add one counter-metric that catches the fake.", "If you can't name the counter, don't ship the metric.", "That counter keeps the metric honest."],
+        "technique": ["Try this: for every metric you track, write what it could make people fake.", "Then add one counter-metric that catches the fake.", "Compare the pair in review every week: judge the outcome, not the graph.", "If you can't name the counter, don't ship the metric."],
         "ending": "Which metric in your team is being gamed right now?",
         "cta_type": "question",
         "web": ["METRIC", "TARGET", "GAME", "FAKE", "COUNTER", "REAL"],
@@ -131,13 +142,14 @@ PLAYBOOKS = {
     "context-switching": {
         "pillar": "ATTENTION",
         "tags": ["context-switching", "notifications", "attention"],
-        "technology_angle": "context switching and notifications",
+        "technology_angle": "context switching, notifications and digital distraction",
         "metacognition_concept": "attention and task switching",
         "hook": "That notification just cost you twenty minutes. Not one.",
         "problem": ["You check Slack for a second and you're still reading about it twenty minutes later.", "Each small tap restarts your focus from zero."],
-        "explain": ["Your attention runs on cues, not on plans.", "A notification is a cue that hijacks the plan.", "The cost isn't the look. It's the minutes to get back."],
-        "example": ["You were coding, a notification popped, you answered, and the variable name you held in mind is gone.", "You have to reload the whole context."],
-        "technique": ["Try this: batch notifications into two windows a day.", "When a topic pulls at you, write it on a note: I'll read at six.", "Half the time, by six you won't care."],
+        "explain": ["Your attention runs on cues, not on plans.", "A notification is a cue that hijacks the plan.", "The cost isn't the look. It's the minutes to get back.", "Start by monitoring the pull: name the cue before you answer.",
+                    "Your working memory is small; every switch dumps it."],
+        "example": ["You were coding, a notification popped, you answered, and the variable name you held in mind is gone.", "You have to reload the whole context.", "By the time you're back, the file has scrolled and the plan is cold.", "Check where your mind landed; call it what it is."],
+        "technique": ["Try this: batch notifications into two windows a day.", "When a topic pulls at you, write it on a note: I'll read at six.", "Tell your team when you'll answer, so quiet doesn't read as absent.", "Half the time, by six you won't care."],
         "ending": "What pulled your focus today that you never actually chose?",
         "cta_type": "question",
         "web": ["CUE", "TAP", "RESTART", "NOTE IT", "LATER", "CHOOSE"],
@@ -148,10 +160,10 @@ PLAYBOOKS = {
         "technology_angle": "sunk cost in software architecture decisions",
         "metacognition_concept": "sunk cost fallacy",
         "hook": "You know this software architecture is wrong. So why are you still defending it?",
-        "problem": ["You spent three months building this code architecture.", "Throwing it away feels like throwing away the work in your product."],
-        "explain": ["Sunk cost fallacy: we keep investing in software because we've already invested.", "The code work is already gone. The question is only: what helps your product from now on?", "Past cost should not decide future cost in software engineering."],
-        "example": ["You built a microservice that now costs more than it saves.", "You keep it because 'we already built it', not because it helps your product code."],
-        "technique": ["Try this: ask 'If we hadn't built this code, would we build it now?'", "If the answer is no, write the cost of keeping this software for six more months.", "Then decide from there, not from the past."],
+        "problem": ["You spent three months building this code architecture.", "Throwing it away feels like throwing away the work in your product.", "Confidence in the old design grew from effort, not evidence."],
+        "explain": ["Sunk cost fallacy: we keep investing in software because we've already invested.", "The code work is already gone. The question is only: what helps your product from now on?", "Past cost should not decide future cost in software engineering.", "It's a habit defending itself, not an argument.", "Monitor the slide from 'it works' to 'we built it'."],
+        "example": ["You built a microservice that now costs more than it saves.", "You keep it because 'we built it', not because it helps your product code."],
+        "technique": ["Try this: ask 'If we hadn't built this code, would we build it now?'", "If the answer is no, write the cost of keeping this software for six more months.", "Judge tomorrow's cost, not yesterday's effort.", "Then decide from there, not from the past."],
         "ending": "What software architecture are you keeping only because you built it?",
         "cta_type": "question",
         "web": ["BUILT", "COST", "KEEP", "FALLACY", "NOW?", "DECIDE"],
@@ -161,11 +173,11 @@ PLAYBOOKS = {
         "tags": ["debugging", "metacognition"],
         "technology_angle": "metacognition in debugging",
         "metacognition_concept": "metacognitive monitoring",
-        "hook": "The bug isn't in the code. It's in how you're looking at the code.",
+        "hook": "The bug isn't in the code. It's in what you're not looking at yet.",
         "problem": ["You've stared at the same function for an hour.", "The more you look, the less you see."],
-        "explain": ["Debugging needs two minds: one that writes, one that watches.", "When you're stuck, you're usually running the same mental path.", "Metacognition is noticing that path and choosing a different one."],
-        "example": ["You assume the bug is in the new code, so you never check the old config.", "Your assumption is the bug."],
-        "technique": ["Try this: when stuck for 20 minutes, explain the bug to a rubber duck out loud.", "Say what you know, what you assume, and what you haven't checked.", "The gap you hear is where the bug lives."],
+        "explain": ["Debugging needs two minds: one that writes, one that watches.", "When you're stuck, you're usually running the same mental path.", "Metacognition is noticing that path and choosing a different one.", "Watching yourself debug is the skill above the skill."],
+        "example": ["You assume the bug is in the new code, so you never check the old config.", "Senior engineers call it the new-code bias; it catches everyone.", "Your assumption is the bug."],
+        "technique": ["Try this: when stuck for 20 minutes, explain the bug to a rubber duck out loud.", "Say what you know, what you assume, and what you haven't checked.", "If the explanation changes nothing, change the question you're asking the code.", "The gap you hear is where the bug lives."],
         "ending": "What bug taught you to doubt your first assumption?",
         "cta_type": "share-experience",
         "web": ["STUCK", "SAME PATH", "WATCHER", "ASSUME", "EXPLAIN", "FOUND"],
@@ -176,10 +188,10 @@ PLAYBOOKS = {
         "technology_angle": "learning to code with AI without losing skill",
         "metacognition_concept": "desirable difficulties",
         "hook": "AI can write the code, but can you learn from it?",
-        "problem": ["You ask AI, it writes it, you paste it, it works.", "Next week, you can't write it without AI."],
-        "explain": ["Learning needs some difficulty: recalling, mixing, waiting before you review.", "AI removes that difficulty, so it feels good but teaches less.", "Smooth practice feels like progress. Rough practice is progress."],
-        "example": ["Two students: one rereads AI code, one closes it and tries to rebuild it from memory.", "Next week, who explains it better?"],
-        "technique": ["Try this: after AI gives you code, close it and write the logic in plain English.", "Then rebuild the code from your English.", "If you can't, you didn't learn, you just copied."],
+        "problem": ["You ask AI, it writes it, you paste it, it works.", "Next week, you can't write it without AI.", "The demo passed, but the practice never happened."],
+        "explain": ["Learning needs some difficulty: recalling, mixing, waiting before you review.", "AI removes that difficulty, so it feels good but teaches less.", "Recall is the exercise; rereading the answer is just watching again.", "Smooth practice feels like progress. Rough practice is progress."],
+        "example": ["Two students: one rereads AI code, one closes it and tries to rebuild it from memory.", "Next week, who explains it better?", "The AI demo shipped; the software is still theirs to own."],
+        "technique": ["Try this: after AI gives you code, close it and write the logic in plain English.", "Then rebuild the code from your English.", "Do it while the problem still feels fresh, not after the demo fades.", "If you can't, you didn't learn, you just copied."],
         "ending": "What's one thing you learned to do without AI this month?",
         "cta_type": "question",
         "web": ["AI WRITES", "FEELS EASY", "RECALL", "REBUILD", "STRUGGLE", "LEARN"],
@@ -187,13 +199,25 @@ PLAYBOOKS = {
     "deskilling-autocomplete": {
         "pillar": "CODING",
         "tags": ["deskilling", "autocomplete", "AI"],
-        "technology_angle": "deskilling through AI autocomplete",
+        "technology_angle": "deskilling through AI autocomplete in code editors",
         "metacognition_concept": "skill decay and monitoring",
         "hook": "Autocomplete makes you faster today, and slower next year. Why?",
-        "problem": ["You used to know the syntax by heart.", "Now you wait for the suggestion, and accept.", "The suggestion is faster, so you stop trying."],
-        "explain": ["Skill is kept by retrieval: pulling it from memory.", "Autocomplete replaces retrieval with recognition.", "Recognition is easier, but it doesn't keep the skill alive.", "Easy now means weak later."],
-        "example": ["You used to write regex from memory.", "Now you ask AI, and next month you can't write it at all.", "You recognize the pattern, but can't produce it."],
-        "technique": ["Try this: one hour a week, code with autocomplete off.", "Write the hard parts from memory, then check.", "That hour is your skill insurance.", "One hour keeps the skill alive."],
+        "problem": ["You used to know the syntax by heart.",
+                    "Now you wait for the ghost text, then hit Tab and move on.",
+                    "The suggestion is faster, so you stop trying to recall.",
+                    "Every accepted line makes waiting the habit."],
+        "explain": ["Skill is kept by retrieval: pulling it from memory.",
+                    "Autocomplete replaces retrieval with recognition.",
+                    "Recognition is easy, but it doesn't keep the skill alive.",
+                    "So the decay is silent: you can still read code, you can't write it."],
+        "example": ["You used to write regex from memory.",
+                    "Now the assistant drafts it, you glance, accept, and it ships.",
+                    "Next month the same pattern defeats you and costs you a debugging hour.",
+                    "You recognize the shape, but you can't produce it."],
+        "technique": ["Try this: one hour a week, code with autocomplete off.",
+                      "Write the hard parts from memory first, then use the suggestion as your check.",
+                      "Notice the stall; stay in it ten seconds before you tab.",
+                      "That hour is your skill insurance."],
         "ending": "What skill are you losing because AI does it for you?",
         "cta_type": "question",
         "web": ["FAST NOW", "SLOW LATER", "RECALL", "RECOGNIZE", "OFF", "KEEP"],
@@ -203,16 +227,16 @@ PLAYBOOKS = {
 EXTRA = {
     "automation-bias": {"bridge": "It's not laziness. It's your brain trusting fluency over evidence.", "recap": ["So: fluency is not understanding.", "Explain before you accept, test one edge case, and keep the watcher on."]},
     "hallucination-confidence": {"bridge": "That's not lying. It's fluency without calibration.", "recap": ["So: confident language is not confident knowledge.", "Ask how you'd verify in 30 seconds, and make that the habit."]},
-    "tutorial-hell": {"bridge": "It's not that you're bad at coding. You're practicing recognition, not recall.", "recap": ["So: close the tutorial, rebuild from memory, peek only for the next step.", "The struggle you feel is the learning."]},
+    "tutorial-hell": {"bridge": "It's not that you're bad at coding. With autocomplete on, you're practicing recognition, not recall.", "recap": ["So: close the tutorial, rebuild from memory, peek only for the next step.", "The struggle you feel is the learning."]},
     "cognitive-offloading": {"bridge": "Offloading is smart, until you offload the skill you want to keep.", "recap": ["So: choose what to remember, recall before you ask, offload the rest.", "Your brain keeps what you practice."]},
     "planning-fallacy": {"bridge": "It's not laziness. It's a bias so reliable it has a name.", "recap": ["So: your gut plans the movie version. Your history knows the real one.", "Estimate from history, not hope."]},
     "confirmation-bias-research": {"bridge": "It's not dishonesty. It's your brain protecting the first idea.", "recap": ["So: write what would prove you wrong before you start.", "If you can't be proven wrong, it's not research."]},
     "goodhart-metrics": {"bridge": "The metric didn't fail. It succeeded at being gamed.", "recap": ["So: every metric needs a counter-metric that catches the fake.", "If you can't name it, don't ship it."]},
     "context-switching": {"bridge": "That's how a small tap becomes a lost hour without a decision.", "recap": ["So: write it down, give it a time, let your attention choose later on purpose."]},
-    "sunk-cost-architecture": {"bridge": "The work is already gone. Only future cost matters.", "recap": ["So: ask if you'd build it now, write the cost of keeping it, decide from there."]},
+    "sunk-cost-architecture": {"bridge": "That's how sunk cost works: the past doesn't vote, but it keeps talking.", "recap": ["So: ask if you'd build it now, write the cost of keeping it, decide from there."]},
     "metacognition-debugging": {"bridge": "The fix isn't more looking. It's looking differently.", "recap": ["So: when stuck, explain what you know, assume, and haven't checked.", "The watcher finds the bug your eyes missed."]},
     "learning-code-with-ai": {"bridge": "AI removes the difficulty your memory needs to grow.", "recap": ["So: after AI writes, close it, explain in English, rebuild from memory.", "Smooth feels good. Rough teaches."]},
-    "deskilling-autocomplete": {"bridge": "That's how a shortcut becomes a skill you lose.", "recap": ["So: one hour a week, autocomplete off, write from memory.", "Recognition is easy. Recall keeps the skill."]},
+    "deskilling-autocomplete": {"bridge": "That's how a shortcut becomes a skill you lose, one accepted line at a time.", "recap": ["So: recall first, then let the suggestion check you.", "Recognition feels like skill. Retrieval is the skill."]},
 }
 
 for k, e in EXTRA.items():
@@ -383,6 +407,59 @@ def numeric_guard(llm_output, evidence_packet, ctx=""):
               f"— evidence packet supports none; rejecting LLM output (static fallback obeys the same rule)",
               flush=True)
     return bad
+
+# --------------------------------------------------------------------- pre-render gate
+def gate_report(script, pol, ctx):
+    """Deterministic PRE-RENDER gate on a built script — the SAME single-sourced
+    word count QA uses (common.spoken_word_count) plus the duration preflight from
+    the configured narration rate. Never trusts a model-reported word count and
+    never pads: a bad report routes through the one allowed Revision, then the
+    validated Static English Fallback, then skip. Counts only are reported — the
+    narration text never enters the report.
+    """
+    p = common.pre_render_params(pol)
+    words = common.spoken_word_count(script)
+    est = common.estimate_spoken_seconds(script, pol)
+    issues = common.pre_render_issues(script, pol)
+    in_target = p["target_min"] <= words <= p["target_max"]
+    rep = {"ctx": ctx, "words": words, "estimated_seconds": est,
+           "required_words": [p["words_min"], p["words_max"]],
+           "target_words": [p["target_min"], p["target_max"]],
+           "target_ok": in_target, "issues": issues}
+    if issues:
+        print(f"[producer] pre-render gate ({ctx}): {issues} (words={words}, est={est:.1f}s) "
+              f"— structured approval cannot override this deterministic check", flush=True)
+    else:
+        print(f"[producer] pre-render gate ({ctx}): ok words={words} est={est:.1f}s "
+              f"target_ok={in_target}", flush=True)
+    return rep
+
+def gate_revision_instructions(rep):
+    """The length/duration items sent to the ONE allowed Revision. Explicit so the
+    model fixes the budget with real content: one main idea, one actionable
+    technique, conversational English, 175-210 spoken words."""
+    p = common.pre_render_params()
+    words, est = rep["words"], rep["estimated_seconds"]
+    out = []
+    if words < p["words_min"] or words > p["words_max"]:
+        side = "EXPAND" if words < p["words_min"] else "CONDENSE"
+        out.append(
+            f"length blocker (deterministic pre-render gate): the script has {words} spoken words; "
+            f"QA hard-rejects anything outside {p['words_min']}-{p['words_max']} — {side} the SAME "
+            f"narration to a target of ~{p['target_min']}-{p['target_max']} spoken words total across all "
+            "narration lines. Preserve exactly one main idea and one actionable technique, and keep "
+            "conversational English with natural contractions. Deepen that single idea — its concrete tech "
+            "context, its genuine metacognitive mechanism, its example, its practical exercise — instead of "
+            "adding topics. Never pad with filler, disclaimers or a repeated CTA; the gate counts actual "
+            "words and ignores any word count you report.")
+    else:
+        out.append(
+            f"duration blocker (deterministic pre-render gate): estimated spoken duration {est:.1f}s is not "
+            f"safe for the final 60-120s render — fix it with the word budget (target {p['target_min']}-"
+            f"{p['target_max']} spoken words at the configured narration rate), NEVER with silence, slowed "
+            "speech, repeated CTAs or filler. Preserve one main idea, one actionable technique and "
+            "conversational English with contractions.")
+    return out
 
 def short_title(title, limit=44):
     import re
@@ -703,8 +780,21 @@ def main():
             # Validate and build script
             script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
             generation_mode = "groq"
+            # Deterministic PRE-RENDER gate on the Producer's first output. Runs
+            # BEFORE TTS/subtitle/render, counts the actual narration with the QA
+            # word logic (common.spoken_word_count) and is never overridden by the
+            # reviewer's structured approval. Fix for reel-2026-09-17: a
+            # reviewer-approved 106-word script reached rendering and cost a full
+            # TTS+render cycle before QA blocked it.
+            gate1 = gate_report(script, pol, "first output")
+            producer_report["gate_first"] = {k: gate1[k] for k in
+                                             ("words", "estimated_seconds", "target_ok", "issues")}
+            rejected_by_gate = bool(gate1["issues"])
 
             # Reviewer step
+            rev = None
+            review_out = None
+            reviewer_rejected = False
             try:
                 reviewer_mode = os.environ.get("CONTENT_REVIEWER", "groq")
                 if reviewer_mode == "groq":
@@ -713,47 +803,77 @@ def main():
                                                        _discovered=discovered,
                                                        producer_model=prod.model)
                     reviewer_report = {"model": rev.model, "raw": review_raw, "output": review_out}
-                    # If rejected — by the reviewer OR by the deterministic
-                    # numeric pre-gate — try one revision.
                     reviewer_rejected = (not review_out.get("approved", False)
                                          or review_out.get("score", 0) < 85)
-                    if reviewer_rejected or numeric_bad:
-                        # One revision attempt
-                        required_changes = list(review_out.get("required_changes") or [])
-                        for n in numeric_bad:
-                            required_changes.append(
-                                f"remove or rewrite the unsupported numeric claim '{n}' — "
-                                "do not keep it by adding a citation")
-                        if required_changes:
-                            evidence_packet["revision_request"] = required_changes
-                            try:
-                                llm_out2, raw2 = prod.produce(evidence_packet, _discovered=discovered)
-                                if isinstance(raw2, dict) and raw2.get("mock"):
-                                    raise ValueError("mock revision rejected in daily path")
-                                numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
-                                review_out2, review_raw2 = rev.review(llm_out2, evidence_packet,
-                                                                     _discovered=discovered,
-                                                                     producer_model=prod.model)
-                                if isinstance(review_raw2, dict) and review_raw2.get("mock"):
-                                    raise ValueError("mock reviewer output rejected in daily path")
-                                if (review_out2.get("approved") and review_out2.get("score",0) >= 85
-                                        and review_out2.get("technology_relevance")
-                                        and review_out2.get("metacognition_relevance")
-                                        and not numeric_bad2):
-                                    script = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
-                                    reviewer_report = {"model": rev.model, "raw": review_raw2, "output": review_out2, "revision": True}
-                                else:
-                                    # Second rejection (or numbers survived) → fallback
-                                    raise ValueError(f"Reviewer rejected after revision: {review_out2}")
-                            except Exception as e_rev:
-                                print(f"[producer] reviewer second rejection, falling back: "
-                                      f"{common.scrub_secrets(str(e_rev))}")
-                                script = None
-                        else:
-                            script = None
             except Exception as e:
                 print(f"[producer] reviewer error, will fallback if needed: "
                       f"{common.scrub_secrets(str(e))}")
+
+            # Rejection is any of: reviewer rejection, the deterministic numeric
+            # pre-gate, or the deterministic pre-render gate. A reviewer APPROVAL
+            # cannot keep an out-of-range script — structured output never
+            # overrides deterministic checks — and the out-of-range Producer
+            # output must be routed through the one allowed Revision.
+            if reviewer_rejected or numeric_bad or rejected_by_gate:
+                if rev is None:
+                    # No reviewer → no compliant final review; go straight to the
+                    # validated static fallback (no unbounded retries, no new steps
+                    # beyond Producer → Reviewer → Revision → final Reviewer).
+                    print("[producer] reviewer unavailable — static fallback (policy caps the chain at "
+                          "Producer → Reviewer → one Revision → final Reviewer)", flush=True)
+                    script = None
+                else:
+                    required_changes = list((review_out or {}).get("required_changes") or [])
+                    for n in (numeric_bad or []):
+                        required_changes.append(
+                            f"remove or rewrite the unsupported numeric claim '{n}' — "
+                            "do not keep it by adding a citation")
+                    if rejected_by_gate:
+                        required_changes += gate_revision_instructions(gate1)
+                    if required_changes:
+                        evidence_packet["revision_request"] = required_changes
+                        try:
+                            # ONE revision attempt + final review (existing policy,
+                            # no additional retries; 429/timeout/malformed still
+                            # fall through to the static fallback below)
+                            llm_out2, raw2 = prod.produce(evidence_packet, _discovered=discovered)
+                            if isinstance(raw2, dict) and raw2.get("mock"):
+                                raise ValueError("mock revision rejected in daily path")
+                            numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
+                            script2 = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
+                            gate2 = gate_report(script2, pol, "revision")
+                            review_out2, review_raw2 = rev.review(llm_out2, evidence_packet,
+                                                                  _discovered=discovered,
+                                                                  producer_model=prod.model)
+                            if isinstance(review_raw2, dict) and review_raw2.get("mock"):
+                                raise ValueError("mock reviewer output rejected in daily path")
+                            review_ok2 = (review_out2.get("approved") and review_out2.get("score", 0) >= 85
+                                          and review_out2.get("technology_relevance")
+                                          and review_out2.get("metacognition_relevance"))
+                            if review_ok2 and not numeric_bad2 and not gate2["issues"]:
+                                script = script2
+                                generation_mode = "groq"
+                                reviewer_report = {"model": rev.model, "raw": review_raw2,
+                                                   "output": review_out2, "revision": True}
+                            else:
+                                # Second rejection, surviving numbers, or the one
+                                # allowed Revision still outside 150-260 → the
+                                # validated Static English Fallback decides.
+                                reasons = []
+                                if not review_ok2:
+                                    reasons.append(f"Reviewer rejected after revision: {review_out2}")
+                                if numeric_bad2:
+                                    reasons.append(f"numeric claims survived the revision: {numeric_bad2}")
+                                if gate2["issues"]:
+                                    reasons.append("script still fails the pre-render gate after the one "
+                                                   f"allowed revision: {gate2['issues']}")
+                                raise ValueError("; ".join(reasons) or "revision rejected")
+                        except Exception as e_rev:
+                            print(f"[producer] reviewer second rejection / revision unusable, falling back: "
+                                  f"{common.scrub_secrets(str(e_rev))}")
+                            script = None
+                    else:
+                        script = None
 
         except Exception as e:
             # Every provider error is classified by build/groq_http.py and
@@ -804,15 +924,33 @@ def main():
         producer_report["note"] = ("provider responded but the result was rejected "
                                    "or unusable — static English fallback was built")
 
+    # Final deterministic PRE-RENDER gate on whatever would ship (Revision output,
+    # first-pass output, or the Static English Fallback). The fallback is
+    # VALIDATED, not trusted: if even it fails the gate, this stage skips before
+    # rendering — no script.json is written, so TTS/subtitles/render never see a
+    # known-bad script, and no padding is applied to dodge the gate.
+    gate_final = gate_report(script, pol, f"final ({generation_mode})")
+    producer_report["gate"] = {k: gate_final[k] for k in
+                               ("words", "estimated_seconds", "required_words",
+                                "target_words", "target_ok", "issues")}
     os.makedirs(a.out, exist_ok=True)
+    if gate_final["issues"]:
+        print(f"[producer] PRE-RENDER GATE: skipping before render — {'; '.join(gate_final['issues'])} "
+              f"(mode={generation_mode}; bounded policy exhausted: Producer → Reviewer → one Revision "
+              f"→ final Reviewer → validated fallback). No script.json, no padding, no TTS, no render, "
+              f"no Buffer.", flush=True)
+        common.save_json(os.path.join(a.out, "producer_report.json"), producer_report)
+        raise SystemExit(3)
+
     common.save_json(os.path.join(a.out, "script.json"), script)
     # Also save producer/reviewer reports for QA and final report
     common.save_json(os.path.join(a.out, "producer_report.json"), producer_report)
     if reviewer_report:
         common.save_json(os.path.join(a.out, "reviewer_report.json"), reviewer_report)
 
-    words = sum(common.word_count(l["t"]) for ch in script["chunks"] for l in ch["en"])
-    print(f"[producer] script → {a.out}/script.json  playbook={script['meta']['playbook']} chunks={len(script['chunks'])} words={words} mode={generation_mode} lang=en")
+    print(f"[producer] script → {a.out}/script.json  playbook={script['meta']['playbook']} "
+          f"chunks={len(script['chunks'])} words={gate_final['words']} est={gate_final['estimated_seconds']:.1f}s "
+          f"gate=ok mode={generation_mode} lang=en")
 
 if __name__ == "__main__":
     main()

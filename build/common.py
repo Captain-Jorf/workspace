@@ -138,6 +138,114 @@ def latin_words(s):
 def word_count(s):
     return len((s or "").split())
 
+# ------------------------------------------------------------------ pre-render script gate
+# Single-sourced word/duration counting shared by the deterministic PRE-RENDER gate
+# (build/content_producer.py + build/pipeline.py) and the QA supervisor's own checks.
+# All of them call word_count()/narration_lines()/spoken_word_count() below, so the
+# gate and QA can never diverge. It counts ACTUAL narration tokens — a model-reported
+# word count is never trusted — and it never "fixes" length by padding (silence,
+# slowed speech or a repeated CTA are not the remedy; real content is).
+DEFAULT_TTS_LEAD_SECONDS = 0.55
+DEFAULT_TTS_TAIL_SECONDS = 1.2
+DEFAULT_TTS_GAP_SECONDS = 0.34
+
+def parse_speech_rate(rate):
+    """edge-tts style rate string ('+5%', '-10%', None) as a multiplier."""
+    if rate is None:
+        return 1.0
+    m = re.match(r"^\s*([+-]?\d+(?:\.\d+)?)\s*%\s*$", str(rate))
+    if not m:
+        return 1.0
+    return max(0.5, min(2.0, 1.0 + float(m.group(1)) / 100.0))
+
+def narration_lines(script):
+    """Every spoken-English narration line of a script, in order.
+
+    This IS the QA extraction (script_quality / english / audio all read the same
+    thing); the pre-render gate reuses it so both always count the same text.
+    """
+    out = []
+    for ch in (script or {}).get("chunks", []) or []:
+        for en in ch.get("en", []) or []:
+            out.append(en.get("t", "") if isinstance(en, dict) else str(en))
+    return out
+
+def spoken_word_count(script):
+    """Actual spoken English word count — sum of word_count() over narration_lines().
+
+    Never a model-claimed number: exactly what the QA supervisor counts.
+    """
+    return sum(word_count(l) for l in narration_lines(script))
+
+def pre_render_params(pol=None):
+    """Effective pre-render gate parameters (policy-driven, with safe defaults).
+
+    The required word range is the UNCHANGED QA policy range length.narration_words
+    (150-260) and the duration safety band is derived from the UNCHANGED final
+    requirement length.hard_seconds (60-120) minus length.pre_render.duration_margin_seconds.
+    word_target (175-210) is guidance for prompts/revision instructions, never a gate.
+    """
+    pol = pol or policy()
+    length = pol.get("length", {}) or {}
+    pr = length.get("pre_render", {}) or {}
+    lo, hi = (length.get("narration_words") or [150, 260])[:2]
+    dlo, dhi = (length.get("hard_seconds") or [60, 120])[:2]
+    margin = float(pr.get("duration_margin_seconds", 4.0))
+    tlo, thi = (pr.get("word_target") or [175, 210])[:2]
+    return {"words_min": int(lo), "words_max": int(hi),
+            "target_min": int(tlo), "target_max": int(thi),
+            "dur_min": float(dlo) + margin, "dur_max": float(dhi) - margin,
+            "wpm_base": float(pr.get("narration_wpm_base", 150.0)),
+            "chunk_pad": float(pr.get("chunk_pad_seconds", 0.28))}
+
+def estimate_spoken_seconds(script, pol=None):
+    """Deterministic spoken-duration estimate BEFORE TTS, from the CONFIGURED
+    narration rate: words / (tts.rate applied to a base words-per-minute) plus the
+    master-track overhead timing.py will add (lead, tail, per-chunk gaps and the
+    silence padding around each chunk).
+
+    Calibration: the failing run 35050738918 rendered a 106-word script at 45.3 s;
+    this model predicts ~45.5 s. It is an ESTIMATE ONLY — the actual rendered
+    duration remains authoritative in final QA (video_quality, 60-120 s).
+    """
+    pol = pol or policy()
+    p = pre_render_params(pol)
+    n = len((script or {}).get("chunks", []) or [])
+    words = spoken_word_count(script)
+    if not n or not words:
+        return 0.0
+    meta = (script or {}).get("meta", {}) or {}
+    lead = float(meta.get("lead", DEFAULT_TTS_LEAD_SECONDS))
+    tail = float(meta.get("tail", DEFAULT_TTS_TAIL_SECONDS))
+    gap = float(meta.get("gap", DEFAULT_TTS_GAP_SECONDS))
+    wps = p["wpm_base"] * parse_speech_rate((pol.get("tts", {}) or {}).get("rate")) / 60.0
+    return round(words / wps + lead + tail + (n - 1) * gap + n * p["chunk_pad"], 2)
+
+def pre_render_issues(script, pol=None):
+    """Hard deterministic gate that must pass BEFORE TTS, subtitle generation or
+    video rendering. Empty list = valid.
+
+      1. actual spoken words (same single-sourced count as QA) inside the policy
+         range 150-260 — required, thresholds untouched;
+      2. estimated spoken duration (configured narration rate) inside a safe band
+         around the final 60-120 s render requirement.
+
+    A failing script is never padded into passing; the caller routes it through the
+    one allowed Revision, then the validated Static English Fallback, then skip.
+    """
+    p = pre_render_params(pol)
+    words = spoken_word_count(script)
+    est = estimate_spoken_seconds(script, pol)
+    issues = []
+    if words < p["words_min"]:
+        issues.append(f"spoken words {words} below the required {p['words_min']}-{p['words_max']}")
+    elif words > p["words_max"]:
+        issues.append(f"spoken words {words} above the required {p['words_min']}-{p['words_max']}")
+    if not (p["dur_min"] <= est <= p["dur_max"]):
+        issues.append(f"estimated spoken duration {est:.1f}s outside the safe "
+                      f"{p['dur_min']:.0f}-{p['dur_max']:.0f}s band around the 60-120s render limit")
+    return issues
+
 def sha256_text(s):
     return hashlib.sha256((s or "").encode("utf-8")).hexdigest()
 
