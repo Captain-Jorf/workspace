@@ -442,7 +442,7 @@ def sanitize_untrusted(text, max_len=800):
     return text.strip()
 
 
-def build_evidence_packet(topic, policy, recent_topics=None):
+def build_evidence_packet(topic, policy, recent_topics=None, recent_ctas=None):
     """Build limited sanitized evidence packet for LLM producer."""
     cal = topic.get("calendar") or {}
     discovery = topic.get("discovery_source") or {}
@@ -452,6 +452,15 @@ def build_evidence_packet(topic, policy, recent_topics=None):
         trusted_excerpt = "; ".join(cal.get("beats", [])[:3])
     if discovery.get("title"):
         trusted_excerpt += f" | Discovery: {sanitize_untrusted(discovery.get('title',''), 200)}"
+
+    # Explicit numeric-grounding statement. Calendar/evergreen packets contain
+    # NO statistics, so the producer must never introduce percentages, study
+    # results or precise numbers. The value list below is derived from the
+    # packet itself (common.packet_numeric_evidence) — normally empty.
+    numeric_evidence = sorted(common.packet_numeric_evidence(
+        {"trusted_excerpt": trusted_excerpt,
+         "evidence_source": {"label": (cal.get("sources") or [""])[0][:200] if cal.get("sources") else ""},
+         "discovery_source": {"name": discovery.get("name", "")}}))
 
     packet = {
         "topic": sanitize_untrusted(topic.get("title",""), 200),
@@ -466,14 +475,22 @@ def build_evidence_packet(topic, policy, recent_topics=None):
             "tier": "A" if cal else "C",
         },
         "trusted_excerpt": sanitize_untrusted(trusted_excerpt, 600),
+        "numeric_evidence": numeric_evidence,
+        "numeric_evidence_note": ("these are the ONLY numeric claims allowed: " + ", ".join(numeric_evidence)
+                                   if numeric_evidence else
+                                   "NONE — this evidence packet contains no statistics, percentages or "
+                                   "study numbers, so the script must not introduce any"),
         "allowed_claims": policy.get("source_policy", {}).get("require_evidence_for_claim_words", [])[:10],
         "unsupported_claims": ["no fake stats", "no invented citation", "no medical advice"],
         "recent_topics": [sanitize_untrusted(t, 100) for t in (recent_topics or [])[:5]],
+        "recent_cta_types": [str(c) for c in (recent_ctas or [])[:5]],
+        "cta_types_allowed": list(policy.get("cta_policy", {}).get("allowed_types", [])),
         "editorial_policy": {
             "brand": policy.get("page", {}).get("brand_positioning",""),
             "pillars": list(policy.get("pillars", {}).keys())[:6],
             "tone": policy.get("tone", {}).get("style",""),
             "length_target": policy.get("length", {}).get("target_seconds", [70,105]),
+            "max_words_per_line": policy.get("length", {}).get("max_words_per_line", 20),
             "forbidden_openers": policy.get("tone", {}).get("forbidden_openers", [])[:5],
         }
     }
@@ -662,6 +679,13 @@ class GroqProducer(LLMProvider):
                 "(address EVERY one of them):\n- "
                 + "\n- ".join(i for i in safe_items if i)
                 + "\n"
+                "Revision rules that always apply:\n"
+                "- Numeric fix rule: if a number/percentage/statistic is flagged (or you find one), REMOVE it "
+                "or REWRITE the sentence so it carries no number at all. The evidence packet's numeric "
+                "evidence is: " + str(evidence_packet.get("numeric_evidence_note", "")) + ". "
+                "NEVER keep a number by adding, adjusting or inventing a citation/URL.\n"
+                "- Keep the revision conversational: natural contractions, short lines (max 20 words), "
+                "no academic connectors.\n"
             )
 
         prompt = f"""
@@ -676,10 +700,17 @@ Technology angle: {evidence_packet.get('technology_angle','')}
 Discovery: {evidence_packet.get('discovery_source',{}).get('name','')} ({evidence_packet.get('discovery_source',{}).get('url','')})
 Evidence: {evidence_packet.get('evidence_source',{}).get('label','')}
 Excerpt: {evidence_packet.get('trusted_excerpt','')}
+Numeric evidence in packet: {evidence_packet.get('numeric_evidence_note','')}
 Recent topics to avoid: {', '.join(evidence_packet.get('recent_topics',[]))}
 Allowed claims must have evidence, forbidden: {', '.join(evidence_packet.get('unsupported_claims', ['no fake stats']))}
 
 Task: Create English-only reel script JSON for 70-105 sec (max 120), conversational English, strong hook in 3 sec, no 'In today's video', no filler, no fake stats/citation, no medical advice, one main idea, one tech example, one practical technique, network visual relevant to tech, natural CTA.
+
+HARD RULES (a violation is an automatic rejection):
+1. Numeric grounding — calendar/evergreen generation must NOT introduce percentages, statistics, study results, survey figures or any precise numeric claim unless the numeric evidence above explicitly lists it. {evidence_packet.get('numeric_evidence_note','')}. Reference research by name only, without numbers (e.g. "researchers studying LLM uncertainty"), and never with "studies show X%". Do NOT invent or guess URLs — including arXiv or DOI links: leave source "url" empty unless the packet provides it.
+2. Conversational spoken English — use natural contractions (don't, it's, you'll, that's, can't, let's) wherever grammatical. Short spoken sentences; every narration line at most {evidence_packet['editorial_policy'].get('max_words_per_line', 20)} words; break long or formal constructions into short sentences. Never use academic connectors (furthermore, moreover, thus, hence, utilize, in conclusion, it is imperative). Natural, not sloppy: contractions must be grammatical, no slang, no filler.
+3. Scope — exactly ONE main idea and ONE actionable technique. Touch the technology angle (AI, software, coding, product, digital behavior) explicitly in the narration.
+4. CTA diversity — recent reels used these CTA types: {', '.join(evidence_packet.get('recent_cta_types', []) or ['(none recorded)'])}. Write the ending as a CTA of a DIFFERENT type from the most recent one. Allowed CTA types: {', '.join(evidence_packet.get('cta_types_allowed', ['question', 'try-it', 'share-experience', 'save']))} (question = ask a direct question; try-it = ask the viewer to try the technique; share-experience = ask for a personal story/experience; save = ask to save/bookmark the reel).
 
 Output ONLY valid JSON with keys:
 {{
@@ -764,15 +795,19 @@ Evidence packet:
 Topic: {evidence_packet.get('topic','')}
 Technology angle: {evidence_packet.get('technology_angle','')}
 Discovery: {evidence_packet.get('discovery_source',{}).get('name','')}
+Numeric evidence in packet: {evidence_packet.get('numeric_evidence_note','')}
 Recent topics: {', '.join(evidence_packet.get('recent_topics',[]))}
 
 Check:
 - technology_relevance: is it about AI, software, coding, product, digital behavior, future of work?
 - metacognition_relevance: does it have real metacognitive concept?
 - source_grounding: claims have evidence? No fake URL/citation?
+- NUMERIC CLAIMS (blocker): every percentage, statistic, study result or precise number in the narration must be EXPLICITLY listed in the numeric evidence above. {evidence_packet.get('numeric_evidence_note','')}. ANY such claim that is not in that list is an unsupported claim: add it to unsupported_claims AND blocking_errors, set source_grounding=false and approved=false. Do NOT approve a number by inventing or adjusting a citation, and do NOT assume a study backs a number.
 - hook_quality, spoken_english_quality, novelty, practical_value, safety
+- spoken_english_quality: must be natural spoken English — natural contractions present (don't, it's, you'll, that's, can't, let's), short sentences, no line over 20 words, no academic/formal constructions (furthermore, moreover, thus, hence, utilize, in conclusion). If missing, put it in required_changes.
 - No Persian, no FA layer, language=en
 - No medical advice, no filler, no 'In today's video'
+- One main idea, one actionable technique
 
 Output ONLY valid JSON:
 {{
@@ -791,7 +826,7 @@ Output ONLY valid JSON:
   "blocking_errors": []
 }}
 
-Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims, no fake URL, non-duplicate, hook and ending related.
+Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims (this includes ANY number/percentage not in the packet's numeric evidence), no fake URL, natural conversational English with contractions, non-duplicate, hook and ending related.
 """
         content, raw = call_groq_chat(prompt, reviewer, max_tokens=1400, temperature=0.3)
         raw["selection"] = report

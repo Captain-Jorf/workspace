@@ -291,6 +291,99 @@ GENERIC_LENS = {
     "tags": ["trend", "tech", "metacognition"],
 }
 
+# --------------------------------------------------------------------- CTA diversity
+# Rolling editorial memory drives CTA type variety (cta_policy.avoid_same_type_consecutive).
+# The label is derived deterministically from the ending text, so it never trusts
+# the LLM for a label it cannot verify. With no memory the fallback is the plain
+# classification — still deterministic.
+
+CTA_TYPE_KEYWORDS = {
+    "save": ("save this", "save it", "bookmark", "keep this", "save for"),
+    "try-it": ("try this", "try it", "do this", "test it", "run it", "practice"),
+    "share-experience": ("share", "tell me", "what did you", "when did you", "which time",
+                          "what's the last", "what was the last", "last time"),
+}
+
+def classify_cta_type(ending_text):
+    """Deterministic CTA-type label for an ending line (default: question)."""
+    t = (ending_text or "").lower()
+    if not t.strip():
+        return "question"
+    for ctype in ("save", "try-it", "share-experience"):
+        if any(k in t for k in CTA_TYPE_KEYWORDS[ctype]):
+            return ctype
+    return "question"
+
+def _cta_compatible(ctype, ending_text):
+    """Can an ending plausibly be labeled with `ctype`?"""
+    t = (ending_text or "").lower()
+    if ctype == "question":
+        return True                     # any ending can be read as a question CTA
+    if ctype == "save":
+        return any(k in t for k in CTA_TYPE_KEYWORDS["save"])
+    if ctype == "try-it":
+        return any(k in t for k in CTA_TYPE_KEYWORDS["try-it"])
+    if ctype == "share-experience":
+        return ("?" in t) and any(k in t for k in ("you", "your", "share", "tell"))
+    return True
+
+def choose_cta_type(ending_text, memory, pol):
+    """Pick this reel's CTA type from the allowed set, avoiding the recent ones.
+
+    Rolling memory rule: skip the CTA types of the most recent recorded reels
+    (newest first) in order; take the first remaining type compatible with the
+    ending text. Deterministic fallback when memory is unavailable/empty:
+    the plain classification of the ending text.
+    """
+    allowed = list(pol.get("cta_policy", {}).get("allowed_types",
+                                                 ["question", "try-it", "share-experience", "save"]))
+    if not allowed:
+        return classify_cta_type(ending_text)
+    classified = classify_cta_type(ending_text)
+    if classified not in allowed:
+        classified = allowed[0]
+    if not pol.get("cta_policy", {}).get("avoid_same_type_consecutive", True):
+        return classified
+    recent = common.recent_cta_types(memory, n=len(allowed))
+    if not recent:
+        return classified                            # no memory → deterministic fallback
+    # Prefer the type the ending text actually expresses (it is compatible by
+    # construction); only switch when that type repeats a recent reel.
+    order = [classified] + [c for c in allowed if c != classified]
+    for cand in order:
+        if cand in recent:
+            continue
+        if _cta_compatible(cand, ending_text):
+            return cand
+    return classified                                # nothing fits → truthful label
+
+# --------------------------------------------------------------------- numeric pre-gate
+def narration_text_of(llm_output):
+    n = (llm_output or {}).get("narration", "")
+    if isinstance(n, str):
+        return n
+    if isinstance(n, dict):
+        parts = []
+        for v in n.values():
+            parts.append(" ".join(v) if isinstance(v, list) else str(v))
+        return " ".join(parts)
+    return ""
+
+def numeric_guard(llm_output, evidence_packet, ctx=""):
+    """Deterministic mirror of the QA source_quality statistic blocker.
+
+    Unsupported numbers in LLM output are rejected BEFORE tts/render/QA so the
+    expensive stages never run on content the supervisor is certain to block,
+    and the static fallback (which obeys the same rule) is used instead.
+    Returns the list of unsupported claims (empty = clean).
+    """
+    bad = common.unsupported_numeric_claims(narration_text_of(llm_output), evidence_packet)
+    if bad:
+        print(f"[producer] numeric pre-gate ({ctx}): unsupported numeric claims {bad} "
+              f"— evidence packet supports none; rejecting LLM output (static fallback obeys the same rule)",
+              flush=True)
+    return bad
+
 def short_title(title, limit=44):
     import re
     t = re.sub(r"\s+", " ", title or "").strip().rstrip(".?!")
@@ -403,7 +496,9 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
         "ATTENTION": ["#focus", "#deepwork", "#metacognition"],
         "HUMAN_AI": ["#AI", "#humanAI", "#metacognition"],
     }
-    tags = list(dict.fromkeys(pol["hashtag_policy"]["always"] + hashtag_pool.get(pb["pillar"], [])[:3] + ["#cognitivescience"]))[:pol["hashtag_policy"]["max"]]
+    # Same deterministic rule as the LLM path: brand tags guaranteed, spam tags
+    # dropped, capped at hashtag_policy.max.
+    tags = common.normalize_hashtags(hashtag_pool.get(pb["pillar"], [])[:3] + ["#cognitivescience"], pol)
 
     caption = {
         "hook": pb["hook"],
@@ -495,7 +590,9 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
         if "tier" not in s:
             s["tier"] = "B"
 
-    # Caption from LLM or build
+    # Caption from LLM or build. Hashtags are normalized deterministically:
+    # brand tags (hashtag_policy.always, incl. #metacognitionhq) are guaranteed,
+    # banned/spam tags are dropped, and the set stays within the non-spam cap.
     caption_in = llm_output.get("caption", {})
     if isinstance(caption_in, dict):
         caption = {
@@ -507,7 +604,7 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
             ]),
             "sources": [s.get("label","") for s in sources],
             "ctas": [llm_output["ending"]],
-            "hashtags": caption_in.get("hashtags", ["#metacognition", "#AI", "#coding"]),
+            "hashtags": common.normalize_hashtags(caption_in.get("hashtags", []), pol),
         }
     else:
         caption = {
@@ -519,13 +616,8 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
             ],
             "sources": [s.get("label","") for s in sources],
             "ctas": [llm_output["ending"]],
-            "hashtags": ["#metacognition", "#AI", "#coding"],
+            "hashtags": common.normalize_hashtags(["#AI", "#coding"], pol),
         }
-
-    # Hashtag limits
-    max_tags = pol["hashtag_policy"]["max"]
-    if len(caption.get("hashtags", [])) > max_tags:
-        caption["hashtags"] = caption["hashtags"][:max_tags]
 
     script = {
         "meta": {
@@ -572,10 +664,13 @@ def main():
     if not topic:
         raise SystemExit("[producer] topic.json missing — trend-error")
 
-    # Build evidence packet (sanitized)
-    recent = common.recent_entries(common.load_memory(), 10)
+    # Build evidence packet (sanitized) — with rolling editorial memory for
+    # topic de-duplication AND CTA diversity.
+    memory = common.load_memory()
+    recent = common.recent_entries(memory, 10)
     recent_topics = [e.get("topic","") for e in recent]
-    evidence_packet = llm_provider.build_evidence_packet(topic, pol, recent_topics)
+    evidence_packet = llm_provider.build_evidence_packet(topic, pol, recent_topics,
+                                                         recent_ctas=common.recent_cta_types(memory))
 
     producer_mode = os.environ.get("CONTENT_PRODUCER", "groq")
     fallback_mode = os.environ.get("CONTENT_FALLBACK", "static-english")
@@ -601,6 +696,10 @@ def main():
             producer_report = {"model": prod.model, "raw": raw, "output": llm_out, "mode": "groq",
                                "discovered_count": len(discovered),
                                "selection": raw.get("selection") if isinstance(raw, dict) else None}
+            # Deterministic numeric pre-gate (mirror of the QA source_quality
+            # statistic blocker): unsupported numbers force a revision and can
+            # never reach the render/QA stages from the LLM path.
+            numeric_bad = numeric_guard(llm_out, evidence_packet, ctx="first output")
             # Validate and build script
             script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
             generation_mode = "groq"
@@ -614,25 +713,37 @@ def main():
                                                        _discovered=discovered,
                                                        producer_model=prod.model)
                     reviewer_report = {"model": rev.model, "raw": review_raw, "output": review_out}
-                    # If rejected, try one revision
-                    if not review_out.get("approved", False) or review_out.get("score", 0) < 85:
+                    # If rejected — by the reviewer OR by the deterministic
+                    # numeric pre-gate — try one revision.
+                    reviewer_rejected = (not review_out.get("approved", False)
+                                         or review_out.get("score", 0) < 85)
+                    if reviewer_rejected or numeric_bad:
                         # One revision attempt
-                        if review_out.get("required_changes"):
-                            evidence_packet["revision_request"] = review_out["required_changes"]
+                        required_changes = list(review_out.get("required_changes") or [])
+                        for n in numeric_bad:
+                            required_changes.append(
+                                f"remove or rewrite the unsupported numeric claim '{n}' — "
+                                "do not keep it by adding a citation")
+                        if required_changes:
+                            evidence_packet["revision_request"] = required_changes
                             try:
                                 llm_out2, raw2 = prod.produce(evidence_packet, _discovered=discovered)
                                 if isinstance(raw2, dict) and raw2.get("mock"):
                                     raise ValueError("mock revision rejected in daily path")
+                                numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
                                 review_out2, review_raw2 = rev.review(llm_out2, evidence_packet,
                                                                      _discovered=discovered,
                                                                      producer_model=prod.model)
                                 if isinstance(review_raw2, dict) and review_raw2.get("mock"):
                                     raise ValueError("mock reviewer output rejected in daily path")
-                                if review_out2.get("approved") and review_out2.get("score",0) >=85 and review_out2.get("technology_relevance") and review_out2.get("metacognition_relevance"):
+                                if (review_out2.get("approved") and review_out2.get("score",0) >= 85
+                                        and review_out2.get("technology_relevance")
+                                        and review_out2.get("metacognition_relevance")
+                                        and not numeric_bad2):
                                     script = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
                                     reviewer_report = {"model": rev.model, "raw": review_raw2, "output": review_out2, "revision": True}
                                 else:
-                                    # Second rejection → fallback
+                                    # Second rejection (or numbers survived) → fallback
                                     raise ValueError(f"Reviewer rejected after revision: {review_out2}")
                             except Exception as e_rev:
                                 print(f"[producer] reviewer second rejection, falling back: "
@@ -677,6 +788,14 @@ def main():
         generation_mode = "static-fallback"
         if not producer_report:
             producer_report = {"mode": "static-fallback", "playbook": playbook_key}
+
+    # CTA diversity: rolling editorial memory avoids repeating the most recent
+    # CTA type (cta_policy.avoid_same_type_consecutive). The label is derived
+    # deterministically from the ending text, so it works identically for groq
+    # and static-fallback scripts; with no memory it falls back to the plain
+    # classification (deterministic).
+    ending_lines = [l["t"] for ch in script["chunks"] if ch.get("beat") == "ending" for l in ch.get("en", [])]
+    script["meta"]["cta_type"] = choose_cta_type(" ".join(ending_lines), memory, pol)
 
     # Honesty gate: a report must never claim "groq" when the script that was
     # actually built came from the static English fallback.

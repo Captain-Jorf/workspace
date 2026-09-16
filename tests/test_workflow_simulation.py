@@ -254,6 +254,18 @@ class WorkflowSimulationTests(unittest.TestCase):
         r, _ = self._run("record", {"P": "10", "V": "", "BST": "", "PUSH": ""})
         self.assertIn("FINAL_STATUS=tts-error", open(self.gh_env).read())
 
+    def test_07b_qa_rejection_is_never_buffer_error(self):
+        # Regression (run 35043984004): produce exit 10 (qa rejected), push/verify
+        # skipped, and a phantom buffer-error status from the buffer step — the
+        # final status must stay qa-failed, never buffer-error.
+        st_path = os.path.join(self.ws, "output", f"auto-{TAG}_state.json")
+        st = json.load(open(st_path))
+        st["status"] = "qa-failed"
+        json.dump(st, open(st_path, "w"))
+        r, _ = self._run("record", {"P": "10", "V": "", "BST": "buffer-error", "PUSH": "skipped"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("FINAL_STATUS=qa-failed", open(self.gh_env).read())
+
     def test_08_fail_closed_step(self):
         for status, code in (("queued-in-buffer", 0), ("approved-dry-run", 0), ("qa-failed", 1), ("buffer-error", 1), ("", 1)):
             r = subprocess.run(["bash", "-c", self.steps["fail the run when there is no post today"]],

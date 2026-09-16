@@ -26,7 +26,7 @@
  "qa_approved": false,
  "buffer_post_id": null,
  "buffer_due_at": null,
- "status": "buffer-error",
+ "status": "qa-failed",
  "public_url": null,
  "branch": "drafts/2026-09-16",
  "run_id": "35043984004",

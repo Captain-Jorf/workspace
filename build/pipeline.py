@@ -230,6 +230,7 @@ def produce(a):
                             "metacognition_concept": script.get("meta", {}).get("metacognition_concept"),
                             "generation_mode": script.get("meta", {}).get("generation_mode"),
                             "language": script.get("meta", {}).get("language"),
+                            "cta_type": script.get("meta", {}).get("cta_type"),
                             "hash": common.script_hash(script)}
             st["generation_mode"] = script.get("meta", {}).get("generation_mode", "unknown")
             save_state(tag, st)
@@ -400,12 +401,28 @@ def verify(a):
     save_state(tag, st)
     return 0
 
+# Failure states written by produce()/verify() — the authoritative outcome when
+# the pipeline itself stopped. A QA rejection ("qa-failed") or a stage error must
+# stay a QA/failure state through manifest, memory, issue and the final workflow
+# annotation: it can never be relabeled as a Buffer outcome merely because no
+# Buffer post was attempted. buffer-error stays reserved for ACTUAL Buffer
+# read-only/mutation failures (which always run after a verified public URL).
+FAILURE_STATES = {"qa-failed", "trend-error", "source-error", "script-error",
+                  "translation-error", "tts-error", "render-error", "automation-error"}
+BUFFER_OUTCOME_STATES = {"buffer-error", "queue-full", "queued-in-buffer",
+                         "approved-dry-run", "auto-published", "scheduled", "queued", "sent"}
+
 def record(a):
     tag = a.tag
     st = load_state(tag)
     paths = common.output_paths(tag)
-    st["status"] = a.status
     marker = common.load_json(paths["marker"], {}) or {}
+    if (not marker) and st.get("status") in FAILURE_STATES and a.status in BUFFER_OUTCOME_STATES:
+        print(f"[pipeline] record: keeping failure state '{st['status']}' for {tag} — refusing to "
+              f"relabel as '{a.status}' (no Buffer post was attempted; buffer-* is reserved for "
+              f"actual Buffer failures)", flush=True)
+        a.status = st["status"]
+    st["status"] = a.status
     if marker:
         st["buffer"] = {k: marker.get(k) for k in ("buffer_post_id", "status", "due_at", "channel_name", "first_comment_used", "adopted")}
     if a.error:
