@@ -138,6 +138,15 @@ def rejected_review(changes):
     return r
 
 
+def _stage_repo_assets(root):
+    img_src = os.path.join(ROOT, "assets", "img")
+    img_dst = os.path.join(root, "assets", "img")
+    os.makedirs(img_dst, exist_ok=True)
+    for f in os.listdir(img_src):
+        if f.endswith(".png"):
+            shutil.copy(os.path.join(img_src, f), os.path.join(img_dst, f))
+
+
 def calendar_topic(cal_id=11, date="2077-01-02"):
     cal = next(c for c in common.calendar()["episodes"] if c["id"] == cal_id)
     return {"content_date": date, "content_id": f"reel-{date}", "title": cal["title"],
@@ -486,6 +495,9 @@ class PipelineStopsBeforeMedia(unittest.TestCase):
         common.ROOT = self.tmp
         common.CONTENT = os.path.join(self.tmp, "content")
         os.makedirs(common.CONTENT, exist_ok=True)
+        # a real checkout carries the repo brand assets — the pre-render
+        # visual plan's provenance check requires them to exist
+        _stage_repo_assets(self.tmp)
         self.tag = "2077-11-11"
         self.ep = common.episode_dir(self.tag)
         os.makedirs(self.ep, exist_ok=True)

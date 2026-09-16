@@ -32,15 +32,17 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import visual_plan
 
 CHECKS = ["content_language", "english_only", "technology_relevance", "metacognition_relevance",
           "topic_relevance", "source_quality", "script_quality", "english_quality",
           "subtitle_layout", "audio_quality", "video_quality", "caption_quality",
-          "duplicate_check", "buffer_readiness", "reviewer_check"]
+          "duplicate_check", "buffer_readiness", "reviewer_check", "visual_semantics"]
 WEIGHTS = {"content_language": 15, "english_only": 15, "technology_relevance": 10, "metacognition_relevance": 10,
            "topic_relevance": 5, "source_quality": 8, "script_quality": 10, "english_quality": 8,
            "subtitle_layout": 8, "audio_quality": 5, "video_quality": 5, "caption_quality": 4,
-           "duplicate_check": 6, "buffer_readiness": 4, "reviewer_check": 12}
+           "duplicate_check": 6, "buffer_readiness": 4, "reviewer_check": 12,
+           "visual_semantics": 10}
 EXIT_APPROVED, EXIT_REJECTED, EXIT_CANNOT = 0, 20, 21
 
 def ffmpeg_bin():
@@ -550,6 +552,312 @@ def check_frames(rep, ep, layout, pol):
         rep.warn("subtitle_layout", f"contrast only {worst:.1f}:1", 1)
     rep.details["frames"] = {"sampled": checked, "min_contrast": round(worst,2) if checked else None}
 
+# ---------------------------------------------------------------------------
+# FINAL RENDERED VISUAL QA (issue #24)
+#
+# A metadata-only claim of visual variety is not enough: the RENDERED frames
+# of the actual MP4 are sampled across the whole Reel and verified.
+# Deterministic pixel-level checks (no OCR, no network):
+#   * the legacy cold code/terminal-card signature must not appear anywhere;
+#   * an unjustified typing cursor bar must not appear;
+#   * no blue/navy/cyan/purple (cold) hue may appear in the brand treatment;
+#   * the subtitle band must not be obstructed by bright overlay content;
+#   * adjacent scenes must not be perceptual near-duplicates;
+#   * the reel must contain enough DISTINCT rendered scenes (a repeated
+#     underlying image presented as several scenes is caught here too —
+#     the same crop/zoom of one image hashes the same);
+#   * the code scenes actually rendered must equal the plan's justified set.
+# ---------------------------------------------------------------------------
+
+def _decode_frame(video, t, tmp):
+    """Decode one frame of the REAL rendered MP4 at time t → numpy RGB array."""
+    ff = ffmpeg_bin()
+    if not ff:
+        return None
+    png = os.path.join(tmp, f"qa_frame_{t:.2f}.png")
+    r = subprocess.run([ff, "-v", "error", "-ss", f"{max(0.0, t):.2f}", "-i", video,
+                        "-frames:v", "1", "-y", png],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode != 0 or not os.path.exists(png):
+        return None
+    try:
+        from PIL import Image
+        im = Image.open(png).convert("RGB")
+        import numpy as np
+        return np.array(im, dtype=np.int16)
+    except Exception:
+        return None
+
+
+COLD_CARD_PX = 20000  # the legacy card was ~135k solid cold px; H.264
+# chroma artifacts on warm frames stay in the low thousands
+
+
+def detect_code_card(arr):
+    """Legacy generic code/terminal card signature: a large COLD dark region
+    (the old card was (18,20,24) — blue-dominant, unlike any warm brand
+    color). Counts qualifying pixels in the central scene band; the legacy
+    card registered ~135k px, compression noise on warm frames stays well
+    under COLD_CARD_PX."""
+    if arr is None or arr.shape[0] < 1000 or arr.shape[1] < 600:
+        return 0
+    h = arr.shape[0]
+    band = arr[int(h * 0.30):int(h * 0.80), int(arr.shape[1] * 0.08):int(arr.shape[1] * 0.92)]
+    r, g, b = band[..., 0], band[..., 1], band[..., 2]
+    mask = (b > r + 2) & (r < 70) & (g < 70)
+    return int(mask.sum())
+
+
+def detect_cursor(arr):
+    """The old moving typing cursor: a SOLID vertical gold bar, 3-6px wide,
+    14-70px tall (a text caret, not a composition line). Thin 1-2px network
+    lines, long continuous spines (>70px) and decorative geometry do not
+    qualify — the bar must be solid across its whole height."""
+    if arr is None or arr.shape[0] < 1000 or arr.shape[1] < 600:
+        return False
+    import numpy as np
+    h = arr.shape[0]
+    band = arr[int(h * 0.30):int(h * 0.80), int(arr.shape[1] * 0.08):int(arr.shape[1] * 0.92)]
+    r, g, b = band[..., 0], band[..., 1], band[..., 2]
+    gold = (r > 170) & (g > 110) & (g < 235) & (b < 160) & (r > b + 80)
+    ncol = band.shape[1]
+    for x in range(ncol - 3):
+        col = gold[:, x]
+        if not col.any():
+            continue
+        # longest vertical run in this column
+        best_len, run, start, run_start = 0, 0, 0, 0
+        for y in range(col.shape[0]):
+            if col[y]:
+                if run == 0:
+                    run_start = y
+                run += 1
+                if run > best_len:
+                    best_len, start = run, run_start
+            else:
+                run = 0
+        if not (14 <= best_len <= 70):
+            continue
+        # solid width: consecutive columns that are gold for >=85% of the run
+        y0, y1 = start, start + best_len
+        seg = gold[y0:y1, x:x + 6]
+        solid = 0
+        for wdx in range(seg.shape[1]):
+            if float(seg[:, wdx].mean()) >= 0.85:
+                solid += 1
+            else:
+                break
+        if not (3 <= solid <= 6):
+            continue
+        # context: a typing caret floats on a dark background. The vertical
+        # EDGE of a solid shape (funnel bar, card, chip) is the same shape —
+        # exclude runs that abut a solid gold fill on either side.
+        edge_r = gold[y0:y1, min(x + solid, ncol - 1):min(x + solid + 14, ncol)]
+        edge_l = gold[y0:y1, max(x - 14, 0):x]
+        if (float(edge_r.mean()) > 0.5 if edge_r.size else False) or \
+           (float(edge_l.mean()) > 0.5 if edge_l.size else False):
+            continue
+        # rectangularity: flat top and bottom (a caret is a solid rectangle;
+        # a round particle tapers, an arc segment is diagonal at its ends)
+        if float(gold[y0, x:x + solid].mean()) < 0.6 or \
+           float(gold[y1 - 1, x:x + solid].mean()) < 0.6:
+            continue
+        # rectangular width at mid-height: a caret stays 3-6px wide through
+        # its whole height. A round particle (dot, node) is widest at the
+        # middle — its gold span at the mid row far exceeds the bar width.
+        ym = y0 + best_len // 2
+        row = gold[ym, :]
+        lo, hi = x, min(x + solid - 1, ncol - 1)
+        while lo > 0 and row[lo - 1]:
+            lo -= 1
+        while hi < ncol - 1 and row[hi + 1]:
+            hi += 1
+        if (hi - lo + 1) > 2 * solid + 2:
+            continue
+        # straightness: the run must stay vertically aligned (a caret, not a
+        # curved decorative stroke)
+        def _xc(y):
+            xs = np.nonzero(gold[max(0, y):y + 1, max(0, x - 5):min(ncol, x + solid + 5)])[0]
+            return float(xs.mean()) if xs.size else None
+        c0, cm, c2 = _xc(y0 + 1), _xc(y0 + best_len // 2), _xc(y1 - 2)
+        if None in (c0, cm, c2) or (max(c0, cm, c2) - min(c0, cm, c2)) > 2.5:
+            continue
+        # background: a caret stands on a dark field — the legacy card was
+        # cold (18,20,24); a decorative caret sits on the warm dark base.
+        # Bright photographic texture fails this test.
+        lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        sx0, sx1 = max(0, x - 40), min(ncol, x + solid + 40)
+        sy0, sy1 = max(0, y0 - 40), min(band.shape[0], y1 + 40)
+        surround = np.concatenate([lum[sy0:y0, sx0:sx1].ravel(),
+                                   lum[y1:sy1, sx0:sx1].ravel()])
+        if surround.size and float(np.median(surround)) >= 60:
+            continue
+        # adjacency: no other gold within 2px of the bar — an isolated caret.
+        # Intersecting strokes, network lines and photo texture all put gold
+        # here; the legacy caret sat alone on the cold card.
+        jy0, jy1 = max(0, y0 - 10), min(band.shape[0], y1 + 10)
+        left = gold[jy0:jy1, max(0, x - 30):max(0, x - 2)]
+        right = gold[jy0:jy1, min(ncol - 1, x + solid + 2):min(ncol, x + solid + 30)]
+        if (float(left.mean()) > 0.005 if left.size else False) or \
+           (float(right.mean()) > 0.005 if right.size else False):
+            continue
+        return True
+    return False
+
+
+def check_visuals(rep, ep, script, video, pol, no_frames):
+    """visual_semantics: plan-level deterministic gate + rendered-frame proof."""
+    plan = common.load_json(os.path.join(ep, "visual_plan.json"))
+    has_chunks = bool(script.get("chunks"))
+    if not plan or not plan.get("scenes"):
+        if has_chunks:
+            plan = visual_plan.build_visual_plan(script, pol)
+        else:
+            rep.details["visuals"] = {"present": False,
+                                      "note": "script without chunks (pre-plan test fixture)"}
+            return
+    issues = visual_plan.visual_semantic_issues(plan, script, pol)
+    for i in issues:
+        rep.block("visual_semantics", i)
+    try:
+        rep.details["visuals"] = {"present": True, **visual_plan.plan_summary(plan)}
+    except Exception:
+        rep.details["visuals"] = {"present": True}
+    if not (video and os.path.exists(video)) or no_frames:
+        rep.details["visuals"]["rendered_frames_checked"] = False
+        return
+
+    # ---- rendered-frame verification on the actual MP4 -------------------
+    import numpy as np
+    timing = common.load_json(os.path.join(ep, "timing.json"), {}) or {}
+    layout = common.load_json(os.path.join(ep, "layout.json"), {}) or {}
+    scenes = plan.get("scenes") or []
+    times = _plan_scene_times(timing, scenes)
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="qa_visuals_")
+    frames = []
+    for sc, t in times[:16]:
+        arr = _decode_frame(video, min(t, max(0.0, float(timing.get("total", 0)) - 0.3)), tmp)
+        if arr is None:
+            rep.block("visual_semantics",
+                      f"could not decode a rendered frame for scene {sc['scene_id']} — "
+                      "final rendered-media validation is mandatory")
+            return
+        frames.append((sc, arr))
+    try:
+        for sc, arr in frames:
+            sid = sc.get("scene_id")
+            is_code = bool(sc.get("code_justified"))
+            # (a) the legacy cold code/terminal card must not appear anywhere
+            cold_card = detect_code_card(arr)
+            if cold_card > COLD_CARD_PX and not is_code:
+                rep.block("visual_semantics",
+                          f"rendered frame of scene {sid} contains a cold code/terminal card "
+                          f"({cold_card}px) — the generic code card is not allowed for {sc.get('visual_category')!r}")
+            elif cold_card > COLD_CARD_PX:
+                rep.block("visual_semantics",
+                          f"rendered frame of scene {sid} shows a cold code card that violates "
+                          "the warm profile palette")
+            # (b) cursor only in a justified code-entry scene
+            if detect_cursor(arr) and not sc.get("cursor_justified"):
+                rep.block("visual_semantics",
+                          f"rendered frame of scene {sid} contains an unjustified typing cursor")
+            # (c) no cold hue (blue/navy/cyan/purple) in the brand treatment
+            h = arr.shape[0]
+            band = arr[int(h * 0.25):int(h * 0.85), 40:arr.shape[1] - 40]
+            r, g, b = band[..., 0], band[..., 1], band[..., 2]
+            cold_frac = float(((b > r + 4) & (b >= g - 6)).mean())
+            if cold_frac > 0.002:
+                rep.block("visual_semantics",
+                          f"rendered frame of scene {sid} is {100 * cold_frac:.2f}% cold "
+                          "(blue/navy/cyan/purple) — profile palette is matte black/gold/amber/ivory")
+            # (d) subtitle band must stay unobstructed (dark scrim zone)
+            cues = layout.get("en") or []
+            t_mid = None
+            for sc2, t2 in times[:16]:
+                if sc2["scene_id"] == sid:
+                    t_mid = t2
+                    break
+            if t_mid is not None:
+                active = [c for c in cues if c.get("start", 1e9) <= t_mid <= c.get("end", -1)]
+                if active:
+                    L = pol["layout"]
+                    top = int(L["en_top"]) - 10
+                    bot = int(L["en_top"]) + 3 * int(L["en_row_height"]) + 10
+                    band2 = arr[top:bot, 60:arr.shape[1] - 60]
+                    lum = (0.2126 * band2[..., 0] + 0.7152 * band2[..., 1] + 0.0722 * band2[..., 2])
+                    if float(np.percentile(lum, 25)) > 96:
+                        rep.block("visual_semantics",
+                                  f"rendered frame of scene {sid}: the subtitle band is obstructed "
+                                  "by bright overlay content")
+        # (e) adjacent scenes must not be perceptual near-duplicates
+        hashes = [(sc["scene_id"], visual_plan.perceptual_hash(_frame_pil(sc, arr)))
+                  for sc, arr in frames]
+        for i in range(len(hashes) - 1):
+            d = visual_plan.hamming(hashes[i][1], hashes[i + 1][1])
+            if d <= 14:
+                rep.block("visual_semantics",
+                          f"adjacent scenes {hashes[i][0]} and {hashes[i + 1][0]} are near-duplicates "
+                          "in the rendered frames (aHash distance "
+                          f"{d}/256) — a repeated/zoomed image is not a new scene")
+        # (f) the rendered reel must actually contain distinct scenes
+        clusters = 0
+        for i, (sid, hh) in enumerate(hashes):
+            if all(visual_plan.hamming(hh, hh2) > 24 for _, hh2 in hashes[:i]):
+                clusters += 1
+        nonbrand = [sc for sc in scenes if sc.get("visual_category") not in visual_plan.BRAND_CATEGORIES]
+        need = max(4, min(len(nonbrand), 9) - 2)
+        if clusters < need:
+            rep.block("visual_semantics",
+                      f"rendered frames collapse to {clusters} distinct visual(s) "
+                      f"(need >= {need}) — the Reel repeats one underlying image")
+        # (g) rendered code scenes must equal the plan's justified set
+        code_rendered = {sc["scene_id"] for sc, arr in frames
+                         if sc.get("visual_category") in visual_plan.CODE_CATEGORIES
+                         or detect_code_card(arr) > COLD_CARD_PX}
+        code_planned = {sc["scene_id"] for sc in scenes
+                        if sc.get("visual_category") in visual_plan.CODE_CATEGORIES}
+        if code_rendered != code_planned:
+            rep.block("visual_semantics",
+                      f"rendered code scenes {sorted(code_rendered) or 'none'} do not match the "
+                      f"plan's justified set {sorted(code_planned) or 'none'}")
+        rep.details["visuals"]["rendered_frames_checked"] = True
+        rep.details["visuals"]["rendered_frames"] = len(frames)
+        rep.details["visuals"]["distinct_rendered"] = clusters
+    finally:
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _frame_pil(sc, arr):
+    import numpy as np
+    from PIL import Image
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
+
+
+def _plan_scene_times(timing, scenes):
+    """Real midpoint times per plan scene from the word-level timing."""
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for sc in scenes:
+        groups.setdefault(sc.get("beat"), []).append(sc)
+    chunks = timing.get("chunks", []) or []
+    out = []
+    for sc in scenes:
+        beat = sc.get("beat")
+        beat_chunks = [c for c in chunks if c.get("beat") == beat]
+        if not beat_chunks:
+            continue
+        t0 = min((ln.get("start", 0) for c in beat_chunks for ln in c.get("lines", [])), default=0)
+        t1 = max((ln.get("end", 0) for c in beat_chunks for ln in c.get("lines", [])), default=0)
+        idx = [i for i, s2 in enumerate(groups.get(beat, [])) if s2 is sc]
+        idx = idx[0] if idx else 0
+        n = len(groups.get(beat, []))
+        start = t0 + (t1 - t0) * idx / max(1, n)
+        end = t0 + (t1 - t0) * (idx + 1) / max(1, n)
+        out.append((sc, (start + end) / 2.0))
+    return out
+
 def check_caption(rep, caption_path, script, pol):
     if not caption_path or not os.path.exists(caption_path):
         rep.block("caption_quality", "caption missing")
@@ -857,6 +1165,7 @@ def evaluate(a, pol):
     check_audio(rep, a.video, timing, script, pol)
     if not a.no_frames:
         check_frames(rep, ep, layout, pol)
+    check_visuals(rep, ep, script, a.video, pol, a.no_frames)
     check_caption(rep, a.caption, script, pol)
     check_posters(rep, a.poster, a.poster45, pol)
     check_duplicates(rep, script, topic, memory, pol)

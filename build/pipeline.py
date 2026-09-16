@@ -28,6 +28,7 @@ import traceback
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import qa_supervisor
+import visual_plan as vp
 
 PY = sys.executable
 B = os.path.dirname(os.path.abspath(__file__))
@@ -291,6 +292,46 @@ def produce(a):
                           "words": common.spoken_word_count(script),
                           "estimated_seconds": common.estimate_spoken_seconds(script),
                           "text_blocking": [], "text_warnings": len(text_gate["warnings"])}
+            save_state(tag, st)
+
+            # 2d. PRE-RENDER VISUAL plan + visual-semantic gate (issue #24,
+            # run 35058904480 / reel-2026-09-19): the deterministic scene plan
+            # is built ONLY now — after the script passed Producer, Reviewer,
+            # Revision policy and the pre-render TEXT QA above — and is
+            # gate-checked BEFORE TTS/timing/subtitles/FFmpeg/posters. Blocks:
+            #   generic code card on a non-coding topic, cursor without a
+            #   justified code scene, category outside the pillar's allowed
+            #   set, repeated/dominant underlying image, missing visual
+            #   purpose, scene unrelated to its narration, broken external
+            #   provenance/license, unsafe asset URLs, insufficient visual
+            #   variety, cold (blue/navy/cyan/purple) palette, text-heavy
+            #   slides, subtitle-band obstruction.
+            # A structured LLM approval cannot override these rules; the SAME
+            # gate is re-run by the renderer on load and by final QA, so the
+            # static fallback and the safe re-render obey identical rules.
+            pol = common.policy()
+            plan_path = os.path.join(ep, "visual_plan.json")
+            shash = common.script_hash(script)
+            plan = common.load_json(plan_path)
+            if plan and plan.get("scenes") and st.get("plan_script_hash") == shash:
+                pass  # plan already built + validated for THIS script
+            else:
+                plan = vp.build_visual_plan(script, pol)
+                common.save_json(plan_path, plan)
+                st["plan_script_hash"] = shash
+            vis_issues = vp.visual_semantic_issues(plan, script, pol)
+            if vis_issues:
+                if st["retries"]["script"] == 0:
+                    print("[pipeline] pre-render visual gate: " + "; ".join(vis_issues[:8])
+                          + " → retry producer ONCE (variant 1) before any TTS/render", flush=True)
+                    st["retries"]["script"] = 1
+                    st["gate"] = {"stage": "visual", "issues": vis_issues[:8]}
+                    variant = 1
+                    save_state(tag, st)
+                    continue
+                raise Stage("script", "pre-render visual gate: " + "; ".join(vis_issues[:8])
+                            + " — skipped before TTS/render (no media, no Buffer)")
+            st["visual_plan"] = vp.plan_summary(plan)
             save_state(tag, st)
 
             # 3. tts + timing

@@ -76,6 +76,21 @@ def main():
                    "beats": [{"beat": b, "start": t} for t, b in reel.cuts],
                    "qa_frames": [{"beat": b, "pos": p, "t": t} for b, p, t in qa_frames],
                    "previews": prev, "contact_sheet": sheet})
+    # Render manifest for the final rendered-visual QA: which scenes rendered
+    # code visuals (the plan's justified set) — cross-checked by the supervisor
+    # against the rendered frames.
+    if getattr(reel, "plan", None):
+        layout["visual_plan"] = {
+            "pillar": reel.plan.get("pillar"),
+            "photo_policy": reel.plan.get("photo_policy"),
+            "scenes": [{k: sc.get(k) for k in ("scene_id", "beat", "visual_category",
+                                               "visual_purpose", "code_justified",
+                                               "cursor_justified", "photo_designated")}
+                       | {"asset_kind": (sc.get("asset") or {}).get("kind"),
+                          "asset_id": (sc.get("asset") or {}).get("id")}
+                       for sc in reel.plan["scenes"]],
+            "code_scenes": reel.code_scenes_rendered,
+        }
     common.save_json(os.path.join(a.ep, "layout.json"), layout)
     print(f"[render] previews → {out_dir}  (contact sheet is a QA artifact, not a deliverable)")
     if a.stills_only:

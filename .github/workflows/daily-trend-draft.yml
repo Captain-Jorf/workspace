@@ -1,8 +1,11 @@
-# Autonomous daily reel factory for @metacognition.hq
+# Autonomous daily reel factory for @metacognition.hq — English-only production
 #
-#   trend scout → source validation → EN script → FA translation → Edge-TTS → timing
-#   → 9:16 render → posters → caption → Quality Supervisor (independent, measurable)
-#   → publish public files (drafts/<date> branch) → verify URL + MIME → re-supervise
+#   trend scout → source validation → EN script (Producer/Reviewer/Revision +
+#   deterministic pre-render text QA) → topic-aware visual plan + pre-render
+#   visual-semantic gate → Edge-TTS → timing → 9:16 scene-plan render →
+#   posters → caption → Quality Supervisor (independent, measurable, includes
+#   final rendered-visual QA) → publish public files (drafts/<date> branch)
+#   → verify URL + MIME → re-supervise
 #   → Buffer queue (official API, addToQueue, automatic) ONLY IF approved
 #   → exactly ONE GitHub issue per day.
 #
@@ -114,6 +117,18 @@ jobs:
           CONTENT_FALLBACK: static-english
           PRODUCER_MODEL: auto
           REVIEWER_MODEL: auto
+          # $0 topic photos via the official Openverse API — ENABLED in the
+          # production path. No key, no billing, no scraping/automation.
+          # License policy: ONLY attribution-free public-domain imagery
+          # (CC0 / PDM). CC-BY is deliberately disabled because an internal
+          # manifest credit is NOT public attribution on Instagram; the
+          # pre-render gate and the renderer both reject any CC-BY asset.
+          # A normal reel plans a balanced mix: 2-3 distinct topic-relevant
+          # photos + procedural diagrams + brand only at hook/ending.
+          # Fail-soft: ANY problem (offline/rate-limited/malformed) falls back
+          # to a distinct deterministic procedural visual per scene; the run
+          # never pays and never fails because a photo was unavailable.
+          ASSET_FETCH: "1"
         run: |
           set +e
           unset MOCK_GROQ || true
@@ -287,6 +302,7 @@ jobs:
             output/drafts/auto-${{ env.TAG }}/qa_contact_sheet.jpg
             output/drafts/auto-${{ env.TAG }}/qa_frames/
             content/episodes/auto-${{ env.TAG }}/layout.json
+            content/episodes/auto-${{ env.TAG }}/visual_plan.json
 
       - name: fail the run when there is no post today
         if: always()
