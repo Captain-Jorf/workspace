@@ -82,9 +82,12 @@ def main():
     if getattr(reel, "plan", None):
         layout["visual_plan"] = {
             "pillar": reel.plan.get("pillar"),
+            "photo_policy": reel.plan.get("photo_policy"),
             "scenes": [{k: sc.get(k) for k in ("scene_id", "beat", "visual_category",
                                                "visual_purpose", "code_justified",
-                                               "cursor_justified")}
+                                               "cursor_justified", "photo_designated")}
+                       | {"asset_kind": (sc.get("asset") or {}).get("kind"),
+                          "asset_id": (sc.get("asset") or {}).get("id")}
                        for sc in reel.plan["scenes"]],
             "code_scenes": reel.code_scenes_rendered,
         }

@@ -24,9 +24,9 @@ Guarantees this module pins down (issue #24 spec):
      only for coding pillars; a code scene requires a narration that
      genuinely discusses coding; a cursor requires demonstrated code entry;
   4. provenance: external images need https URLs, an allowed license
-     (cc0/cc-by), a recorded creator for cc-by, retrieval date, sanitized
-     query and a content hash; the $0 Openverse fetcher normalizes licenses,
-     rejects CC-BY without a creator, and fails soft to None;
+     (CC0/PDM — CC-BY is disabled, see item 9), retrieval date, sanitized
+     query and a content hash; the $0 Openverse fetcher draws ONLY the
+     attribution-free public-domain set (CC0/PDM) and fails soft to None;
   5. variety: a repeated underlying image is not a new scene; one asset may
      not dominate; too few scenes is blocked;
   6. palette: the declared brand palette must stay warm (no blue family);
@@ -35,14 +35,34 @@ Guarantees this module pins down (issue #24 spec):
   8. the pipeline consults the visual gate BEFORE TTS/render and fails closed
      with zero media-stage calls (one bounded producer retry, like the text
      gate);
-  9. the GitHub report is English-only ("English subtitles — synchronized,
+  9. license/attribution safety: CC-BY is disabled end-to-end (fetcher,
+     gate, renderer) because an internal manifest credit is not public
+     Instagram attribution — a CC-BY asset can never reach publication;
+ 10. the balanced production mix: a normal 60-120 s reel EXPLICITLY plans
+     2-3 photo-designated scenes (distinct topic-relevant CC0/PDM photos
+     when the $0 source is safely available, else a DISTINCT procedural
+     visual per scene), the remaining content scenes as procedural
+     diagrams, and brand assets only at hook/ending — no repository hero
+     image is ever a scene background, and the source is bounded (one
+     attempt, strict timeout, no retries) and enabled by default in the
+     GitHub Actions production path;
+ 11. brand treatment: retrieved photographs are warm-graded into the
+     matte-black/charcoal/gold/amber/bronze/ivory theme while staying
+     recognizably different from each other; a blue-dominant source cannot
+     leave a blue-dominant final frame;
+ 12. QA weight invariance: the score stays normalized 0-100, a passing
+     visual_semantics check adds zero deduction (an 81 stays 81, never
+     becomes >=85), blockers veto regardless of score, and the reviewer
+     >=85 bar is unchanged;
+ 13. the GitHub report is English-only ("English subtitles — synchronized,
      LTR, safe-zone validated"); the bilingual table is gone;
- 10. root-cause regression: no "code visual" string survives in the producer
+ 14. root-cause regression: no "code visual" string survives in the producer
      or LLM provider; an LLM's free-text visual request is recorded for the
      record but can never override the deterministic direction.
 """
 import argparse
 import copy
+import hashlib
 import json
 import os
 import shutil
@@ -348,7 +368,7 @@ class ProvenanceAndLicense(unittest.TestCase):
         a = {"kind": "external", "id": "ext-test",
              "url": "https://example.org/photographer",
              "asset_url": "https://cdn.example.org/img/1.jpg",
-             "creator": "Jane Doe", "license": "cc-by",
+             "creator": "Jane Doe", "license": "cc0",
              "retrieved_utc": "2026-09-16T00:00:00+00:00",
              "query_sanitized": "user interviews",
              "sha256": "a" * 64, "origin": "openverse-api"}
@@ -366,12 +386,12 @@ class ProvenanceAndLicense(unittest.TestCase):
     def test_cc_by_without_creator_is_blocked(self):
         plan, sc = scene_for_mutation(vp.build_visual_plan(script_0919()[0], POL,
                                                            allow_external=False), "s5")
-        sc["asset"] = self._ext_asset(creator="")
+        sc["asset"] = self._ext_asset(license="cc-by", creator="")
         issues = vp.visual_semantic_issues(plan, script_0919()[0], POL)
         self.assertTrue(any("cc-by image without recorded creator" in i for i in issues), issues)
 
     def test_disallowed_license_is_blocked(self):
-        for lic in ("nc", "by-nc", "all-rights", ""):
+        for lic in ("cc-by", "by", "by-nc", "nc", "all-rights", ""):
             plan, sc = scene_for_mutation(vp.build_visual_plan(script_0919()[0], POL,
                                                                allow_external=False), "s5")
             sc["asset"] = self._ext_asset(license=lic)
@@ -415,33 +435,53 @@ class ProvenanceAndLicense(unittest.TestCase):
         self.assertEqual(af.sanitize_query("  Héllo wörld   test  "), "h llo w rld test")
         self.assertEqual(af.sanitize_query(""), "")
 
-    def test_asset_fetch_license_normalization_and_creator_rule(self):
-        self.assertEqual(af._OPENVERSE_LICENSE.get("by"), "cc-by")
+    def test_license_policy_is_public_domain_only(self):
+        # the fetcher and the gate must agree: CC0/PDM only
+        self.assertEqual(af.ALLOWED_LICENSES, ("cc0", "pdm"))
+        self.assertEqual(vp.ALLOWED_EXTERNAL_LICENSES, ("cc0", "pdm"))
         self.assertEqual(af._OPENVERSE_LICENSE.get("cc0"), "cc0")
-        self.assertIsNone(af._OPENVERSE_LICENSE.get("by-nc"), "NC is not allowed")
+        self.assertEqual(af._OPENVERSE_LICENSE.get("pdm"), "pdm")
+        self.assertIsNone(af._OPENVERSE_LICENSE.get("by"),
+                          "CC-BY must not be fetchable: no public attribution")
+        self.assertIsNone(af._OPENVERSE_LICENSE.get("by-nc"))
+        self.assertIsNone(af._OPENVERSE_LICENSE.get("by-sa"))
         self.assertIsNone(af._OPENVERSE_LICENSE.get("gpl"))
 
     def test_asset_fetch_end_to_end_mocked(self):
-        """The fetcher returns a full provenance manifest for a CC-BY hit and
-        None for a CC-BY hit without a creator (never an unattributable image)."""
+        """The fetcher returns a full provenance manifest for a CC0 hit,
+        SKIPS a CC-BY hit that precedes it (no public attribution), honors
+        skip_urls for per-reel diversity, and makes exactly ONE attempt."""
         from PIL import Image
         d = tempfile.mkdtemp(prefix="assetfetch_")
         img = os.path.join(d, "img.jpg")
         Image.new("RGB", (800, 600), (120, 90, 60)).save(img, quality=80)
+        img2 = os.path.join(d, "img2.jpg")
+        Image.new("RGB", (800, 600), (60, 90, 120)).save(img2, quality=80)
         cache_root = os.path.join(d, "cache")
+        results = []
 
         def fake_download(url, cache_path, timeout=25):
             os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            shutil.copy(img, cache_path)
+            shutil.copy(img if url.endswith("/1.jpg") else img2, cache_path)
             return cache_path
 
         def fake_get(url, timeout=25):
-            assert "license_type=cc0%2Ccc-by" in url or "license_type=cc0,cc-by" in url, url
+            results.append(url)
+            self.assertIn("license_type=cc0%2Cpdm", url,
+                          "the API must be asked for the public-domain set only")
+            # a CC-BY result listed FIRST: the fetcher must skip it
             payload = {"results": [
-                {"id": 1, "url": "https://cdn.example.org/img/1.jpg",
+                {"id": 1, "url": "https://cdn.example.org/img/by.jpg",
                  "foreign_landing_url": "https://example.org/photographer-x",
-                 "creator": "Jane Doe", "license": "by",
+                 "creator": "Jane Doe", "license": "by", "title": "ccby"},
+                {"id": 2, "url": "https://cdn.example.org/img/1.jpg",
+                 "foreign_landing_url": "https://example.org/photographer-y",
+                 "creator": "Public Domain", "license": "cc0",
                  "title": "street interview", "width": 800, "height": 600},
+                {"id": 3, "url": "https://cdn.example.org/img/2.jpg",
+                 "foreign_landing_url": "https://example.org/photographer-z",
+                 "creator": "PD", "license": "pdm", "title": "second",
+                 "width": 800, "height": 600},
             ]}
             return json.dumps(payload).encode()
 
@@ -450,33 +490,80 @@ class ProvenanceAndLicense(unittest.TestCase):
              mock.patch.object(af, "_download_image", fake_download), \
              mock.patch.object(af, "_cache_dir", lambda: cache_root):
             r = af.fetch_image("user interviews")
-        self.assertIsNotNone(r, "a CC-BY image with a creator must be accepted")
-        self.assertEqual(r["license"], "cc-by")
-        self.assertEqual(r["creator"], "Jane Doe")
+            r2 = af.fetch_image("user interviews",
+                                skip_urls=("https://cdn.example.org/img/1.jpg",))
+        self.assertIsNotNone(r)
+        self.assertEqual(r["license"], "cc0")
+        self.assertEqual(r["asset_url"], "https://cdn.example.org/img/1.jpg",
+                         "the preceding CC-BY result must be skipped")
         self.assertEqual(r["origin"], "openverse-api")
         self.assertEqual(r["query_sanitized"], "user interviews")
-        self.assertTrue(r["sha256"].startswith("e3b0c442") or len(r["sha256"]) == 64)
+        self.assertEqual(len(r["sha256"]), 64)
+        self.assertIn("retrieved_utc", r)
         self.assertTrue(r["asset_url"].startswith("https://"))
         self.assertTrue(os.path.exists(r["path"]))
         self.assertEqual(r["id"], f"ext-{r['sha256'][:12]}")
-
-        # CC-BY without a creator → rejected (attribution cannot be rendered)
-        def fake_get_nocreator(url, timeout=25):
-            payload = {"results": [
-                {"id": 2, "url": "https://cdn.example.org/img/2.jpg",
-                 "foreign_landing_url": "https://example.org/unknown",
-                 "creator": None, "license": "by", "title": "x"}]}
-            return json.dumps(payload).encode()
-
-        with mock.patch.object(af, "enabled", lambda: True), \
-             mock.patch.object(af, "_get", fake_get_nocreator), \
-             mock.patch.object(af, "_download_image", fake_download), \
-             mock.patch.object(af, "_cache_dir", lambda: cache_root):
-            self.assertIsNone(af.fetch_image("user interviews"))
-        # disabled → always None (the default production-safe path)
+        # diversity: skip_urls moves to the next result (PDM is allowed)
+        self.assertIsNotNone(r2)
+        self.assertEqual(r2["asset_url"], "https://cdn.example.org/img/2.jpg")
+        self.assertEqual(r2["license"], "pdm")
+        # bounded: one API attempt per fetch_image call, no retries
+        self.assertEqual(len(results), 2)
+        # disabled → always None (the default local-safe path)
         with mock.patch.object(af, "enabled", lambda: False):
             self.assertIsNone(af.fetch_image("user interviews"))
         shutil.rmtree(d, ignore_errors=True)
+
+    def test_cc_by_can_never_reach_publication(self):
+        """Three independent layers reject CC-BY: the fetcher never returns
+        it, the pre-render gate blocks it, and the renderer refuses a plan
+        carrying it — so publication is impossible without public credit."""
+        from PIL import Image
+        d = tempfile.mkdtemp(prefix="ccby_")
+        img = os.path.join(d, "img.jpg")
+        Image.new("RGB", (800, 600), (90, 90, 90)).save(img, quality=80)
+
+        def fake_download(url, cache_path, timeout=25):
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            shutil.copy(img, cache_path)
+            return cache_path
+
+        def fake_get_ccby_only(url, timeout=25):
+            payload = {"results": [
+                {"id": 1, "url": "https://cdn.example.org/img/by.jpg",
+                 "foreign_landing_url": "https://example.org/x",
+                 "creator": "Jane Doe", "license": "by", "title": "x"}]}
+            return json.dumps(payload).encode()
+
+        # layer 1: the fetcher
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "_get", fake_get_ccby_only), \
+             mock.patch.object(af, "_download_image", fake_download), \
+             mock.patch.object(af, "_cache_dir", lambda: os.path.join(d, "cache")):
+            self.assertIsNone(af.fetch_image("user interviews"),
+                              "CC-BY must never be fetchable in production")
+        # layer 2: the pre-render visual-semantic gate
+        plan, sc = scene_for_mutation(vp.build_visual_plan(script_0919()[0], POL,
+                                                           allow_external=False), "s5")
+        sc["asset"] = self._ext_asset(license="cc-by")
+        issues = vp.visual_semantic_issues(plan, script_0919()[0], POL)
+        self.assertTrue(any("license" in i and "not in" in i for i in issues),
+                        f"the gate must block CC-BY: {issues}")
+        # layer 3: the renderer re-runs the gate on load and refuses
+        ep = tempfile.mkdtemp(prefix="ccby_ep_")
+        try:
+            script, _ = script_0919()
+            common.save_json(os.path.join(ep, "script.json"), script)
+            make_timing(script, ep)
+            silent_wav(ep, 90)
+            common.save_json(os.path.join(ep, "visual_plan.json"), plan)
+            from reel_engine import Reel
+            with self.assertRaises(RuntimeError) as ctx:
+                Reel(ep, POL)
+            self.assertIn("visual plan blocked before render", str(ctx.exception))
+        finally:
+            shutil.rmtree(ep, ignore_errors=True)
+            shutil.rmtree(d, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
@@ -594,15 +681,25 @@ class TextAndOverlay(unittest.TestCase):
     def test_photo_scenes_are_exempt_from_plan_geometry_but_still_bounded(self):
         plan, sc = scene_for_mutation(vp.build_visual_plan(script_0919()[0], POL,
                                                            allow_external=False), "s5")
-        sc["asset"] = {"kind": "repo", "id": "repo:assets/img/hero_brain.png",
-                       "path": "assets/img/hero_brain.png",
-                       "origin": "repository-assets", "license": "internal"}
+        sc["asset"] = self._ext_full_frame()
         sc["content_top"] = 0      # full-frame photo
         sc["content_bottom"] = 1920
         issues = [i for i in vp.visual_semantic_issues(plan, script_0919()[0], POL)
                   if "obstructs" in i]
         self.assertEqual(issues, [], "full-frame photos carry the renderer's "
                                      "subtitle shade; final QA checks the rendered band")
+
+    @staticmethod
+    def _ext_full_frame(**over):
+        a = {"kind": "external", "id": "ext-full",
+             "url": "https://example.org/photographer",
+             "asset_url": "https://cdn.example.org/img/full.jpg",
+             "creator": "Public Domain", "license": "cc0",
+             "retrieved_utc": "2026-09-16T00:00:00+00:00",
+             "query_sanitized": "user interviews", "sha256": "b" * 64,
+             "origin": "openverse-api"}
+        a.update(over)
+        return a
 
     def test_rendered_band_check_detects_obstruction(self):
         import numpy as np
@@ -887,6 +984,540 @@ class RootCauseRegression(unittest.TestCase):
         out = fb.produce({})
         self.assertNotIn("code visual", out["visual_direction"].lower())
         self.assertEqual(out["visual_direction"], vp.pillar_visual_direction("PRODUCT"))
+
+
+
+# ---------------------------------------------------------------------------
+# 11. Balanced production mix: explicit photo designations, $0 source,
+#     procedural fallback, no repo-hero backgrounds (issue #24 follow-up)
+# ---------------------------------------------------------------------------
+def _synth_photo(i, w=1000, h=1500):
+    """Deterministic synthetic 'photograph' with strong, structurally distinct
+    luminance layout (stands in for a CC0/PDM download; the fetch layer is
+    mocked, so no network is involved)."""
+    import numpy as np
+    from PIL import Image
+    yy, xx = np.mgrid[0:h, 0:w]
+    img = np.zeros((h, w, 3), dtype=np.uint8)
+    if i == 0:  # vertical slabs (facade-like)
+        sl = (xx // 70).astype(np.uint8)
+        img[..., 0] = (sl * 37) % 255
+        img[..., 1] = (sl * 29) % 255
+        img[..., 2] = (sl * 19) % 255
+        img[h // 3:, :, 0] = (img[h // 3:, :, 0].astype(int) + 40) % 255
+    elif i == 1:  # horizontal bands + a large disc (skyline-like)
+        bw = (yy // 90).astype(np.uint8)
+        img[..., 0] = (bw * 31) % 255
+        img[..., 1] = (bw * 23) % 255
+        img[..., 2] = (bw * 17) % 255
+        img[(yy - h // 2) ** 2 + (xx - w // 2) ** 2 < (w // 3) ** 2] = (200, 170, 120)
+    else:  # diagonal gradient + grid (street-like)
+        img[..., 0] = ((xx + yy) // 40) % 255
+        img[..., 1] = ((xx - yy + 4000) // 55) % 255
+        img[..., 2] = ((xx * 2 + yy) // 90) % 255
+        img[(xx % 130 < 8) | (yy % 130 < 8)] = (240, 230, 210)
+    return Image.fromarray(img, "RGB")
+
+
+class ProductionPhotoMix(unittest.TestCase):
+    """A normal reel EXPLICITLY plans 2-3 photo-designated scenes (distinct
+    topic-relevant CC0/PDM photos when safely retrievable, else a DISTINCT
+    procedural visual), the rest as procedural diagrams, brand only at
+    hook/ending, and no repository hero image as a scene background."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PIL import Image
+        cls.tmp = tempfile.mkdtemp(prefix="photomix_")
+        cls.photos = []
+        for i in range(3):
+            p = os.path.join(cls.tmp, f"photo_{i}.jpg")
+            _synth_photo(i).save(p, quality=88)
+            cls.photos.append(p)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def _fake_fetch(self, calls=None):
+        """Rotates through the three synthetic photos, honoring skip_urls so
+        every scene gets a DIFFERENT photograph (the per-reel diversity rule)."""
+        def fake(query, timeout=af.TIMEOUT, skip_urls=()):
+            if calls is not None:
+                calls.append((query, tuple(skip_urls)))
+            for i, path in enumerate(self.photos):
+                url = f"https://cdn.openverse.test/photos/{i}.jpg"
+                if url not in set(skip_urls):
+                    return {"kind": "external",
+                            "id": f"ext-{i:012d}",
+                            "url": "https://example.org/photographer",
+                            "asset_url": url,
+                            "creator": "Public Domain", "license": "cc0",
+                            "retrieved_utc": "2026-09-16T00:00:00+00:00",
+                            "query_sanitized": af.sanitize_query(query),
+                            "sha256": f"{i:01d}" + "0" * 63,
+                            "path": path, "origin": "openverse-api"}
+            return None
+        return fake
+
+    def test_photo_designations_are_deterministic_across_all_pillars(self):
+        for key, pb in cp.PLAYBOOKS.items():
+            topic = {"content_date": "2077-01-01", "content_id": "reel-test",
+                     "title": pb["technology_angle"], "normalized_topic": "",
+                     "pillar": pb["pillar"],
+                     "technology_angle": pb["technology_angle"],
+                     "discovery_source": {"name": "content-calendar", "url": "", "tier": "cal"},
+                     "evidence_mode": "calendar",
+                     "calendar": {"id": 1, "title": pb["technology_angle"], "sources": []}}
+            script = cp.build_script_from_playbook(topic, POL, pb, key)
+            plan = vp.build_visual_plan(script, POL, allow_external=False)
+            des = [sc for sc in plan["scenes"] if sc.get("photo_designated")]
+            self.assertGreaterEqual(len(des), vp.PHOTO_MIN, f"{key}: at least the minimum")
+            self.assertLessEqual(len(des), vp.PHOTO_TARGET, f"{key}: at most the target")
+            beats = {}
+            for sc in des:
+                self.assertNotIn(sc["beat"], ("hook", "ending"),
+                                 f"{key}: brand moments never carry photos")
+                self.assertFalse(vp.C[sc["visual_category"]]["code"],
+                                 f"{key}: a code scene can never be photo-designated")
+                self.assertTrue(vp.C[sc["visual_category"]].get("photo_ok"),
+                                f"{key}: {sc['visual_category']} is not photo-capable")
+                self.assertEqual(beats.get(sc["beat"], 0) + 1, 1,
+                                 f"{key}: at most one photo per beat")
+                beats[sc["beat"]] = beats.get(sc["beat"], 0) + 1
+            pp = plan["photo_policy"]
+            self.assertEqual(pp["target"], vp.PHOTO_TARGET)
+            self.assertEqual(pp["minimum"], vp.PHOTO_MIN)
+            self.assertEqual(pp["repo_hero_as_background"], False)
+            self.assertEqual(sorted(pp["designated"]),
+                             sorted(sc["scene_id"] for sc in des),
+                             f"{key}: photo_policy.designated must match the scenes")
+            # determinism: rebuilding gives the identical designations
+            plan2 = vp.build_visual_plan(script, POL, allow_external=False)
+            self.assertEqual(pp["designated"], plan2["photo_policy"]["designated"],
+                             f"{key}: photo designations must be deterministic")
+            self.assertEqual(vp.visual_semantic_issues(plan, script, POL), [],
+                             f"{key}: the mix must stay gate-clean")
+
+    def test_no_repo_hero_can_appear_in_any_plan(self):
+        for key, pb in cp.PLAYBOOKS.items():
+            self.assertNotIn("hero_brain", vp.REPO_ASSETS)
+            self.assertNotIn("hero_desk", vp.REPO_ASSETS)
+            topic = {"content_date": "2077-01-01", "content_id": "reel-test",
+                     "title": pb["technology_angle"], "normalized_topic": "",
+                     "pillar": pb["pillar"],
+                     "technology_angle": pb["technology_angle"],
+                     "discovery_source": {"name": "content-calendar", "url": "", "tier": "cal"},
+                     "evidence_mode": "calendar",
+                     "calendar": {"id": 1, "title": pb["technology_angle"], "sources": []}}
+            script = cp.build_script_from_playbook(topic, POL, pb, key)
+            plan = vp.build_visual_plan(script, POL, allow_external=False)
+            for sc in plan["scenes"]:
+                a = sc["asset"]
+                if a["kind"] == "repo":
+                    self.assertIn(a["path"], vp.REPO_ASSETS.values(),
+                                  f"{key}/{sc['scene_id']}: only the two profile brand "
+                                  "assets may come from the repository")
+                    self.assertIn(sc["visual_category"], vp.BRAND_CATEGORIES,
+                                  f"{key}/{sc['scene_id']}: a repo image is a brand "
+                                  "reference, never a content-scene background")
+                    self.assertFalse(sc.get("photo_designated"),
+                                     f"{key}/{sc['scene_id']}: a photo-designated scene "
+                                     "must never use a brand asset")
+
+    def test_tampered_repo_hero_is_blocked_by_the_gate(self):
+        plan, sc = scene_for_mutation(vp.build_visual_plan(script_0919()[0], POL,
+                                                           allow_external=False), "s2")
+        sc["asset"] = {"kind": "repo", "id": "repo:assets/img/hero_brain.png",
+                       "path": "assets/img/hero_brain.png",
+                       "origin": "repository-assets", "license": "internal"}
+        issues = vp.visual_semantic_issues(plan, script_0919()[0], POL)
+        self.assertTrue(any("existing hero images are not scene backgrounds" in i
+                            for i in issues), issues)
+
+    def test_unavailable_source_falls_back_to_distinct_procedural(self):
+        script, _ = script_0919()
+        calls = []
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "fetch_image",
+                               lambda query, timeout=af.TIMEOUT, skip_urls=(): None):
+            plan = vp.build_visual_plan(script, POL, allow_external=True)
+        des = [sc for sc in plan["scenes"] if sc.get("photo_designated")]
+        self.assertGreaterEqual(len(des), vp.PHOTO_MIN)
+        self.assertLessEqual(len(des), vp.PHOTO_TARGET)
+        for sc in des:
+            self.assertEqual(sc["asset"]["kind"], "procedural",
+                             f"{sc['scene_id']}: an unavailable source must fall back "
+                             "to the topic-specific procedural visual, never a hero image")
+        ids = [sc["asset"]["id"] for sc in plan["scenes"]
+               if sc["visual_category"] not in vp.BRAND_CATEGORIES]
+        self.assertEqual(len(ids), len(set(ids)),
+                         "every fallback visual must be distinct")
+        summary = vp.plan_summary(plan)
+        self.assertEqual(summary["external"], 0)
+        self.assertGreaterEqual(summary["procedural"], 4)
+        self.assertEqual(vp.visual_semantic_issues(plan, script, POL), [],
+                         "the all-procedural fallback must stay gate-clean")
+
+    def test_rendered_mix_end_to_end_with_distinct_photos(self):
+        """Deterministic e2e fixture: 3 distinct synthetic CC0 photos are
+        fetched (mocked) into the plan, rendered, and verified frame-by-frame;
+        the contact sheet is written to /tmp (test artifact, never committed)."""
+        import numpy as np
+        from PIL import Image
+        script, topic = script_0919()
+        calls = []
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "fetch_image", self._fake_fetch(calls)):
+            plan = vp.build_visual_plan(script, POL, allow_external=True)
+
+        des = [sc for sc in plan["scenes"] if sc.get("photo_designated")]
+        self.assertEqual(len(des), 3, "the 0919 PRODUCT reel designs 3 photo slots")
+        exts = [sc for sc in plan["scenes"] if sc["asset"]["kind"] == "external"]
+        self.assertEqual(len(exts), 3)
+        urls = [sc["asset"]["asset_url"] for sc in exts]
+        self.assertEqual(len(urls), len(set(urls)),
+                         "each photo slot retrieves a DIFFERENT photograph")
+        for sc in exts:
+            a = sc["asset"]
+            self.assertIn(a["license"], ("cc0", "pdm"))
+            self.assertTrue(os.path.exists(a["path"]))
+            subject = vp.C[sc["visual_category"]]["keywords"][0]
+            self.assertIn(subject, a["query_sanitized"].split(),
+                          f"{sc['scene_id']}: the query must carry the scene subject")
+        self.assertEqual(vp.visual_semantic_issues(plan, script, POL), [])
+
+        d = tempfile.mkdtemp(prefix="mixep_")
+        try:
+            common.save_json(os.path.join(d, "script.json"), script)
+            common.save_json(os.path.join(d, "visual_plan.json"), plan)
+            make_timing(script, d)
+            silent_wav(d, 90)
+            from reel_engine import Reel
+            reel = Reel(d, POL)
+
+            photo_hashes, photo_frames = [], []
+            all_hashes = []
+            proc_frames = 0
+            brand_frames = 0
+            for sc, a_t, b_t in reel.scene_times:
+                t = (a_t + b_t) / 2
+                arr = np.array(reel.frame(t).convert("RGB"), dtype=np.int16)
+                self.assertLess(qa.detect_code_card(arr), qa.COLD_CARD_PX)
+                self.assertFalse(qa.detect_cursor(arr))
+                h = arr.shape[0]
+                band = arr[int(h * 0.25):int(h * 0.85), 40:arr.shape[1] - 40]
+                r, g, bb = band[..., 0], band[..., 1], band[..., 2]
+                self.assertLess(float(((bb > r + 4) & (bb >= g - 6)).mean()), 0.002,
+                                f"{sc['scene_id']}: a rendered frame must stay warm")
+                img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
+                all_hashes.append(vp.perceptual_hash(img))
+                if sc["asset"]["kind"] == "external":
+                    photo_hashes.append(vp.perceptual_hash(img))
+                    photo_frames.append(img)
+                elif sc["visual_category"] in vp.BRAND_CATEGORIES:
+                    brand_frames += 1
+                else:
+                    proc_frames += 1
+            # distinct photos: no two photo frames are perceptual near-duplicates
+            for i in range(len(photo_hashes)):
+                for j in range(i + 1, len(photo_hashes)):
+                    self.assertGreater(vp.hamming(photo_hashes[i], photo_hashes[j]), 24,
+                                       "two rendered photo frames must be recognizable "
+                                       "as DIFFERENT photographs")
+            # scene-to-scene change everywhere
+            for i in range(len(all_hashes) - 1):
+                self.assertGreater(vp.hamming(all_hashes[i], all_hashes[i + 1]), 14,
+                                   f"scene change #{i + 1} collapsed")
+            self.assertEqual(brand_frames, 2, "brand assets render only at hook/ending")
+            self.assertGreaterEqual(proc_frames, 3,
+                                    "the remaining content scenes stay procedural")
+
+            # contact sheet (test artifact, /tmp only — never committed media)
+            sheet = os.path.join(tempfile.gettempdir(), "visual_mix_contact_sheet.png")
+            tiles = [im.resize((162, 288)) for im in
+                     [reel.frame((a + b) / 2) for _, a, b in reel.scene_times]]
+            canvas = Image.new("RGB", (162 * len(tiles), 288), (14, 12, 10))
+            for k, tile in enumerate(tiles):
+                canvas.paste(tile, (162 * k, 0))
+            canvas.save(sheet)
+            self.assertTrue(os.path.exists(sheet))
+            self.assertTrue(sheet.startswith(tempfile.gettempdir()))
+            self.assertGreater(os.path.getsize(sheet), 10000)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 12. Photo retrieval: default-enabled in Actions, keyless, bounded
+# ---------------------------------------------------------------------------
+class PhotoRuntimeDefault(unittest.TestCase):
+    WORKFLOW = os.path.join(ROOT, ".github", "workflows", "daily-trend-draft.yml")
+
+    def test_workflow_produces_with_asset_fetch_default_on(self):
+        with open(self.WORKFLOW, encoding="utf-8") as f:
+            yml = f.read()
+        self.assertIn('ASSET_FETCH: "1"', yml,
+                      "the production Actions path must fetch photos by default")
+        self.assertIn("CC0", yml)
+        self.assertIn("CC-BY", yml, "the policy comment must document the CC-BY state")
+        self.assertNotIn("OPENVERSE_API_KEY", yml, "no paid/keyed service in Actions")
+
+    def test_enabled_flag_is_default_off_locally_on_in_actions(self):
+        for val, want in ((None, False), ("0", False), ("1", True), ("", False),
+                          ("true", False)):
+            env = {} if val is None else {"ASSET_FETCH": val}
+            with mock.patch.dict(os.environ, env, clear=False):
+                if val is None:
+                    os.environ.pop("ASSET_FETCH", None)
+                self.assertEqual(af.enabled(), want, f"ASSET_FETCH={val!r}")
+
+    def test_keyless_and_bounded(self):
+        for mod in (af,):
+            with open(os.path.join(ROOT, "build", "asset_fetch.py"),
+                      encoding="utf-8") as f:
+                src = f.read()
+        self.assertNotIn("Authorization", src, "the Openverse public API needs no key")
+        self.assertNotIn("api_key", src.lower())
+        self.assertIn("no retries", src.lower(),
+                      "the one-attempt budget is documented policy")
+        # one attempt, then None: a failing transport is tried exactly once
+        attempts = []
+
+        def fake_get(url, timeout=af.TIMEOUT):
+            attempts.append(url)
+            raise OSError("network down")
+
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "_get", fake_get):
+            self.assertIsNone(af.fetch_image("user interviews"))
+        self.assertEqual(len(attempts), 1, "exactly ONE attempt — no retries")
+        self.assertTrue(attempts[0].startswith(af.API_URL),
+                        "only the official Openverse endpoint is ever called")
+        # and a malformed payload fails soft to None (procedural fallback)
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "_get", lambda url, timeout=af.TIMEOUT: b"not json"):
+            self.assertIsNone(af.fetch_image("user interviews"))
+
+
+# ---------------------------------------------------------------------------
+# 13. Brand treatment of photos: warm, recognizable, blue-neutralized
+# ---------------------------------------------------------------------------
+class BrandTreatmentOfPhotos(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from PIL import Image
+        cls.tmp = tempfile.mkdtemp(prefix="brandgrade_")
+        cls.srcs = []
+        for i in range(3):
+            p = os.path.join(cls.tmp, f"src_{i}.jpg")
+            _synth_photo(i).save(p, quality=90)
+            cls.srcs.append(p)
+        # a blue-dominant source (the worst case the grade must neutralize)
+        import numpy as np
+        b = np.zeros((600, 400, 3), dtype=np.uint8)
+        b[..., 0] = 40
+        b[..., 1] = 90
+        b[..., 2] = 210
+        b[450:, :, :] = (220, 180, 120)
+        Image.fromarray(b, "RGB").save(os.path.join(cls.tmp, "blue.jpg"), quality=90)
+        cls.blue = os.path.join(cls.tmp, "blue.jpg")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_graded_photos_stay_warm_and_recognizable(self):
+        import numpy as np
+        from PIL import Image
+        graded = []
+        for p in self.srcs:
+            arr = np.array(Image.open(p).convert("RGB"), np.uint8)
+            g = vp.brand_grade(arr)
+            self.assertLess(vp.cold_pixel_fraction(g), 0.01,
+                            "the duotone grade must never leave a cold hue")
+            self.assertGreater(int(g[..., 0].mean()), int(g[..., 2].mean()),
+                               "graded imagery must stay warm (red above blue)")
+            graded.append(Image.fromarray(g, "RGB"))
+        for i in range(3):
+            for j in range(i + 1, 3):
+                self.assertGreater(vp.hamming(vp.perceptual_hash(graded[i]),
+                                              vp.perceptual_hash(graded[j])), 24,
+                                   "grading must preserve recognizability: "
+                                   "different photos stay different photos")
+
+    def test_blue_dominant_source_is_neutralized(self):
+        import numpy as np
+        from PIL import Image
+        arr = np.array(Image.open(self.blue).convert("RGB"), np.uint8)
+        self.assertGreater(vp.cold_pixel_fraction(arr), 0.5,
+                           "the fixture must actually be blue-dominant")
+        g = vp.brand_grade(arr)
+        self.assertLess(vp.cold_pixel_fraction(g), 0.01,
+                        "a blue-dominant source cannot leave a blue-dominant frame")
+        self.assertGreater(int(g[..., 0].mean()), int(g[..., 2].mean()))
+
+    def test_rendered_photo_frame_is_warm_and_band_clear(self):
+        import numpy as np
+        from PIL import Image
+        # a minimal episode whose ONE content photo is the blue-dominant source
+        script, _ = script_0919()
+        blue_manifest = {
+            "kind": "external", "id": "ext-blue0000001",
+            "url": "https://example.org/photographer",
+            "asset_url": "https://cdn.openverse.test/blue.jpg",
+            "creator": "Public Domain", "license": "cc0",
+            "retrieved_utc": "2026-09-16T00:00:00+00:00",
+            "query_sanitized": "user interviews",
+            "sha256": "c" * 64, "path": self.blue, "origin": "openverse-api"}
+
+        def fake(query, timeout=af.TIMEOUT, skip_urls=()):
+            m = dict(blue_manifest)
+            m["sha256"] = hashlib.sha256((query + str(len(skip_urls))).encode()).hexdigest()
+            m["id"] = f"ext-{m['sha256'][:12]}"
+            m["query_sanitized"] = af.sanitize_query(query)
+            return m
+
+        with mock.patch.object(af, "enabled", lambda: True), \
+             mock.patch.object(af, "fetch_image", fake):
+            plan = vp.build_visual_plan(script, POL, allow_external=True)
+        self.assertEqual(vp.visual_semantic_issues(plan, script, POL), [])
+        d = tempfile.mkdtemp(prefix="blueep_")
+        try:
+            common.save_json(os.path.join(d, "script.json"), script)
+            common.save_json(os.path.join(d, "visual_plan.json"), plan)
+            make_timing(script, d)
+            silent_wav(d, 90)
+            from reel_engine import Reel
+            reel = Reel(d, POL)
+            photo_frames = 0
+            L = POL["layout"]
+            top = int(L["en_top"]) - 10
+            bot = int(L["en_top"]) + 3 * int(L["en_row_height"]) + 10
+            for sc, a, b in reel.scene_times:
+                arr = np.array(reel.frame((a + b) / 2).convert("RGB"), dtype=np.int16)
+                h = arr.shape[0]
+                band = arr[int(h * 0.25):int(h * 0.85), 40:arr.shape[1] - 40]
+                r, g, bb = band[..., 0], band[..., 1], band[..., 2]
+                self.assertLess(float(((bb > r + 4) & (bb >= g - 6)).mean()), 0.002,
+                                f"{sc['scene_id']}: rendered frame must not be blue")
+                if sc["asset"]["kind"] == "external":
+                    photo_frames += 1
+                    b2 = arr[top:bot, 60:arr.shape[1] - 60]
+                    lum = 0.2126 * b2[..., 0] + 0.7152 * b2[..., 1] + 0.0722 * b2[..., 2]
+                    self.assertLess(float(np.percentile(lum, 25)), 96,
+                                    f"{sc['scene_id']}: the subtitle band over a photo "
+                                    "must stay a dark scrim")
+            self.assertGreaterEqual(photo_frames, vp.PHOTO_MIN)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# 14. QA weight invariance: 0-100 normalization, 81 stays 81, blocker veto,
+#     the 85 bar is unchanged (issue #24 follow-up)
+# ---------------------------------------------------------------------------
+class QAWeightInvariance(unittest.TestCase):
+    def _report_with_19_points(self):
+        rep = qa.Report(POL)
+        rep.warn("script_quality", "fixture deduction", 5)
+        rep.warn("english_quality", "fixture deduction", 3)
+        rep.warn("topic_relevance", "fixture deduction", 2)
+        rep.warn("subtitle_layout", "fixture deduction", 4)
+        rep.warn("caption_quality", "fixture deduction", 4)
+        rep.warn("video_quality", "fixture deduction", 1)
+        self.assertEqual(rep.score(), 81)
+        return rep
+
+    def _episode_with_plan(self, plan=None):
+        ep = tempfile.mkdtemp(prefix="qa_winv_")
+        script, _ = script_0919()
+        common.save_json(os.path.join(ep, "script.json"), script)
+        if plan is None:
+            plan = vp.build_visual_plan(script, POL, allow_external=False)
+        common.save_json(os.path.join(ep, "visual_plan.json"), plan)
+        return ep, script
+
+    def test_scoring_stays_normalized_0_to_100(self):
+        rep = qa.Report(POL)
+        self.assertEqual(rep.score(), 100)
+        rep2 = qa.Report(POL)
+        for c in qa.CHECKS:
+            rep2.block(c, "fixture")
+        self.assertEqual(sum(qa.WEIGHTS.values()), 135,
+                         "the deduction budget must stay bounded by the weights")
+        self.assertEqual(rep2.score(), 0, "a fully-blocked report floors at 0, never < 0")
+        rep3 = qa.Report(POL)
+        for c in qa.CHECKS:
+            rep3.warn(c, "fixture", 100)  # capped at each weight
+        self.assertEqual(rep3.score(), 0)
+        self.assertTrue(0 <= rep3.score() <= 100)
+
+    def test_81_stays_81_when_visual_semantics_passes(self):
+        ep, script = self._episode_with_plan()
+        try:
+            rep = self._report_with_19_points()
+            self.assertEqual(rep.deductions["visual_semantics"], 0)
+            qa.check_visuals(rep, ep, script, None, POL, no_frames=True)
+            self.assertEqual(rep.deductions["visual_semantics"], 0,
+                             "a PASSING visual_semantics check adds zero deduction")
+            self.assertEqual(rep.checks["visual_semantics"], "pass")
+            self.assertEqual(rep.score(), 81,
+                             "a passing new check must not raise any score")
+            approved = (not rep.blocking) and rep.score() >= common.min_qa_score(POL)
+            self.assertFalse(approved, "81 < 85 must still not be approved")
+        finally:
+            shutil.rmtree(ep, ignore_errors=True)
+
+    def test_failing_visual_semantics_only_deducts_its_own_weight(self):
+        ep, script = self._episode_with_plan()
+        try:
+            plan = vp.build_visual_plan(script, POL, allow_external=False)
+            plan["scenes"][1]["visual_category"] = "stack-trace"  # code on PRODUCT
+            common.save_json(os.path.join(ep, "visual_plan.json"), plan)
+            rep = self._report_with_19_points()
+            qa.check_visuals(rep, ep, script, None, POL, no_frames=True)
+            self.assertEqual(rep.deductions["visual_semantics"], qa.WEIGHTS["visual_semantics"],
+                             "the failing check deducts exactly its own weight")
+            self.assertEqual(rep.score(), 81 - qa.WEIGHTS["visual_semantics"])
+            self.assertTrue(any("visual_semantics" in b for b in rep.blocking))
+            approved = (not rep.blocking) and rep.score() >= common.min_qa_score(POL)
+            self.assertFalse(approved)
+        finally:
+            shutil.rmtree(ep, ignore_errors=True)
+
+    def test_a_blocker_still_vetoes_at_high_score(self):
+        rep = qa.Report(POL)
+        rep.warn("buffer_readiness", "fixture deduction", 2)
+        self.assertEqual(rep.score(), 98)
+        rep.block("duplicate_check", "fixture blocker")
+        self.assertEqual(rep.score(), 98 - qa.WEIGHTS["duplicate_check"], ">= 85")
+        self.assertGreaterEqual(rep.score(), 85)
+        approved = (not rep.blocking) and rep.score() >= common.min_qa_score(POL)
+        self.assertFalse(approved, "a blocker vetoes regardless of the score")
+
+    def test_reviewer_threshold_is_85_and_unchanged(self):
+        self.assertEqual(common.min_qa_score(POL), 85, "the QA approval bar is 85")
+        with open(os.path.join(ROOT, "build", "qa_supervisor.py"),
+                  encoding="utf-8") as f:
+            sup = f.read()
+        self.assertIn("if score < 85:", sup, "the reviewer bar stays hard-coded 85")
+        script, topic = script_0919()
+        for score, should_block in ((84, True), (85, False), (100, False)):
+            rep = qa.Report(POL)
+            qa.check_reviewer_output(rep, script, topic, {
+                "approved": True, "score": score, "technology_relevance": True,
+                "metacognition_relevance": True, "blocking_errors": [],
+                "unsupported_claims": []}, POL)
+            hit = [b for b in rep.blocking if "< 85" in b]
+            self.assertEqual(bool(hit), should_block, f"score {score}: {rep.blocking}")
+        # a reviewer blocker still blocks even at a near-perfect score
+        rep = qa.Report(POL)
+        qa.check_reviewer_output(rep, script, topic, {
+            "approved": False, "score": 98, "technology_relevance": True,
+            "metacognition_relevance": True, "blocking_errors": ["x"],
+            "unsupported_claims": []}, POL)
+        self.assertTrue(any("reviewer" in b for b in rep.blocking), rep.blocking)
 
 
 if __name__ == "__main__":

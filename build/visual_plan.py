@@ -174,7 +174,7 @@ _cat("funnel", "funnel", ["funnel", "narrow", "signal", "noise", "priority"],
      [["RAW SIGNAL", "SIGNAL", "DECISION"]], beats=("problem", "explain", "example"))
 _cat("observation-log", "notes", ["observe", "log", "behavior", "watch", "session"],
      "log observed behavior against the expectation",
-     [["EXPECTED", "OBSERVED", "GAP"]])
+     [["EXPECTED", "OBSERVED", "GAP"]], photo_ok=True)
 _cat("tradeoff-scale", "dual", ["trade-off", "tradeoff", "balance", "versus", "cost",
                                  "benefit", "sunk cost"],
      "balance the trade-off between the two sides",
@@ -200,17 +200,18 @@ _cat("verification-checklist", "ladder", ["verify", "check", "checklist", "docs"
      [["ASK", "CHECK ONE SOURCE", "RUN IT", "ACCEPT"]])
 _cat("evidence-card", "notes", ["evidence", "source", "tier", "citation", "grounding"],
      "show the evidence and its grounding",
-     [["EVIDENCE", "SOURCED", "TIERED"]])
+     [["EVIDENCE", "SOURCED", "TIERED"]], photo_ok=True)
 _cat("source-comparison", "dual", ["source", "compare", "comparison", "claim", "fact"],
      "compare the fluent claim with the grounded fact",
      [["THE CLAIM", "THE FACT"], ["SOUNDS LIKE", "IS"]],
-     beats=("problem", "explain", "example"))
+     beats=("problem", "explain", "example"), photo_ok=True)
 _cat("human-review-gate", "ladder", ["human review", "review", "approve", "gate", "sign off"],
      "mark the point where a human reviews the AI output",
      [["AI OUTPUT", "HUMAN CHECK", "SHIPPED"]])
 _cat("hallucination-trap", "dual", ["hallucinat", "invented", "fluent", "plausible", "wrong"],
      "contrast the fluent invented answer with the grounded one",
-     [["INVENTED, FLUENT", "ACTUALLY TRUE"]], beats=("problem", "explain", "example"))
+     [["INVENTED, FLUENT", "ACTUALLY TRUE"]], beats=("problem", "explain", "example"),
+     photo_ok=True)
 _cat("human-ai-network", "loop", ["human", "ai", "collaborat", "loop", "handoff", "work with"],
      "show the human and the AI working in a loop",
      [["HUMAN", "AI", "CHECK", "AGREE"]],
@@ -229,11 +230,12 @@ _cat("test-suite", "code", ["test", "tests", "edge case", "assert", "suite"],
      [["EDGE CASE", "PASS"]], code=True)
 _cat("system-diagram", "matrix", ["system", "architecture", "service", "component", "flow"],
      "show the parts and how they connect",
-     [["PARTS", "CONNECTS", "BREAKS"]], beats=("explain", "example", "technique"))
+     [["PARTS", "CONNECTS", "BREAKS"]], beats=("explain", "example", "technique"),
+     photo_ok=True)
 _cat("failure-chain", "ladder", ["failure", "cascade", "incident", "cause", "effect",
                                   "chain"],
      "show the cause-and-effect failure chain",
-     [["TRIGGER", "SPREAD", "INCIDENT", "LESSON"]])
+     [["TRIGGER", "SPREAD", "INCIDENT", "LESSON"]], photo_ok=True)
 _cat("stack-trace", "code", ["stack trace", "traceback", "exception", "error message",
                               "crash"],
      "read the traceback where the real error hides",
@@ -251,10 +253,10 @@ _cat("retrieval-loop", "loop", ["retrieval", "recall", "close the book", "rebuil
      [["CLOSE", "RECALL", "CHECK", "REINFORCE"]], beats=("explain", "example", "technique"))
 _cat("worked-example", "notes", ["example", "worked", "step", "walkthrough", "tutorial"],
      "one worked example, step by step",
-     [["STEP 1", "STEP 2", "DONE"]])
+     [["STEP 1", "STEP 2", "DONE"]], photo_ok=True)
 _cat("skill-progression", "ladder", ["skill", "progress", "practice", "level", "drill"],
      "show the skill progressing with practice",
-     [["STUCK", "HELPED", "SOLID", "OWN"]])
+     [["STUCK", "HELPED", "SOLID", "OWN"]], photo_ok=True)
 
 # --- DIGITAL_ATTENTION -----------------------------------------------------------
 _cat("notification-cascade", "notifications", ["notification", "alert", "ping", "slack",
@@ -272,7 +274,7 @@ _cat("attention-residue", "bars", ["residue", "left behind", "minutes", "return"
      [["TASK A", "RESIDUE", "TASK B"]])
 _cat("context-timeline", "ladder", ["context", "timeline", "day", "window", "batch"],
      "lay the context switches along the day",
-     [["9:00", "11:00", "14:00", "17:00"]])
+     [["9:00", "11:00", "14:00", "17:00"]], photo_ok=True)
 
 # --- HUMAN_AI_COLLABORATION --------------------------------------------------------
 _cat("handoff-chain", "ladder", ["handoff", "hand off", "pass", "relay", "next"],
@@ -283,7 +285,8 @@ _cat("verification-gate", "ladder", ["verify", "gate", "before ship", "approve"]
      [["DRAFT", "VERIFY", "APPROVE", "SHIP"]])
 _cat("role-complement", "dual", ["complement", "roles", "strength", "each other"],
      "show the complementary roles side by side",
-     [["HUMAN: JUDGE", "AI: DRAFT"]], beats=("problem", "explain", "example"))
+     [["HUMAN: JUDGE", "AI: DRAFT"]], beats=("problem", "explain", "example"),
+     photo_ok=True)
 _cat("approval-gate", "ladder", ["approval", "sign-off", "owner", "final"],
      "mark the approval gate the AI never crosses alone",
      [["AI PROPOSAL", "HUMAN APPROVES", "DONE"]])
@@ -548,9 +551,11 @@ def _skeleton(beats, wps, tight):
 # ---------------------------------------------------------------------------
 # Plan building
 # ---------------------------------------------------------------------------
+# Only the two PROFILE BRAND assets may be repository scene visuals. The
+# hero images (hero_brain / hero_desk) are deliberately excluded: a normal
+# reel's photographs come from the license-aware source (CC0/PDM), with a
+# distinct procedural fallback — never a reused repository hero image.
 REPO_ASSETS = {
-    "brain": "assets/img/hero_brain.png",
-    "desk": "assets/img/hero_desk.png",
     "emblem": "assets/img/logo_emblem.png",
     "eye": "assets/img/logo_eye.png",
 }
@@ -615,7 +620,17 @@ def _pick_category(scene_narration, topic_kw, pillar, used, prev_cat, slot_pref,
     return best
 
 
-def _external_asset_for(scene_narration, topic_kw, allow_external):
+def _external_asset_for(scene_narration, topic_kw, allow_external,
+                        category="", used_urls=()):
+    """$0 license-aware photo for ONE photo-designated scene.
+
+    The query carries the topic keywords PLUS the scene category's subject
+    word so different slots retrieve different images; already-used asset
+    URLs are skipped so a reel can never silently repeat one photograph.
+    Any problem → None → deterministic procedural fallback (the reel never
+    fails because the external service is unavailable, and never reuses an
+    image to compensate).
+    """
     if not allow_external:
         return None
     try:
@@ -624,17 +639,79 @@ def _external_asset_for(scene_narration, topic_kw, allow_external):
         return None
     if not asset_fetch.enabled():
         return None
-    query = " ".join((topic_kw or [])[:4]) or scene_narration[:60]
-    return asset_fetch.fetch_image(query)
+    subject = C.get(category, {}).get("keywords", [category])[0]
+    query = " ".join((topic_kw or [])[:4] + [subject])
+    return asset_fetch.fetch_image(query, skip_urls=used_urls)
+
+
+# A normal 60-120 s reel intentionally carries a balanced visual mix
+# (issue #24 follow-up): up to PHOTO_TARGET distinct topic-relevant LICENSED
+# photographs, the remaining content scenes as topic-specific procedural
+# diagrams/comparisons, and profile brand assets ONLY at hook/ending. Repo
+# hero images are never scene backgrounds — photo slots come from the
+# license-aware source or fall back to a distinct procedural visual.
+PHOTO_TARGET = 3
+PHOTO_MIN = 2
+
+
+def _designate_photo_slots(skeleton, cats, pillar, used_cat):
+    """Explicitly designate which content scenes will carry a topic-relevant
+    photograph: up to PHOTO_TARGET content scenes, at most one per beat,
+    photo-capable non-code categories only. When the category pass left
+    fewer candidates than the target, a later scene per beat is re-pointed
+    to a photo-capable category that fits the beat (gate-accepted via the
+    beat-role rule). Mutates cats/used_cat on re-point; returns the set of
+    scene indices."""
+    slots, photo_beats = set(), set()
+    for i, sk in enumerate(skeleton):
+        if len(slots) >= PHOTO_TARGET:
+            break
+        beat = sk["beat"]
+        if beat in ("hook", "ending") or beat in photo_beats:
+            continue
+        cat = cats[i]
+        if C[cat]["code"] or not C[cat].get("photo_ok"):
+            continue
+        slots.add(i)
+        photo_beats.add(beat)
+    # Re-point pass: reach the TARGET whenever the pillar offers photo-capable
+    # categories for a beat without a photo yet (a normal reel carries 2-3
+    # photos, not just the minimum).
+    for beat in ("explain", "example", "problem", "technique"):
+        if len(slots) >= PHOTO_TARGET:
+            break
+        if beat in photo_beats:
+            continue
+        idxs = [i for i, sk in enumerate(skeleton)
+                if sk["beat"] == beat and i not in slots]
+        for i in reversed(idxs):  # prefer the later scene of the beat
+            prev = cats[i - 1] if i > 0 else None
+            cands = [c for c in PILLAR_CATEGORIES[pillar]
+                     if C[c].get("photo_ok") and not C[c]["code"]
+                     and beat in C[c].get("beats", ())
+                     and c != prev and c != cats[i]
+                     and used_cat.get(c, 0) < 2]
+            if not cands:
+                continue
+            old = cats[i]
+            cats[i] = cands[0]
+            used_cat[old] = max(0, used_cat.get(old, 0) - 1)
+            used_cat[cats[i]] = used_cat.get(cats[i], 0) + 1
+            slots.add(i)
+            photo_beats.add(beat)
+            break
+    return slots
 
 
 def build_visual_plan(script, pol=None, allow_external=None):
     """Deterministic topic/pillar-aware scene plan for an approved script.
 
-    Generated ONLY from the approved script + editorial policy (the caller runs
-    this after Producer/Reviewer/Revision + the deterministic pre-render text
-    QA). `allow_external` enables the $0 Openverse photo fetch (fail-soft:
-    any problem falls back to the deterministic procedural visual).
+    Generated ONLY from the approved script + editorial policy (the caller
+    runs this after Producer/Reviewer/Revision + the deterministic pre-render
+    text QA). `allow_external` enables the $0 Openverse photo fetch for the
+    designated photo slots (fail-soft: any problem falls back to a distinct
+    deterministic procedural visual — the reel never fails on network, and
+    never reuses a repository hero image to compensate).
     """
     pol = pol or common.policy()
     meta = (script or {}).get("meta", {}) or {}
@@ -651,23 +728,18 @@ def build_visual_plan(script, pol=None, allow_external=None):
     if len(skeleton) > 12:  # keep the reel art-directable: at most 12 scenes
         skeleton = _skeleton(beats, wps, tight=True)
 
-    scenes = []
+    # ---- phase 1: category assignment (deterministic, pillar-aware) --------
+    cats = []
     used_cat = {}
     prev_cat = None
-    n_img_brain = n_img_desk = 0
     for i, sk in enumerate(skeleton):
         beat = sk["beat"]
-        narration = sk["narration"]
-        dur = round(sk["words"] / wps, 2)
         if beat == "hook":
             cat = "brand-mark"
-            asset = _asset_repo("emblem", REPO_ASSETS["emblem"])
-            purpose = C[cat]["purpose"]
         elif beat == "ending":
             cat = "brand-close"
-            asset = _asset_repo("eye", REPO_ASSETS["eye"])
-            purpose = C[cat]["purpose"]
         else:
+            narration = sk["narration"]
             slot_pref = None
             if beat == "problem" and sk["split"] == 0:
                 slot_pref = ("interview-notes", "evidence-filter", "hypothesis-ladder",
@@ -695,27 +767,38 @@ def build_visual_plan(script, pol=None, allow_external=None):
                     cat = fit[0]
                 elif alts:
                     cat = alts[0]
-            purpose = C[cat]["purpose"]
-            # deterministic, semantically matched primary visuals
-            if beat == "explain" and sk["split"] >= 1 and n_img_brain < 1 \
-                    and os.path.exists(os.path.join(common.ROOT, "assets", "img", "hero_brain.png")):
-                asset = _asset_repo("brain", REPO_ASSETS["brain"])
-                n_img_brain += 1
-            elif beat == "technique" and sk["split"] >= 1 and n_img_desk < 1 \
-                    and os.path.exists(os.path.join(common.ROOT, "assets", "img", "hero_desk.png")):
-                asset = _asset_repo("desk", REPO_ASSETS["desk"])
-                n_img_desk += 1
-            elif beat == "problem" and sk["split"] == 0 and C[cat].get("photo_ok") \
-                    and allow_external:
-                ext = _external_asset_for(narration, tkw, allow_external)
-                if ext:
-                    asset = ext
-                else:
-                    asset = _asset_proc(cat, C[cat]["comp"], i)
-            else:
-                asset = _asset_proc(cat, C[cat]["comp"], i)
+        cats.append(cat)
         used_cat[cat] = used_cat.get(cat, 0) + 1
         prev_cat = cat
+
+    # ---- phase 2: explicit photo-slot designation (balanced visual mix) ----
+    photo_slots = _designate_photo_slots(skeleton, cats, pillar, used_cat)
+
+    scenes = []
+    ext_used_urls = []
+    for i, sk in enumerate(skeleton):
+        beat = sk["beat"]
+        narration = sk["narration"]
+        dur = round(sk["words"] / wps, 2)
+        cat = cats[i]
+        purpose = C[cat]["purpose"]
+        if beat == "hook":
+            asset = _asset_repo("emblem", REPO_ASSETS["emblem"])
+        elif beat == "ending":
+            asset = _asset_repo("eye", REPO_ASSETS["eye"])
+        elif i in photo_slots:
+            # a photo-designated scene: official license-aware source first
+            # (CC0/PDM only); on any failure the topic-specific procedural
+            # visual for this scene — deterministic, distinct, never a reused
+            # repository hero image
+            asset = _external_asset_for(narration, tkw, allow_external,
+                                        category=cat, used_urls=ext_used_urls)
+            if asset is None:
+                asset = _asset_proc(cat, C[cat]["comp"], i)
+            else:
+                ext_used_urls.append(asset.get("asset_url"))
+        else:
+            asset = _asset_proc(cat, C[cat]["comp"], i)
 
         just_code = C[cat]["code"] and code_justified(pillar, narration)
         scene = {
@@ -737,6 +820,7 @@ def build_visual_plan(script, pol=None, allow_external=None):
             "expected_duration": dur,
             "code_justified": bool(just_code),
             "cursor_justified": bool(just_code and cursor_justified(pillar, narration)),
+            "photo_designated": bool(beat not in ("hook", "ending") and i in photo_slots),
         }
         if C[cat]["code"] and just_code:
             scene["code_lines"] = code_snippet_for(meta, narration)
@@ -750,7 +834,15 @@ def build_visual_plan(script, pol=None, allow_external=None):
         "forbidden_hues": list(COLD_COLOR_NAMES),
         "subtitle_band": list(band),
         "scenes": scenes,
-        "generation": "deterministic-visual-plan v1 (no LLM in the visual path)",
+        "photo_policy": {
+            "target": PHOTO_TARGET, "minimum": PHOTO_MIN,
+            "designated": [f"s{i + 1}" for i in sorted(photo_slots)],
+            "source": "openverse-api (CC0/PDM only; CC-BY disabled until public "
+                      "attribution exists), $0, keyless",
+            "fallback": "distinct topic-specific procedural visual per scene",
+            "repo_hero_as_background": False,
+        },
+        "generation": "deterministic-visual-plan v2 (no LLM in the visual path)",
     }
     return plan
 
@@ -766,7 +858,10 @@ MIN_SCENES_LONG = 6
 MAX_SCENE_SECONDS = 13.0
 MIN_DISTINCT_RATIO = 0.6
 MAX_ASSET_TIME_SHARE = 0.45
-ALLOWED_EXTERNAL_LICENSES = ("cc0", "cc-by")
+# Must mirror asset_fetch.ALLOWED_LICENSES: attribution-free public-domain
+# licenses only. A CC-BY asset can never pass this gate (and can never be
+# fetched), so it can never reach publication without public attribution.
+ALLOWED_EXTERNAL_LICENSES = ("cc0", "pdm")
 MAX_EXTERNAL_BYTES = 8 * 1024 * 1024
 
 
@@ -932,8 +1027,9 @@ def visual_semantic_issues(plan, script, pol=None):
             if lic not in ALLOWED_EXTERNAL_LICENSES:
                 B(f"{sid}: external image license {lic!r} not in {ALLOWED_EXTERNAL_LICENSES} — "
                   "no provenance, no image")
-            if not asset.get("creator") and lic == "cc-by":
-                B(f"{sid}: cc-by image without recorded creator — attribution cannot be rendered")
+            if lic == "cc-by" and not asset.get("creator"):
+                B(f"{sid}: cc-by image without recorded creator — and CC-BY has no "
+                  "public attribution channel, so it is never publishable")
             if not asset.get("retrieved_utc") or not asset.get("query_sanitized"):
                 B(f"{sid}: external provenance incomplete (retrieved_utc/query_sanitized)")
             if not re.fullmatch(r"[0-9a-f]{64}", str(asset.get("sha256") or "")):
@@ -942,6 +1038,16 @@ def visual_semantic_issues(plan, script, pol=None):
             p = asset.get("path") or ""
             if ".." in p or p.startswith("/") or not p.startswith("assets/"):
                 B(f"{sid}: unsafe repository asset path {p!r}")
+            # repository images are BRAND references only: a scene visual may
+            # never be an existing hero image as its dominant background —
+            # photo slots come from the license-aware source (or fall back to
+            # a distinct procedural visual)
+            if p not in (REPO_ASSETS["emblem"], REPO_ASSETS["eye"]):
+                B(f"{sid}: repository image {p!r} is not a profile brand asset — "
+                  "existing hero images are not scene backgrounds")
+            elif sc.get("photo_designated"):
+                B(f"{sid}: a photo-designated scene must use the license-aware "
+                  "source or its procedural fallback, never a brand asset")
             if p and not os.path.exists(os.path.join(common.ROOT, p)):
                 B(f"{sid}: repository asset {p!r} missing")
         elif kind == "procedural":
@@ -1015,6 +1121,9 @@ def plan_summary(plan):
     return {"scenes": len(scenes), "distinct_assets": len(aids),
             "categories": sorted({sc.get("visual_category") for sc in scenes}),
             "external": sum(1 for sc in scenes if sc.get("asset", {}).get("kind") == "external"),
+            "photo_designated": sum(1 for sc in scenes if sc.get("photo_designated")),
+            "procedural": sum(1 for sc in scenes if sc.get("asset", {}).get("kind") == "procedural"),
+            "brand": sum(1 for sc in scenes if sc.get("visual_category") in BRAND_CATEGORIES),
             "code_scenes": [sc["scene_id"] for sc in scenes if sc.get("code_justified")],
             "pillar": plan.get("pillar")}
 

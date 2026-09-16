@@ -10,20 +10,28 @@ Issue #24 (reel-2026-09-19) rework:
     forever; a code visual can only appear as a justified, curated,
     syntax-coherent snippet in a CODING/LEARNING_TECH scene, and a caret only
     when the narration demonstrates code entry;
-  * every scene is a distinct art-directed composition: topic-specific
-    procedural diagrams (said-vs-did, evidence filter, hypothesis ladder,
-    decision matrix, funnels, loops, gauges, timelines, ...), brand-graded
-    repository photos (hero_brain / hero_desk), or a $0 Openverse photo with
-    recorded provenance — all graded into the matte-black/gold/amber/ivory
-    brand world with Ken Burns motion, masked reveals and short crossfades;
+  * every scene is a distinct art-directed composition: a topic-specific
+    procedural diagram (said-vs-did, evidence filter, hypothesis ladder,
+    decision matrix, funnels, loops, gauges, timelines, ...), OR a
+    photo-designated scene carrying a $0 attribution-free (CC0/PDM) Openverse
+    photo with recorded provenance — graded into the matte-black/
+    gold/amber/ivory brand world with Ken Burns motion, masked reveals and
+    short crossfades. A normal reel plans a balanced mix of 2-3 distinct
+    topic-relevant photos, the remaining content scenes as procedural
+    diagrams, and brand assets only at hook/ending;
+  * if a designated photo cannot be retrieved safely (offline, rate-limited,
+    malformed, unreadable) the scene deterministically falls back to its own
+    topic-specific procedural visual — the reel never fails on the network,
+    and never reuses a repository hero image to compensate;
   * on load the engine RE-RUNS the deterministic visual-semantic gate on the
     plan: a blocked plan raises before a single frame is rendered (fail
     closed). The static fallback, the safe re-render and every recovery path
     go through this same gate.
 
-Profile assets (logo_emblem, logo_eye, hero_brain, hero_desk) are brand
-references: the emblem opens, the eye closes, brain/desk appear as at most
-two graded photos among many distinct visuals — never the only imagery.
+Profile assets (logo_emblem, logo_eye) are brand references only: the emblem
+opens, the eye closes. The repository hero images (hero_brain / hero_desk)
+are NOT scene backgrounds — the pre-render gate blocks any non-brand
+repository image as a scene visual.
 """
 import bisect
 import hashlib

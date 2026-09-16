@@ -1183,6 +1183,8 @@ def main():
         "scenes": len(plan["scenes"]),
         "distinct_assets": len({s["asset"]["id"] for s in plan["scenes"]}),
         "external": sum(1 for s in plan["scenes"] if s["asset"]["kind"] == "external"),
+        "photo_designated": sum(1 for s in plan["scenes"] if s.get("photo_designated")),
+        "procedural": sum(1 for s in plan["scenes"] if s["asset"]["kind"] == "procedural"),
         "code_scenes": [s["scene_id"] for s in plan["scenes"] if s["code_justified"]],
         "cursor_scenes": [s["scene_id"] for s in plan["scenes"] if s["cursor_justified"]],
         "issues": visual_issues,
