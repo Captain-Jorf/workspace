@@ -272,7 +272,10 @@ def check_sources(rep, script, topic, pol, skip_network):
     claim_words = pol["source_policy"]["require_evidence_for_claim_words"]
     text = " ".join(l["t"] for ch in script["chunks"] for l in ch["en"]).lower()
     claims = [w for w in claim_words if re.search(rf"\b{re.escape(w)}\b", text)]
-    numbers = re.findall(r"\b\d{1,3}(?:\.\d+)?\s?(?:%|percent\b)", text)
+    # Shared matcher (common.find_numeric_claims) so the producer's pre-gate and
+    # this QA blocker can never diverge. Threshold unchanged: any statistic that
+    # is not explicitly backed by verified evidence blocks the reel.
+    numbers = common.find_numeric_claims(text)
     ev = [s for s in srcs if s.get("role") == "evidence"] or srcs
     tiers = [source_tier(s.get("url"), s.get("label"), pol) for s in ev]
     best = min(tiers, key=lambda t: "ABC?".index(t)) if tiers else "?"

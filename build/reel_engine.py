@@ -286,43 +286,116 @@ class Reel:
             self._widget_cache[key] = fn()
         return self._widget_cache[key]
 
-    # English karaoke captions — lower-middle, big font, high contrast, safe zone above caption/IG buttons
+    # --- English karaoke captions: lower-middle, LTR, big font, high contrast,
+    # --- inside the Instagram safe zone (above caption / IG buttons).
+    # --- HARD constraint: at most layout.en_max_rows (3) rendered rows per cue.
+    # --- A cue that would wrap to more rows is SPLIT at a natural phrase/sentence
+    # --- boundary into consecutive sub-cues — timing is preserved because every
+    # --- sub-cue keeps its own word-level TTS timings. Font size is NOT shrunk
+    # --- to squeeze extra rows (readability over compaction).
+
+    def _wrap_words(self, words, size):
+        """Wrap timed words into rendered rows at font `size`.
+        Returns (rows, size, line_height); rows are lists of (word, (warm, gold, dim imgs), x_offset)."""
+        L = self.L
+        f = font("en", 600, size)
+        asc, desc = f.getmetrics()
+        lh = asc + desc + 14
+        rows, cur, cw = [], [], 0
+        def word_img(wd, fill, f=f, asc=asc, lh=lh):
+            bb = f.getbbox(wd)
+            im = Image.new("RGBA", (bb[2] - bb[0] + 24, lh), (0, 0, 0, 0))
+            ImageDraw.Draw(im).text((12, 7 + asc), wd, font=f, fill=fill, anchor="ls")
+            return im
+        for wd in words:
+            wi, gi, di = word_img(wd["w"], WARM), word_img(wd["w"], GOLD_HI), word_img(wd["w"], (200, 190, 170))
+            ww = wi.width + 12
+            if cw + ww > L["en_max_width"] and cur:
+                rows.append(cur)
+                cur, cw = [], 0
+            cur.append((wd, (wi, gi, di), cw))
+            cw += ww
+        if cur:
+            rows.append(cur)
+        return rows, size, lh
+
+    @staticmethod
+    def _boundary_rank(word):
+        """How natural a cue split is right after `word`: sentence end > clause break > plain word."""
+        w = word.rstrip("\"'”’)]}")
+        if re.search(r"[.?!]$", w):
+            return 2
+        if re.search(r"[,:;:—–-]$|^(and|but|so|because|then|so that)$", word, re.I):
+            return 1
+        return 0
+
+    def _split_words_for_rows(self, words):
+        """Split a timed word list into consecutive parts so EACH part wraps to at
+        most en_max_rows rows at the full subtitle font size.
+
+        No split when the line already fits. Otherwise the split point prefers
+        natural phrase/sentence boundaries closest to the character midpoint;
+        word order and word-level timings are preserved (each part is a cue of
+        its own, starting/ending at its own first/last word).
+        """
+        L = self.L
+        size = L["en_font_size"]
+        rows, _, _ = self._wrap_words(words, size)
+        if len(rows) <= L["en_max_rows"]:
+            return [words]
+        total = sum(len(w["w"]) for w in words)
+        # Best single split: both halves must fit in en_max_rows rows.
+        best = None
+        for i in range(1, len(words)):
+            left, right = words[:i], words[i:]
+            rl, _, _ = self._wrap_words(left, size)
+            rr, _, _ = self._wrap_words(right, size)
+            if len(rl) <= L["en_max_rows"] and len(rr) <= L["en_max_rows"]:
+                acc = sum(len(w["w"]) for w in left)
+                score = (-self._boundary_rank(words[i - 1]["w"]), abs(acc - total / 2.0), i)
+                if best is None or score < best[0]:
+                    best = (score, i)
+        if best:
+            i = best[1]
+            return self._split_words_for_rows(words[:i]) + self._split_words_for_rows(words[i:])
+        # Extremely long line: no single split makes both halves fit — split at
+        # the most natural point near the midpoint and recurse on each half.
+        if len(words) == 1:
+            return [words]
+        mid = total / 2.0
+        acc, fallback = 0, None
+        for i in range(1, len(words)):
+            acc += len(words[i - 1]["w"])
+            score = (-self._boundary_rank(words[i - 1]["w"]), abs(acc - mid), i)
+            if fallback is None or score < fallback[0]:
+                fallback = (score, i)
+        i = fallback[1]
+        return self._split_words_for_rows(words[:i]) + self._split_words_for_rows(words[i:])
+
     def _build_captions(self):
         L = self.L
         self.cap_lines = []
         for ln in self.lines:
-            words = ln["words"]
-            chosen = None
-            for size in (L["en_font_size"], 50, 46, 42, 38):
-                f = font("en", 600, size)
-                asc, desc = f.getmetrics()
-                lh = asc + desc + 14
-                rows, cur, cw = [], [], 0
-                def word_img(wd, fill, f=f, asc=asc, lh=lh):
-                    bb = f.getbbox(wd)
-                    im = Image.new("RGBA", (bb[2] - bb[0] + 24, lh), (0, 0, 0, 0))
-                    ImageDraw.Draw(im).text((12, 7 + asc), wd, font=f, fill=fill, anchor="ls")
-                    return im
-                for wd in words:
-                    wi, gi, di = word_img(wd["w"], WARM), word_img(wd["w"], GOLD_HI), word_img(wd["w"], (200, 190, 170))
-                    ww = wi.width + 12
-                    if cw + ww > L["en_max_width"] and cur:
-                        rows.append(cur)
-                        cur, cw = [], 0
-                    cur.append((wd, (wi, gi, di), cw))
-                    cw += ww
-                if cur:
-                    rows.append(cur)
-                if len(rows) <= L["en_max_rows"] or size == 38:
-                    chosen = (rows, size, lh)
-                    break
-            rows, size, lh = chosen
-            row_h = L["en_row_height"]
-            width = max((r[-1][2] + r[-1][1][0].width) for r in rows)
-            top = L["en_top"]
-            bottom = top + len(rows) * row_h
-            self.cap_lines.append({"rows": rows, "start": ln["start"], "end": ln["end"], "size": size, "lh": lh, "width": width, "top": top, "bottom": bottom})
-            self.layout["en"].append({"text": ln["text"], "start": ln["start"], "end": ln["end"], "rows": len(rows), "font": size, "direction": "ltr", "bbox": [int((W - width) // 2), top, int((W + width) // 2), bottom]})
+            for sub in self._split_words_for_rows(ln["words"]):
+                rows, size, lh = self._wrap_words(sub, L["en_font_size"])
+                # Escape hatch only (pathological single word): shrinking never
+                # re-joins cues; it just keeps an un-splittable word on screen.
+                if len(rows) > L["en_max_rows"]:
+                    for s2 in (50, 46, 42, 38):
+                        rows, size, lh = self._wrap_words(sub, s2)
+                        if len(rows) <= L["en_max_rows"]:
+                            break
+                text = " ".join(w["w"] for w in sub)
+                row_h = L["en_row_height"]
+                width = max((r[-1][2] + r[-1][1][0].width) for r in rows)
+                top = L["en_top"]
+                bottom = top + len(rows) * row_h
+                start, end = sub[0]["start"], sub[-1]["end"]
+                self.cap_lines.append({"rows": rows, "start": start, "end": end, "size": size, "lh": lh,
+                                       "width": width, "top": top, "bottom": bottom, "text": text})
+                self.layout["en"].append({"text": text, "start": start, "end": end, "rows": len(rows),
+                                          "font": size, "direction": "ltr",
+                                          "bbox": [int((W - width) // 2), top, int((W + width) // 2), bottom]})
 
     def draw_captions(self, fr, t):
         i = bisect.bisect_right([l["start"] for l in self.cap_lines], t) - 1

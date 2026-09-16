@@ -136,7 +136,7 @@
    "video_hash": "aa95cb6baff23cc19e40a9e9105a52b4793c1fb7648d925c0b7ef5ad76d1ce97",
    "qa_score": 69,
    "buffer_post_id": null,
-   "status": "buffer-error",
+   "status": "qa-failed",
    "run_id": "35043984004",
    "technology_angle": "AI judgment – confidence calibration in language models",
    "metacognition_concept": "Calibration bias (over‑confidence) in self‑assessment",

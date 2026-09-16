@@ -33,7 +33,10 @@ def build(sc):
         pass                                     # never claim an official logo in captions
     cap = "\n".join(parts).strip()
     cap = re.sub(r"\n{3,}", "\n\n", cap)
-    tag = " ".join(dict.fromkeys(c.get("hashtags", [])))
+    # Limited non-spam hashtag set with the brand tags guaranteed present
+    # (hashtag_policy.always, incl. #metacognitionhq), spam tags dropped and
+    # the cap (hashtag_policy.max) respected.
+    tag = " ".join(common.normalize_hashtags(c.get("hashtags", []), common.policy()))
     return cap, tag
 
 

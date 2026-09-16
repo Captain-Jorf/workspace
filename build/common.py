@@ -257,6 +257,97 @@ def scrub_secrets(text):
 def env_flag_exact_true(name):
     return os.environ.get(name, "") == "true"
 
+# ------------------------------------------------------------------ numeric-claim grounding
+# Single source of truth for "what counts as a numeric claim" in narration.
+# The QA supervisor (check_sources → source_quality blocker) and the producer's
+# deterministic pre-gate MUST use the same matcher, so the gate can never be
+# looser (or stricter in a surprising way) than the QA threshold it mirrors.
+NUMERIC_CLAIM_RE = re.compile(r"\b\d{1,3}(?:\.\d+)?\s?(?:%|percent\b)")
+
+def find_numeric_claims(text):
+    """Percentages / 'N percent' in `text`, in order of appearance."""
+    return NUMERIC_CLAIM_RE.findall(text or "")
+
+def normalize_numeric_claim(claim):
+    """'100 %' / '100%' → '100%'; '92 percent' → '92%'. For allowlist comparison."""
+    c = str(claim).strip().lower()
+    c = re.sub(r"\s+", " ", c)
+    m = re.match(r"^(\d{1,3}(?:\.\d+)?)\s?(?:%|percent)$", c)
+    return f"{m.group(1)}%" if m else c
+
+def packet_numeric_evidence(packet):
+    """Set of numeric claims EXPLICITLY present in the sanitized evidence packet.
+
+    The packet is the only trusted fact source for the producer; calendar /
+    evergreen packets deliberately contain no statistics, so this is normally
+    empty — which is exactly what the hard rule in the prompts encodes.
+    """
+    blob = " ".join([
+        str((packet or {}).get("trusted_excerpt", "")),
+        str(((packet or {}).get("evidence_source") or {}).get("label", "")),
+        str(((packet or {}).get("discovery_source") or {}).get("name", "")),
+    ])
+    return {normalize_numeric_claim(c) for c in find_numeric_claims(blob)}
+
+def unsupported_numeric_claims(narration_text, packet):
+    """Numeric claims in `narration_text` that the evidence packet does NOT support.
+
+    Mirrors the QA source_quality rule ("statistics cannot be verified
+    automatically") so the producer can fail closed BEFORE tts/render/QA, and
+    so calendar/evergreen generation can never introduce percentages,
+    statistics, study results or precise numeric claims on its own.
+    """
+    allowed = packet_numeric_evidence(packet)
+    out, seen = [], set()
+    for c in find_numeric_claims(narration_text):
+        n = normalize_numeric_claim(c)
+        if n in allowed:
+            continue
+        if n not in seen:
+            seen.add(n)
+            out.append(c)
+    return out
+
+def recent_cta_types(memory, n=5):
+    """CTA types of the most recent `n` editorial-memory entries (newest first).
+
+    Used for rolling CTA diversity. Entries without a cta_type are skipped;
+    an unavailable/empty memory yields [] — callers fall back deterministically.
+    """
+    out = []
+    for e in recent_entries(memory or empty_memory(), max(n, 1)):
+        ct = e.get("cta_type")
+        if ct and ct not in out:
+            out.append(ct)
+        if len(out) >= n:
+            break
+    return out
+
+# ------------------------------------------------------------------ hashtags
+def normalize_hashtags(tags, pol):
+    """Limited, non-spam hashtag set with the brand tags guaranteed present.
+
+    Rules (from hashtag_policy):
+      * every tag in `always` (brand, e.g. #metacognitionhq) is included, first;
+      * banned (spam) tags are dropped;
+      * duplicates (case-insensitive) are collapsed;
+      * the set is capped at `max` — brand tags are the ones that survive the cap.
+    """
+    hp = pol["hashtag_policy"]
+    banned = {t.lower() for t in hp.get("banned", [])}
+    out, seen = [], set()
+    for t in list(hp.get("always", [])) + list(tags or []):
+        t = str(t).strip()
+        if not t:
+            continue
+        if t[0] != "#":
+            t = "#" + t
+        if t.lower() in banned or t.lower() in seen:
+            continue
+        seen.add(t.lower())
+        out.append(t)
+    return out[: hp.get("max", 8)]
+
 def min_qa_score(pol=None):
     pol = pol or policy()
     floor = int(pol["qa_thresholds"].get("min_score_floor", 80))

@@ -168,12 +168,25 @@ jobs:
 
       - name: Buffer queue (official API; only when approved AND enabled AND not dry run)
         id: buffer
-        if: steps.verify.outputs.code == '0'
+        # Hard gate: Buffer must only run after produce AND push AND verify ALL
+        # succeeded (a skipped upstream step has outcome 'skipped', never 'success',
+        # and its outputs are empty). On a QA rejection this step cannot run at
+        # all, so its status can never masquerade as the run's outcome.
+        if: steps.produce.outputs.code == '0' && steps.push.outcome == 'success' && steps.verify.outcome == 'success' && steps.verify.outputs.code == '0'
         env:
           BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
           AUTO_PUBLISH_ENABLED: ${{ vars.AUTO_PUBLISH_ENABLED }}
         run: |
           set +e
+          # Precondition guard: a missing public URL is a pipeline precondition
+          # failure, NOT a Buffer failure. Even if this step ever ran without a
+          # public URL, it must report automation-error and never touch Buffer.
+          if [ -z "${RAW_URL:-}" ]; then
+            echo "::warning::RAW_URL is empty — no public video URL exists; Buffer must not be touched (precondition failure)"
+            echo "status=automation-error" >> "$GITHUB_OUTPUT"
+            echo "buffer step: precondition missing (no public URL) → automation-error, no Buffer call"
+            exit 0
+          fi
           ARGS="--yes"
           [ "$DRY" = "true" ] && ARGS="--dry-run"
           python3 build/buffer_publish.py publish --tag "$TAG" --content-id "reel-$TAG" \
@@ -181,12 +194,16 @@ jobs:
             --marker "output/auto-${TAG}.buffer.json" --thumbnail-ms 1600 $ARGS
           code=$?
           set -e
+          # buffer-error is reserved for ACTUAL Buffer read-only/mutation
+          # failures (2 no token · 5 API error · 6 no channel). Precondition
+          # failures (3 caption, 4 public URL) and anything unexpected are
+          # automation-error — they prove nothing about Buffer.
           case "$code" in
             0) if [ -s "output/auto-${TAG}.buffer.json" ]; then st=queued-in-buffer; else st=approved-dry-run; fi ;;
             8) st=approved-dry-run ;;
             7) st=queue-full ;;
             2|5|6) st=buffer-error ;;
-            *) st=buffer-error ;;
+            *) st=automation-error ;;
           esac
           echo "status=$st" >> "$GITHUB_OUTPUT"
           echo "buffer step exit=$code → $st"
@@ -209,11 +226,22 @@ jobs:
           PUSH: ${{ steps.push.outcome }}
         run: |
           set -euo pipefail
-          if [ -n "$BST" ]; then STATUS="$BST"
-          elif [ "$P" = "0" ] && [ "$PUSH" = "failure" ]; then STATUS="automation-error"
-          elif [ "$P" = "0" ] && [ "$V" != "0" ]; then STATUS="qa-failed"
-          elif [ "$P" = "0" ]; then STATUS="automation-error"
-          else STATUS=$(python3 -c "import json,sys;print(json.load(open('output/auto-${TAG}_state.json')).get('status','automation-error'))" 2>/dev/null || echo automation-error)
+          # Cascade order — a QA/failure outcome is AUTHORITATIVE and can never
+          # be overridden by the Buffer step (which must not even have run):
+          #   1. produce failed (P != 0, e.g. 10 = qa-failed) → keep the state-file status
+          #   2. push failed/skipped                          → automation-error
+          #   3. verify failed                                → qa-failed
+          #   4. otherwise → Buffer step outcome (or automation-error if missing)
+          if [ "$P" != "0" ]; then
+            STATUS=$(python3 -c "import json,sys;print(json.load(open('output/auto-${TAG}_state.json')).get('status','automation-error'))" 2>/dev/null || echo automation-error)
+          elif [ "$PUSH" != "success" ]; then
+            STATUS="automation-error"
+          elif [ "$V" != "0" ]; then
+            STATUS="qa-failed"
+          elif [ -n "$BST" ]; then
+            STATUS="$BST"
+          else
+            STATUS="automation-error"
           fi
           echo "FINAL_STATUS=$STATUS" >> "$GITHUB_ENV"
           python3 build/pipeline.py record --tag "$TAG" --status "$STATUS"
