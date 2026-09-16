@@ -32,7 +32,16 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import groq_http
 common.assert_content_language_en()  # fail-closed EN-only
+
+# The explicit project User-Agent sent on EVERY Groq request. api.groq.com sits
+# behind Cloudflare: the stdlib default `Python-urllib/3.x` signature is
+# rejected at the edge with HTTP 403 + Cloudflare error code 1010 ("banned your
+# access based on your browser's signature") before authentication is even
+# reached. See build/groq_http.py and docs/groq_cloudflare_1010_fix.md.
+PROJECT_USER_AGENT = groq_http.PROJECT_USER_AGENT
+GroqAPIError = groq_http.GroqAPIError
 
 # Official Groq OpenAI-compatible API.
 # Docs: https://console.groq.com/docs/api-reference
@@ -45,14 +54,56 @@ GROQ_CHAT_PATH = "/chat/completions"
 _TEST_BASE_ENV = "GROQ_BASE_URL"
 
 # Retry policy: 1 initial attempt + 2 retries, exponential backoff.
-MAX_ATTEMPTS = 3
-RETRY_BASE_SECONDS = 1.0
-MAX_429_RETRIES = 2
-RETRY_AFTER_CAP_SECONDS = 30
-REQUEST_TIMEOUT = 60
-MODELS_TIMEOUT = 20
+# Single source of truth lives in build/groq_http.py (the central client).
+MAX_ATTEMPTS = groq_http.MAX_ATTEMPTS
+RETRY_BASE_SECONDS = groq_http.RETRY_BASE_SECONDS
+MAX_429_RETRIES = groq_http.MAX_429_RETRIES
+RETRY_AFTER_CAP_SECONDS = groq_http.RETRY_AFTER_CAP_SECONDS
+REQUEST_TIMEOUT = groq_http.REQUEST_TIMEOUT
+MODELS_TIMEOUT = groq_http.MODELS_TIMEOUT
 
 AUTO_MODEL = "auto"
+
+# --------------------------------------------------------------------- reasoning models
+# Groq's `openai/gpt-oss-*` models are REASONING models: hidden chain-of-thought
+# tokens are drawn from the SAME completion budget as the visible answer. When
+# the budget runs out during reasoning, Groq answers **HTTP 200** with
+# `choices[0].message.content == ""`, the reasoning in `message.reasoning`, and
+# `finish_reason == "length"` — no error code, no error body.
+#
+# That is exactly what the real connection check hit on api.groq.com after the
+# Cloudflare 403/1010 was fixed (captured from a live run annotation):
+#   "reviewer: Groq empty message content: host=api.groq.com
+#    model=openai/gpt-oss-20b http_status=200 attempt=1"
+#
+# Documented remedy (https://console.groq.com/docs/reasoning):
+#   * use `max_completion_tokens` (`max_tokens` is the deprecated name),
+#   * `reasoning_effort: "low"` — accepted ONLY by GPT-OSS 20B/120B and
+#     Qwen 3.8 27B; Qwen 3.6 27B accepts only "none"/"default", and
+#     non-reasoning models accept no such parameter at all, so it is sent
+#     only to the families whose docs list it.
+REASONING_EFFORT_LOW_MODELS = ("openai/gpt-oss-", "gpt-oss-", "qwen/qwen3.8-")
+MAX_COMPLETION_TOKENS_CAP = 4096
+EMPTY_CONTENT_RETRIES = 1
+
+
+def is_reasoning_model(model):
+    """True for model families that spend completion tokens on hidden reasoning."""
+    mid = (model or "").strip().lower()
+    return any(mid.startswith(p) for p in
+               ("openai/gpt-oss-", "gpt-oss-", "qwen/qwen3.6-", "qwen/qwen3.8-"))
+
+
+def reasoning_effort_for(model):
+    """'low' only for families whose docs list it; None means do not send it.
+
+    Sending `reasoning_effort` to a model that does not document it makes Groq
+    answer HTTP 400, so the gate is deliberately narrow.
+    """
+    mid = (model or "").strip().lower()
+    if any(mid.startswith(p) for p in REASONING_EFFORT_LOW_MODELS):
+        return "low"
+    return None
 
 # Candidate instruction-capable text models, ordered by producer preference
 # (strongest first). ONLY models confirmed by the authenticated /models call
@@ -108,18 +159,17 @@ def get_hostname():
 
 def get_groq_key():
     """Return the API key or ''. Callers must NEVER log its value."""
-    return os.environ.get("GROQ_API_KEY", "")
+    return groq_http.get_api_key()
 
 
 def require_groq_key():
     """Raise (nonzero in workflows) when no key is available. Never logs it."""
-    key = get_groq_key()
-    if not key:
-        raise RuntimeError(
-            "GROQ_API_KEY not set — real Groq call impossible "
-            "(mock requires explicit MOCK_GROQ=1)"
-        )
-    return key
+    return groq_http.require_api_key()
+
+
+def groq_headers(with_auth=True, with_body=False):
+    """Headers used for EVERY Groq request (explicit project User-Agent)."""
+    return groq_http.build_headers(with_auth=with_auth, with_body=with_body)
 
 
 def validate_candidate_model(model):
@@ -155,123 +205,42 @@ def resolve_hostname(hostname=None, timeout=10):
     return False, f"DNS resolution: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
 
 
-def https_probe(timeout=15):
-    """Unauthenticated HTTPS/TLS reachability check (no Authorization header).
+def https_probe(timeout=None):
+    """Unauthenticated HTTPS/TLS reachability check — SAME safe client.
 
-    Any HTTP response (even 401/4xx/5xx) proves DNS+TLS work. Returns
-    (reachable, http_status_or_None, detail). Safe to log.
+    Sends the explicit project User-Agent + Accept but NO Authorization header,
+    so the key is never exposed on an unauthenticated request. Any HTTP
+    response (even 401/403/4xx/5xx) proves DNS + TLS + edge work.
+    Returns (reachable, http_status_or_None, detail). Safe to log.
     """
-    url = get_models_url()
-    hostname = get_hostname()
-    last_err = ""
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        try:
-            req = urllib.request.Request(url, method="GET")  # no auth header
-            try:
-                with urllib.request.urlopen(req, timeout=timeout) as r:
-                    return True, r.status, f"HTTPS probe: OK host={hostname} status={r.status} attempt={attempt}"
-            except urllib.error.HTTPError as e:
-                # An HTTP status code IS reachability (server answered).
-                return True, e.code, f"HTTPS probe: OK host={hostname} status={e.code} attempt={attempt}"
-        except Exception as e:  # noqa: BLE001 — URLError/timeout/SSL
-            last_err = f"{type(e).__name__}"
-            if attempt < MAX_ATTEMPTS:
-                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-    return False, None, f"HTTPS probe: FAILED host={hostname} error={last_err} attempts={MAX_ATTEMPTS}"
+    return groq_http.probe(get_models_url(),
+                           timeout=timeout if timeout is not None else groq_http.PROBE_TIMEOUT,
+                           max_attempts=MAX_ATTEMPTS)
 
 
 def parse_retry_after(headers):
     """Parse Retry-After (seconds) from response headers. Returns 0 if absent."""
-    if not headers:
-        return 0
-    try:
-        raw = headers.get("Retry-After", "")
-    except Exception:
-        return 0
-    try:
-        return max(0, int(str(raw).strip().split(",")[0]))
-    except (ValueError, TypeError):
-        return 0
-
-
-def _read_error_body(e):
-    try:
-        return common.scrub_secrets(e.read().decode("utf-8", "replace")[:200])
-    except Exception:
-        return ""
+    return groq_http.parse_retry_after(headers)
 
 
 def groq_request(method, url, payload=None, timeout=60):
-    """Authenticated Groq request with the free-tier retry policy.
+    """Authenticated Groq request — thin wrapper over the central HTTP client.
 
-    - 401/403: no retry, authentication error.
-    - 429: honor Retry-After, max 2 short retries, then raise.
+    ALL Groq traffic (model discovery, Producer, Reviewer, revision) uses
+    build/groq_http.request(), which always sends the explicit project
+    User-Agent + Accept, adds Authorization/Content-Type when needed, and
+    applies the safe error taxonomy + bounded retry policy:
+
+    - 403 + Cloudflare code 1010: cloudflare-client-blocked, NO retry.
+    - 401: invalid-or-missing-api-key, no retry.
+    - other 403: permission-or-account-restriction, no retry.
+    - 429: rate-limited, Retry-After honored, max 2 short retries.
     - 5xx/timeout/network: limited retry (1+2), then raise.
-    - other 4xx: no retry.
     Returns (parsed_json, meta). Messages carry only safe fields.
     """
-    key = require_groq_key()
-    hostname = get_hostname()
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
-    data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    last_err = ""
-    rate_retries = 0
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        req = urllib.request.Request(url, data=data, headers=headers, method=method)
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                status = getattr(r, "status", 200)
-                try:
-                    resp = json.load(r)
-                except Exception:
-                    raise RuntimeError(
-                        f"Groq invalid response envelope: host={hostname} "
-                        f"http_status={status} attempt={attempt}"
-                    )
-                return resp, {"mock": False, "host": hostname,
-                              "http_status": status, "attempt": attempt}
-        except urllib.error.HTTPError as e:
-            detail = _read_error_body(e)
-            if e.code in (401, 403):
-                raise RuntimeError(
-                    f"Groq HTTP {e.code}: authentication failed host={hostname} "
-                    f"attempt={attempt} detail={detail}"
-                )
-            if e.code == 429:
-                rate_retries += 1
-                if rate_retries > MAX_429_RETRIES or attempt >= MAX_ATTEMPTS:
-                    raise RuntimeError(
-                        f"Groq quota 429 exhausted: host={hostname} "
-                        f"attempts={attempt} detail={detail}"
-                    )
-                wait = parse_retry_after(e.headers) or RETRY_BASE_SECONDS * (2 ** (rate_retries - 1))
-                time.sleep(min(wait, RETRY_AFTER_CAP_SECONDS))
-                continue
-            if 500 <= e.code <= 599:
-                last_err = f"HTTP {e.code}"
-                if attempt < MAX_ATTEMPTS:
-                    time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-                    continue
-                raise RuntimeError(
-                    f"Groq HTTP {e.code}: host={hostname} "
-                    f"attempts={attempt} detail={detail}"
-                )
-            raise RuntimeError(
-                f"Groq HTTP {e.code}: host={hostname} "
-                f"attempt={attempt} detail={detail}"
-            )
-        except RuntimeError:
-            raise
-        except Exception as e:  # noqa: BLE001 — URLError/DNS/timeout/SSL: retry 2x
-            last_err = f"{type(e).__name__}"
-            if attempt < MAX_ATTEMPTS:
-                time.sleep(RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
-    raise RuntimeError(
-        f"Groq call failed: {last_err} host={hostname} attempts={MAX_ATTEMPTS}"
-    )
+    return groq_http.request(method, url, payload=payload, timeout=timeout,
+                            with_auth=True, max_attempts=MAX_ATTEMPTS,
+                            max_rate_retries=MAX_429_RETRIES)
 
 
 def discover_models(timeout=MODELS_TIMEOUT):
@@ -355,8 +324,69 @@ def select_models(discovered_ids, producer_want=None, reviewer_want=None):
     return producer, reviewer, report
 
 
+def build_chat_payload(prompt, model, max_tokens, temperature):
+    """Chat-completion payload for the Groq OpenAI-compatible endpoint.
+
+    `max_completion_tokens` (not the deprecated `max_tokens`) so the limit means
+    what we intend on reasoning models, plus `reasoning_effort: "low"` for the
+    families whose docs accept it, so hidden reasoning cannot silently eat the
+    whole visible-answer budget.
+    """
+    budget = int(max_tokens)
+    if reasoning_effort_for(model):
+        budget = max(budget, 1024)
+    budget = min(budget, MAX_COMPLETION_TOKENS_CAP)
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant for @metacognition.hq, English-only, technology\u00d7metacognition. Output valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        "max_completion_tokens": budget,
+        "temperature": temperature,
+    }
+    effort = reasoning_effort_for(model)
+    if effort:
+        payload["reasoning_effort"] = effort
+    return payload
+
+
+def _extract_completion(resp):
+    """Pull (content, finish_reason, reasoning_tokens) out of a chat response.
+
+    Only counts and text LENGTH are ever returned — never the reasoning text
+    itself, so a diagnostic can never carry model output into a log.
+    """
+    content = ""
+    finish = ""
+    reasoning_tokens = None
+    try:
+        choice = (resp or {}).get("choices", [{}])[0] or {}
+        message = choice.get("message", {}) or {}
+        raw = message.get("content", "")
+        content = raw if isinstance(raw, str) else ""
+        finish = str(choice.get("finish_reason", "") or "")
+        if not content.strip():
+            reasoning = message.get("reasoning") or ""
+            if isinstance(reasoning, str) and reasoning.strip():
+                finish = finish or "reasoning-only"
+        details = ((resp or {}).get("usage", {}) or {}).get(
+            "completion_tokens_details", {}) or {}
+        if isinstance(details.get("reasoning_tokens"), int):
+            reasoning_tokens = details["reasoning_tokens"]
+    except Exception:  # noqa: BLE001 — malformed envelope handled by the caller
+        pass
+    return content, finish, reasoning_tokens
+
+
 def call_groq_chat(prompt, model, max_tokens=1200, temperature=0.7, timeout=REQUEST_TIMEOUT):
     """Real Groq chat completion. Fail-closed, never mock.
+
+    Reasoning models can answer HTTP 200 with EMPTY content when the hidden
+    reasoning consumed the whole completion budget (`finish_reason: "length"`).
+    That is a budget problem, not a connectivity or content problem, so it gets
+    exactly ONE bounded retry with a larger budget — still a real API call, never
+    a fixture. Anything else raises.
 
     Returns (content, meta). Raises on: missing key, empty model, network
     failure (after retries), HTTP error, invalid/empty envelope.
@@ -364,29 +394,38 @@ def call_groq_chat(prompt, model, max_tokens=1200, temperature=0.7, timeout=REQU
     if not isinstance(model, str) or not model.strip():
         raise ValueError("Invalid model: empty model ID")
     hostname = get_hostname()
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant for @metacognition.hq, English-only, technology×metacognition. Output valid JSON only."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
-    resp, meta = groq_request("POST", get_chat_url(), payload, timeout=timeout)
-    try:
-        content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-    except Exception:
-        content = ""
-    if not isinstance(content, str) or not content:
-        raise RuntimeError(
-            f"Groq empty message content: host={hostname} model={model} "
-            f"http_status={meta.get('http_status', '?')} attempt={meta.get('attempt', '?')}"
-        )
-    meta.update({"model": model, "content_len": len(content)})
-    if isinstance(resp, dict):
-        meta["envelope"] = resp
-    return content, meta
+    budget = int(max_tokens)
+    last = None
+    for completion_attempt in range(1, EMPTY_CONTENT_RETRIES + 2):
+        payload = build_chat_payload(prompt, model, budget, temperature)
+        resp, meta = groq_request("POST", get_chat_url(), payload, timeout=timeout)
+        content, finish, reasoning_tokens = _extract_completion(resp)
+        if isinstance(content, str) and content.strip():
+            meta.update({"model": model, "content_len": len(content),
+                         "completion_tokens_budget": payload.get("max_completion_tokens"),
+                         "reasoning_effort": payload.get("reasoning_effort"),
+                         "finish_reason": finish,
+                         "reasoning_tokens": reasoning_tokens,
+                         "completion_attempts": completion_attempt})
+            if isinstance(resp, dict):
+                meta["envelope"] = resp
+            return content, meta
+        last = (meta, finish, reasoning_tokens, payload.get("max_completion_tokens"))
+        budget_exhausted = (finish == "length" or bool(reasoning_tokens)
+                            or finish == "reasoning-only"
+                            or bool(reasoning_effort_for(model)))
+        if completion_attempt <= EMPTY_CONTENT_RETRIES and budget_exhausted:
+            # ONE bounded retry with more room for reasoning + the visible answer.
+            budget = min(budget * 2, MAX_COMPLETION_TOKENS_CAP)
+            continue
+        break
+    meta, finish, reasoning_tokens, used_budget = last
+    raise RuntimeError(
+        f"Groq empty message content: host={hostname} model={model} "
+        f"http_status={meta.get('http_status', '?')} attempt={meta.get('attempt', '?')} "
+        f"finish_reason={finish or '?'} reasoning_tokens={reasoning_tokens} "
+        f"max_completion_tokens={used_budget} reasoning_model={is_reasoning_model(model)}"
+    )
 
 
 def sanitize_untrusted(text, max_len=800):
@@ -475,20 +514,61 @@ REVIEWER_SCHEMA = {
 }
 
 
+def _first_balanced_object(text):
+    """First balanced {...} block in `text`, or '' — for prose-wrapped JSON."""
+    start = text.find("{")
+    if start < 0:
+        return ""
+    depth = 0
+    in_str = False
+    escaped = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return ""
+
+
 def _parse_json_content(content, who, model):
-    """Parse (possibly fenced) JSON object. Safe errors, never echoes content."""
+    """Parse a (fenced or prose-wrapped) JSON object.
+
+    Safe errors: the message carries only the exception type, the model and the
+    content LENGTH — never the content itself.
+    """
+    original_len = len(content or "")
     try:
         m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
-        if m:
-            content = m.group(1)
-        parsed = json.loads(content)
+        candidate = m.group(1) if m else content
+        try:
+            parsed = json.loads(candidate)
+        except Exception:
+            # Models sometimes wrap the object in prose; take the first
+            # balanced {...} block before giving up.
+            block = _first_balanced_object(candidate)
+            if not block:
+                raise
+            parsed = json.loads(block)
         if not isinstance(parsed, dict):
             raise ValueError("top-level JSON is not an object")
         return parsed
     except Exception as e:
         raise RuntimeError(
             f"{who} returned malformed JSON: {type(e).__name__} "
-            f"model={model} content_len={len(content)}"
+            f"model={model} content_len={original_len}"
         )
 
 
@@ -569,9 +649,24 @@ class GroqProducer(LLMProvider):
         self.model = producer
         self.selection = report
 
+        # A revision request carries the reviewer's required changes so the
+        # second Producer call is a real revision and not a blind regeneration.
+        revision_block = ""
+        revision_items = evidence_packet.get("revision_request") or []
+        if isinstance(revision_items, str):
+            revision_items = [revision_items]
+        if revision_items:
+            safe_items = [sanitize_untrusted(str(x), 200) for x in revision_items[:8]]
+            revision_block = (
+                "\nRevision requirements from the independent reviewer "
+                "(address EVERY one of them):\n- "
+                + "\n- ".join(i for i in safe_items if i)
+                + "\n"
+            )
+
         prompt = f"""
 You are GroqProducer for @metacognition.hq — Metacognition for the AI age.
-
+{revision_block}
 Brand: {evidence_packet['editorial_policy']['brand']}
 Pillars: {', '.join(evidence_packet['editorial_policy']['pillars'])}
 
@@ -614,7 +709,7 @@ Technology relevance required: must be about AI, software, coding, product, digi
 Metacognition relevance required: must have clear metacognitive concept.
 No Persian, no FA, language=en.
 """
-        content, raw = call_groq_chat(prompt, producer, max_tokens=1500, temperature=0.7)
+        content, raw = call_groq_chat(prompt, producer, max_tokens=2200, temperature=0.7)
         raw["selection"] = report
         return _parse_json_content(content, "Producer", producer), raw
 
@@ -698,7 +793,7 @@ Output ONLY valid JSON:
 
 Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims, no fake URL, non-duplicate, hook and ending related.
 """
-        content, raw = call_groq_chat(prompt, reviewer, max_tokens=800, temperature=0.3)
+        content, raw = call_groq_chat(prompt, reviewer, max_tokens=1400, temperature=0.3)
         raw["selection"] = report
         return _parse_json_content(content, "Reviewer", reviewer), raw
 

@@ -635,17 +635,28 @@ def main():
                                     # Second rejection → fallback
                                     raise ValueError(f"Reviewer rejected after revision: {review_out2}")
                             except Exception as e_rev:
-                                print(f"[producer] reviewer second rejection, falling back: {e_rev}")
+                                print(f"[producer] reviewer second rejection, falling back: "
+                                      f"{common.scrub_secrets(str(e_rev))}")
                                 script = None
                         else:
                             script = None
             except Exception as e:
-                print(f"[producer] reviewer error, will fallback if needed: {e}")
+                print(f"[producer] reviewer error, will fallback if needed: "
+                      f"{common.scrub_secrets(str(e))}")
 
         except Exception as e:
-            print(f"[producer] Groq producer failed: {e} — trying fallback")
+            # Every provider error is classified by build/groq_http.py and
+            # scrubbed here before it reaches stdout, producer_report.json,
+            # script metadata or an issue body. The API key can never appear.
+            safe_error = common.scrub_secrets(str(e))
+            category = getattr(e, "category", "") or ""
+            print(f"[producer] Groq producer failed: {safe_error} — trying fallback")
+            if category:
+                print(f"[producer] groq error category: {category}")
             script = None
-            producer_report["error"] = str(e)
+            producer_report["error"] = safe_error
+            producer_report["error_category"] = category
+            producer_report["mode"] = "groq-failed"
 
     # Fallback to static English if needed
     if script is None:
@@ -666,6 +677,13 @@ def main():
         generation_mode = "static-fallback"
         if not producer_report:
             producer_report = {"mode": "static-fallback", "playbook": playbook_key}
+
+    # Honesty gate: a report must never claim "groq" when the script that was
+    # actually built came from the static English fallback.
+    if generation_mode != "groq" and producer_report.get("mode") == "groq":
+        producer_report["mode"] = "groq-rejected"
+        producer_report["note"] = ("provider responded but the result was rejected "
+                                   "or unusable — static English fallback was built")
 
     os.makedirs(a.out, exist_ok=True)
     common.save_json(os.path.join(a.out, "script.json"), script)

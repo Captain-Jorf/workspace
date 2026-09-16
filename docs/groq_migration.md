@@ -17,6 +17,14 @@ Active architecture: **provider `groq`** with **fallback `static-english`**
 (`generation_mode=groq` only after a genuine API response, otherwise
 `generation_mode=static-fallback`).
 
+All Groq traffic (model discovery, Producer, Reviewer, revision request, the
+unauthenticated probe and the real connection check) goes through the single
+central client **`build/groq_http.py`**, which always sends the explicit
+project `User-Agent` plus `Accept`/`Content-Type`. `api.groq.com` sits behind
+Cloudflare: a stdlib client that announces itself as `Python-urllib/3.x` is
+blocked at the edge with **HTTP 403 + error code 1010** before any credential
+is checked — see `docs/groq_cloudflare_1010_fix.md`.
+
 ## 2. Create a free Groq API key
 
 1. Open `https://console.groq.com/keys` and sign in (or create a free
@@ -82,7 +90,9 @@ in the manifest; without a key (or on provider outage) expect an honest
 | Symptom in `groq-connection-check` | Meaning | Action |
 | --- | --- | --- |
 | `GROQ_API_KEY present: false` | Secret missing on the branch | Add `GROQ_API_KEY` secret (§3), re-run |
-| `HTTP 401/403 authentication failed` | Key invalid/revoked | Regenerate key, update secret |
+| `cloudflare-client-blocked` (HTTP 403 + `cloudflare_code=1010`) | The Cloudflare edge in front of `api.groq.com` discarded the request because of the **HTTP client signature**, before authentication. **Not** a key problem. | Check that every call goes through `build/groq_http.py` and sends `User-Agent: metacognition-hq/1.0 (+https://github.com/Captain-Jorf/workspace)`. **Do NOT rotate the key.** See `docs/groq_cloudflare_1010_fix.md` |
+| `invalid-or-missing-api-key` (HTTP 401) | Key invalid/revoked | Regenerate key, update secret |
+| `permission-or-account-restriction` (HTTP 403, not 1010) | Account/model restriction on the Groq side | Check the Groq console for the account/model entitlement |
 | `quota 429 exhausted` | Free-tier rate limit | Wait, re-run; daily pipeline uses static fallback meanwhile |
 | `none of the N candidate models are available` | Groq rotated models | Update `GROQ_CANDIDATE_MODELS` in `build/llm_provider.py` from `GET /models` |
 | `DNS/HTTPS FAILED` | Runner network issue | Re-run; transient |

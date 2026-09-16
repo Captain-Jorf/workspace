@@ -11,6 +11,9 @@ assets/img/logo_preview.jpg
 content/episodes/auto-*/
 __pycache__/
 *.pyc
+# local fresh-env for the test suite (never committed)
+.venv/
+venv/
 # secrets (also: never put tokens in any tracked file)
 secrets/
 *.env
