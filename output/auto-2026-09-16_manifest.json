@@ -1,37 +1,43 @@
 {
  "content_id": "reel-2026-09-16",
  "content_date": "2026-09-16",
- "topic": "Why does AI sound so sure, even when it's wrong? Hallucination",
- "normalized_topic": "sound sure even wrong hallucination",
- "pillar": "AI_JUDGMENT",
- "technology_angle": "AI judgment – confidence calibration in language models",
- "metacognition_concept": "Calibration bias (over‑confidence) in self‑assessment",
+ "topic": "Grounding SWE-Agent Decisions in Architecture-0 Design: Navigating Unknown Unknowns through Physical Mapping",
+ "normalized_topic": "grounding swe agent decisions architecture design navigating unknown unknowns through physical mapping",
+ "pillar": "CODING",
+ "technology_angle": "Grounding SWE‑Agent Decisions in Architecture‑0 Design",
+ "metacognition_concept": "metacognitive mapping of decision space",
  "tags": [
-  "Calibration bias (over‑confidence) in self‑assessment",
-  "AI judgment – confidence calibration in language models"
+  "metacognitive mapping of decision space",
+  "Grounding SWE‑Agent Decisions in Architecture‑0 Design"
  ],
- "cta_type": null,
+ "cta_type": "question",
  "playbook": "llm-generated",
- "source_url": "https://arxiv.org/abs/2401.01234",
+ "source_url": "https://arxiv.org/abs/2609.17221v1",
  "sources": [
   {
-   "label": "Xiong et al., 2024 – Can LLMs express their uncertainty?",
-   "url": "https://arxiv.org/abs/2401.01234",
-   "tier": "A"
+   "label": "arxiv",
+   "url": "https://arxiv.org/abs/2609.17221v1",
+   "tier": "A",
+   "role": "discovery"
+  },
+  {
+   "label": "Grounding SWE‑Agent Decisions in Architecture‑0 Design",
+   "url": "",
+   "tier": "?"
   }
  ],
- "script_hash": "7f6c84e8ec98949a999817418d3741b0a60c0773dd18b10e6ff67a2964edd5d3",
- "video_hash": "aa95cb6baff23cc19e40a9e9105a52b4793c1fb7648d925c0b7ef5ad76d1ce97",
- "qa_score": 69,
+ "script_hash": "018eaff8a8ee17a76448f104f8fb16d392f31662cb042c873068921039749d4e",
+ "video_hash": "4a41fba59abad7ae3e5ba8489ac1c67765af8d5005fcc1765cfaad7d9b28b9d1",
+ "qa_score": 87,
  "qa_approved": false,
  "buffer_post_id": null,
  "buffer_due_at": null,
- "status": "qa-failed",
+ "status": "render-error",
  "public_url": null,
  "branch": "drafts/2026-09-16",
- "run_id": "35043984004",
- "error": "[source_quality] statistics ['100%', '92%', '80%'] cannot be verified automatically; [english_quality] banned '100%'; [subtitle_layout] EN 4 rows > 3; [subtitle_layout] EN 4 rows > 3; [subtitle_layout] EN 4 rows > 3",
- "timestamp_utc": "2026-09-16T01:32:36+00:00",
+ "run_id": "35075193895",
+ "error": "safe re-render invalid (duration 58.8s outside 60-120) — original preserved, fail-closed",
+ "timestamp_utc": "2026-09-16T08:49:00+00:00",
  "language": "en",
  "content_language": "en",
  "generation_mode": "groq"
