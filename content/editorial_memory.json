@@ -143,8 +143,33 @@
    "reason": "[source_quality] statistics ['100%', '92%', '80%'] cannot be verified automatically; [english_quality] banned '100%'; [subtitle_layout] EN 4 rows > 3; [subtitle_layout] EN 4 rows > 3; [subtitle_layout] EN 4 rows > 3",
    "hook_type": "question",
    "updated_utc": "2026-09-16T01:32:36+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-17",
+   "content_date": "2026-09-17",
+   "topic": "Autocomplete makes you faster today, slower next year. Deskilling",
+   "normalized_topic": "autocomplete makes faster today slower next year deskilling",
+   "pillar": "CODING",
+   "tags": [
+    "skill decay through reliance on recognition",
+    "autocomplete in code editors"
+   ],
+   "cta_type": "question",
+   "playbook": "llm-generated",
+   "source_url": null,
+   "script_hash": "e706316c52499a43beb033da15419bbffa5a4e65ed4ffd9299f0829d3b7b3e0b",
+   "video_hash": "8455421402a25ff6aacbc61e5de81874fab80fd0c1e577245e7ca94941da11fe",
+   "qa_score": 77,
+   "buffer_post_id": null,
+   "status": "qa-failed",
+   "run_id": "35050738918",
+   "technology_angle": "autocomplete in code editors",
+   "metacognition_concept": "skill decay through reliance on recognition",
+   "reason": "[script_quality] words 106 outside 150-260; [video_quality] duration 45.3s outside 60-120",
+   "hook_type": "question",
+   "updated_utc": "2026-09-16T03:14:51+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-16T01:32:36+00:00"
+ "updated_utc": "2026-09-16T03:14:51+00:00"
 }
