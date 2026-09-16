@@ -168,8 +168,33 @@
    "reason": "[script_quality] words 106 outside 150-260; [video_quality] duration 45.3s outside 60-120",
    "hook_type": "question",
    "updated_utc": "2026-09-16T03:14:51+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-18",
+   "content_date": "2026-09-18",
+   "topic": "That notification just cost you twenty minutes. Context switching",
+   "normalized_topic": "notification just cost twenty minutes context switching",
+   "pillar": "ATTENTION",
+   "tags": [
+    "attention residue and context switching",
+    "attention residue in digital work tools"
+   ],
+   "cta_type": "question",
+   "playbook": "llm-generated",
+   "source_url": null,
+   "script_hash": "f10f9d804553c881a89be5ba5103b1c3d1354cb8cfb602c6c8f78542b1c8e87e",
+   "video_hash": "5ccfb90869e34d9e2f01cdc9d0c72d5c7a7ef80267d5d625dee8c36bb4e2a3cc",
+   "qa_score": 81,
+   "buffer_post_id": null,
+   "status": "qa-failed",
+   "run_id": "35054292820",
+   "technology_angle": "attention residue in digital work tools",
+   "metacognition_concept": "attention residue and context switching",
+   "reason": "[source_quality] claim words ['researchers'] without tier A/B",
+   "hook_type": "question",
+   "updated_utc": "2026-09-16T04:11:09+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-16T03:14:51+00:00"
+ "updated_utc": "2026-09-16T04:11:09+00:00"
 }
