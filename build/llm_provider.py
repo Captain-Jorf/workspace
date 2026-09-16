@@ -33,6 +33,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import groq_http
+import visual_plan
 common.assert_content_language_en()  # fail-closed EN-only
 
 # The explicit project User-Agent sent on EVERY Groq request. api.groq.com sits
@@ -679,7 +680,7 @@ class GroqProducer(LLMProvider):
                     "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it."
                 },
                 "on_screen_text": ["ASK AI", "FLUENT", "BIAS", "CHECK", "EXPLAIN", "LEARN"],
-                "visual_direction": "confidence meter + code visual + human-AI network + decision tree",
+                "visual_direction": "confidence meter + human-AI loop + verification checklist",
                 "actionable_technique": "Explain AI output before accepting, test one edge case",
                 "ending": "Where did AI make you skip the thinking this week? Share one moment you caught it.",
                 "caption": {
@@ -810,7 +811,7 @@ Output ONLY valid JSON with keys:
     "ending": "string"
   }},
   "on_screen_text": ["SKILL", "GAP", "TEST", ... 6 labels],
-  "visual_direction": "string, e.g., confidence meter, code visual, decision tree",
+  "visual_direction": "string: short art direction in the brand's matte-black-and-gold world, with visuals that FIT THIS PILLAR (product: said-vs-did contrast, interview notes, evidence filter, decision matrix; coding: debug trace, test suite; attention: notification cascade, focus meter; ...). A code or terminal visual is ONLY allowed for genuine coding/debugging/testing topics — a deterministic gate rejects code visuals on every other pillar.",
   "actionable_technique": "string",
   "ending": "string, CTA question",
   "caption": {{"hook": "...", "intro": "...", "sections": [{{"title": "WHAT'S GOING ON", "lines": [...]}}], "hashtags": ["#metacognition", ...]}},
@@ -961,7 +962,10 @@ class StaticEnglishFallback:
                         "ending": pb["ending"]
                     },
                     "on_screen_text": pb["web"],
-                    "visual_direction": "code visual + confidence meter + human-AI network",
+                    # Issue #24: pillar-appropriate direction, never "code visual"
+                    # on non-coding pillars (the static fallback that broke
+                    # reel-2026-09-19); rendering is driven by the gated plan.
+                    "visual_direction": visual_plan.pillar_visual_direction(pb.get("pillar", "PRODUCT")),
                     "actionable_technique": " ".join(pb["technique"][:2]),
                     "ending": pb["ending"],
                     "caption": {
@@ -993,7 +997,7 @@ class StaticEnglishFallback:
                 "ending": "Where did AI make you skip thinking this week?"
             },
             "on_screen_text": ["ASK AI", "FLUENT", "BIAS", "CHECK", "EXPLAIN", "LEARN"],
-            "visual_direction": "code + confidence meter",
+            "visual_direction": "confidence meter + verification checklist + source comparison",
             "actionable_technique": "Explain before accept",
             "ending": "Where did AI skip thinking?",
             "caption": {"hook": "When does AI make you think less?", "intro": "Fluency vs understanding", "sections": [], "hashtags": ["#metacognition"]},

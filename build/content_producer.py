@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import llm_provider
 import qa_supervisor as qa
+import visual_plan as vp
 
 HANDLE = "@metacognition.hq"
 
@@ -734,7 +735,15 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
         "sources": sources,
         "chunks": chunks,
         "caption": caption,
-        "visual_direction": pb.get("technology_angle", "") + " + code visual + confidence meter + human-AI network",
+        # Issue #24: the static fallback used to append a fixed "code visual"
+        # phrase to EVERY playbook, and the renderer substring-matched it into
+        # a generic code card on non-coding topics. The direction is now
+        # pillar-appropriate (never code outside the CODING pillar) and is
+        # ART DIRECTION TEXT ONLY — the renderer is driven by the gated,
+        # machine-readable visual plan (build/visual_plan.py), never by this
+        # string.
+        "visual_direction": vp.pillar_visual_direction(pb["pillar"]),
+        "visuals": vp.suggest_categories(pb["pillar"], pb.get("technology_angle", "")),
     }
     return script
 
@@ -868,10 +877,33 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
         "sources": sources,
         "chunks": chunks,
         "caption": caption,
-        "visual_direction": llm_output.get("visual_direction", "code visual + confidence meter"),
+        # Issue #24: the LLM's free-text visual_direction is recorded for the
+        # art direction reference only (sanitized, stored in
+        # meta.visual_direction_request). The script's visual_direction is the
+        # deterministic pillar-appropriate string; what is actually rendered
+        # is decided by the gated machine-readable visual plan — an LLM asking
+        # for a code visual on a non-coding pillar is rejected deterministically
+        # by the pre-render visual-semantic gate, it can never override it.
+        "visual_direction": vp.pillar_visual_direction(topic.get("pillar") or derive_pillar_of_llm(llm_output)),
         "claims": llm_output.get("claims", []),
     }
+    script["meta"]["visual_direction_request"] = _sanitize_llm_text(
+        llm_output.get("visual_direction"), 200)
     return script
+
+
+def derive_pillar_of_llm(llm_output):
+    meta = {"technology_angle": llm_output.get("technology_angle", ""),
+            "metacognition_concept": llm_output.get("metacognition_concept", "")}
+    return vp.derive_pillar(meta)
+
+
+def _sanitize_llm_text(value, limit=200):
+    """Free text from the LLM: capped, control characters stripped. It is
+    stored for reference only and can never alter prompts, policy, commands,
+    file paths or the visual plan."""
+    s = "".join(ch for ch in str(value or "") if ord(ch) >= 32)[:limit]
+    return s.strip()
 
 def main():
     common.assert_content_language_en()
@@ -1130,9 +1162,31 @@ def main():
     # known-bad script, and no padding is applied to dodge the gate.
     gate_final = gate_report(script, pol, f"final ({generation_mode})",
                              topic=topic, packet=evidence_packet)
+    # Deterministic PRE-RENDER VISUAL plan + visual-semantic gate (issue #24):
+    # the structured scene plan is generated ONLY now — after the script has
+    # passed Producer, Reviewer, Revision policy and the deterministic
+    # pre-render TEXT QA above — and is gate-checked before anything is
+    # written. A visually invalid script (generic code on a non-coding
+    # topic, repeated imagery, cold palette, ...) skips before TTS/render,
+    # exactly like a text-invalid one. No LLM output approves or overrides
+    # the visual rules.
+    plan = vp.build_visual_plan(script, pol)
+    visual_issues = vp.visual_semantic_issues(plan, script, pol)
+    if visual_issues:
+        gate_final["issues"] = list(gate_final["issues"]) + list(visual_issues)
+        print(f"[producer] PRE-RENDER VISUAL GATE ({generation_mode}): {visual_issues} — "
+              f"deterministic; structured approval cannot override it", flush=True)
     producer_report["gate"] = {k: gate_final[k] for k in
                                ("words", "estimated_seconds", "required_words",
                                 "target_words", "target_ok", "issues", "text_blocking")}
+    producer_report["visual"] = {
+        "scenes": len(plan["scenes"]),
+        "distinct_assets": len({s["asset"]["id"] for s in plan["scenes"]}),
+        "external": sum(1 for s in plan["scenes"] if s["asset"]["kind"] == "external"),
+        "code_scenes": [s["scene_id"] for s in plan["scenes"] if s["code_justified"]],
+        "cursor_scenes": [s["scene_id"] for s in plan["scenes"] if s["cursor_justified"]],
+        "issues": visual_issues,
+    }
     os.makedirs(a.out, exist_ok=True)
     if gate_final["issues"]:
         print(f"[producer] PRE-RENDER GATE: skipping before render — {'; '.join(gate_final['issues'])} "
@@ -1143,6 +1197,7 @@ def main():
         raise SystemExit(3)
 
     common.save_json(os.path.join(a.out, "script.json"), script)
+    common.save_json(os.path.join(a.out, "visual_plan.json"), plan)
     # Also save producer/reviewer reports for QA and final report
     common.save_json(os.path.join(a.out, "producer_report.json"), producer_report)
     if reviewer_report:

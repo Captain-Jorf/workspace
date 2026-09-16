@@ -78,6 +78,15 @@ MANIFEST_0918_SOURCES = [{"label": "Mark, Gudith & Klocke research on interrupte
 CLAIM_LINE = "Researchers say each switch steals minutes from your plan."
 
 
+def _stage_repo_assets(root):
+    img_src = os.path.join(ROOT, "assets", "img")
+    img_dst = os.path.join(root, "assets", "img")
+    os.makedirs(img_dst, exist_ok=True)
+    for f in os.listdir(img_src):
+        if f.endswith(".png"):
+            shutil.copy(os.path.join(img_src, f), os.path.join(img_dst, f))
+
+
 def calendar_topic(cal_id=12, date="2077-02-02", with_evidence=True):
     cal = copy.deepcopy(next(c for c in common.calendar()["episodes"] if c["id"] == cal_id))
     if not with_evidence:
@@ -748,6 +757,9 @@ class PipelineZeroMedia(unittest.TestCase):
         common.CONTENT = os.path.join(self.tmp, "content")
         common.MEMORY_PATH = os.path.join(self.tmp, "content", "editorial_memory.json")
         os.makedirs(common.CONTENT, exist_ok=True)
+        # a real checkout carries the repo brand assets — the pre-render
+        # visual plan's provenance check requires them to exist
+        _stage_repo_assets(self.tmp)
         self.tag = "2077-02-02"
         self.ep = common.episode_dir(self.tag)
         os.makedirs(self.ep, exist_ok=True)
