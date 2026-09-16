@@ -492,8 +492,16 @@ def build_evidence_packet(topic, policy, recent_topics=None, recent_ctas=None):
             "length_target": policy.get("length", {}).get("target_seconds", [70,105]),
             "max_words_per_line": policy.get("length", {}).get("max_words_per_line", 20),
             "forbidden_openers": policy.get("tone", {}).get("forbidden_openers", [])[:5],
+            # Deterministic pre-render gate ranges (single source: common.pre_render_params
+            # reading the UNCHANGED QA policy ranges + the 175-210 target). Prompts state
+            # them; the gate re-counts actual words, so a model-reported count is useless.
+            "word_target": [policy.get("length", {}).get("pre_render", {}).get("word_target", [175, 210])[0],
+                            policy.get("length", {}).get("pre_render", {}).get("word_target", [175, 210])[1]],
         }
     }
+    gate_p = common.pre_render_params(policy)
+    packet["word_target"] = [gate_p["target_min"], gate_p["target_max"]]
+    packet["word_range"] = [gate_p["words_min"], gate_p["words_max"]]
     return packet
 
 
@@ -674,9 +682,11 @@ class GroqProducer(LLMProvider):
             revision_items = [revision_items]
         if revision_items:
             safe_items = [sanitize_untrusted(str(x), 200) for x in revision_items[:8]]
+            wr = evidence_packet.get("word_range") or [150, 260]
+            wt = evidence_packet.get("word_target") or [175, 210]
             revision_block = (
-                "\nRevision requirements from the independent reviewer "
-                "(address EVERY one of them):\n- "
+                "\nRevision requirements from the independent reviewer AND the deterministic "
+                "pre-render gate (address EVERY one of them):\n- "
                 + "\n- ".join(i for i in safe_items if i)
                 + "\n"
                 "Revision rules that always apply:\n"
@@ -684,6 +694,13 @@ class GroqProducer(LLMProvider):
                 "or REWRITE the sentence so it carries no number at all. The evidence packet's numeric "
                 "evidence is: " + str(evidence_packet.get("numeric_evidence_note", "")) + ". "
                 "NEVER keep a number by adding, adjusting or inventing a citation/URL.\n"
+                "- Length fix rule: the deterministic pre-render gate requires the TOTAL of all narration "
+                f"lines to be inside {wr[0]}-{wr[1]} spoken words, targeting ~{wt[0]}-{wt[1]} (that is what "
+                "makes the rendered video fit 60-120 s at the configured narration rate). Fix length with "
+                "CONTENT: deepen the single main idea, its genuine metacognitive mechanism, its example and "
+                "its one exercise. Preserve exactly ONE main idea and ONE actionable technique. NEVER pad "
+                "with filler, disclaimers, a repeated CTA or slowed speech; never claim a word count — the "
+                "gate recounts the real lines.\n"
                 "- Keep the revision conversational: natural contractions, short lines (max 20 words), "
                 "no academic connectors.\n"
             )
@@ -704,13 +721,16 @@ Numeric evidence in packet: {evidence_packet.get('numeric_evidence_note','')}
 Recent topics to avoid: {', '.join(evidence_packet.get('recent_topics',[]))}
 Allowed claims must have evidence, forbidden: {', '.join(evidence_packet.get('unsupported_claims', ['no fake stats']))}
 
-Task: Create English-only reel script JSON for 70-105 sec (max 120), conversational English, strong hook in 3 sec, no 'In today's video', no filler, no fake stats/citation, no medical advice, one main idea, one tech example, one practical technique, network visual relevant to tech, natural CTA.
+Task: Create an English-only reel script JSON for a 70-105 s spoken video (hard render limit 60-120 s).
+The TOTAL of every narration line must be {evidence_packet.get('word_target',[175,210])[0]}-{evidence_packet.get('word_target',[175,210])[1]} spoken words (absolute allowed range {evidence_packet.get('word_range',[150,260])[0]}-{evidence_packet.get('word_range',[150,260])[1]}) — a DETERMINISTIC PRE-RENDER GATE counts the actual words in your narration lines; scripts outside the range are rejected BEFORE TTS/rendering, and word counts you report are ignored. Conversational English, strong hook in 3 sec, no 'In today's video', no filler, no fake stats/citation, no medical advice, one main idea, one tech example, one practical technique, network visual relevant to tech, natural CTA.
 
 HARD RULES (a violation is an automatic rejection):
 1. Numeric grounding — calendar/evergreen generation must NOT introduce percentages, statistics, study results, survey figures or any precise numeric claim unless the numeric evidence above explicitly lists it. {evidence_packet.get('numeric_evidence_note','')}. Reference research by name only, without numbers (e.g. "researchers studying LLM uncertainty"), and never with "studies show X%". Do NOT invent or guess URLs — including arXiv or DOI links: leave source "url" empty unless the packet provides it.
 2. Conversational spoken English — use natural contractions (don't, it's, you'll, that's, can't, let's) wherever grammatical. Short spoken sentences; every narration line at most {evidence_packet['editorial_policy'].get('max_words_per_line', 20)} words; break long or formal constructions into short sentences. Never use academic connectors (furthermore, moreover, thus, hence, utilize, in conclusion, it is imperative). Natural, not sloppy: contractions must be grammatical, no slang, no filler.
 3. Scope — exactly ONE main idea and ONE actionable technique. Touch the technology angle (AI, software, coding, product, digital behavior) explicitly in the narration.
 4. CTA diversity — recent reels used these CTA types: {', '.join(evidence_packet.get('recent_cta_types', []) or ['(none recorded)'])}. Write the ending as a CTA of a DIFFERENT type from the most recent one. Allowed CTA types: {', '.join(evidence_packet.get('cta_types_allowed', ['question', 'try-it', 'share-experience', 'save']))} (question = ask a direct question; try-it = ask the viewer to try the technique; share-experience = ask for a personal story/experience; save = ask to save/bookmark the reel).
+5. Length budget — the deterministic pre-render gate counts every narration line ({evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]} spoken words allowed, {evidence_packet.get('word_target', [175, 210])[0]}-{evidence_packet.get('word_target', [175, 210])[1]} targeted for safe duration margin). Too-short scripts never render: they cost the run one revision, then a static fallback. Fill the budget with REAL content — deeper mechanism, one concrete example, one concrete exercise — never filler sentences, disclaimers, repeated CTAs or stretched silence, and never state your own word count as a guarantee.
+6. Content quality minimums (a missing item is a rejection risk, especially for coding/tech topics like autocomplete deskilling): name the CONCRETE technology context in the narration (the actual tool/workflow, e.g. accepting an autocomplete suggestion with Tab in your editor); state the GENUINE metacognitive mechanism (e.g. recognition replacing retrieval practice, monitoring the gap between "looks right" and "can produce it") rather than vague self-help; give ONE specific practical exercise the viewer can run today; write conversational English with natural contractions throughout; keep the hook a question or sharp contrast within {evidence_packet['editorial_policy'].get('hook_max_words', 15)} words; and close with ONE concise CTA that does not repeat sentences from the body.
 
 Output ONLY valid JSON with keys:
 {{
@@ -805,6 +825,8 @@ Check:
 - NUMERIC CLAIMS (blocker): every percentage, statistic, study result or precise number in the narration must be EXPLICITLY listed in the numeric evidence above. {evidence_packet.get('numeric_evidence_note','')}. ANY such claim that is not in that list is an unsupported claim: add it to unsupported_claims AND blocking_errors, set source_grounding=false and approved=false. Do NOT approve a number by inventing or adjusting a citation, and do NOT assume a study backs a number.
 - hook_quality, spoken_english_quality, novelty, practical_value, safety
 - spoken_english_quality: must be natural spoken English — natural contractions present (don't, it's, you'll, that's, can't, let's), short sentences, no line over 20 words, no academic/formal constructions (furthermore, moreover, thus, hence, utilize, in conclusion). If missing, put it in required_changes.
+- LENGTH (blocker): add up the ACTUAL spoken words across ALL narration lines. The pipeline's deterministic pre-render gate hard-rejects anything outside {evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]} words (target ~{evidence_packet.get('word_target', [175, 210])[0]}-{evidence_packet.get('word_target', [175, 210])[1]}; that is what makes the render fit 60-120 s). A 106-word script for example MUST be rejected: if the narration is clearly outside the range, set approved=false, add "spoken words outside {evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]}" to blocking_errors, and put "fix narration word count with real content" into required_changes. Your approval CANNOT override the deterministic count — approving an out-of-range script only burns the one allowed revision. Ignore any word count the producer claims and never accept padding (filler lines, repeated CTA, silence notes) as a fix.
+- CONTENT QUALITY (required items): concrete technology context named in the narration; a genuine metacognitive mechanism (not vague self-help); exactly one specific practical exercise; conversational contractions; a strong hook; one concise CTA that does not repeat body sentences. Missing items belong in required_changes.
 - No Persian, no FA layer, language=en
 - No medical advice, no filler, no 'In today's video'
 - One main idea, one actionable technique
@@ -826,7 +848,7 @@ Output ONLY valid JSON:
   "blocking_errors": []
 }}
 
-Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims (this includes ANY number/percentage not in the packet's numeric evidence), no fake URL, natural conversational English with contractions, non-duplicate, hook and ending related.
+Publish requires score>=85, no blocking, tech relevance true, metacog relevance true, no unsupported claims (this includes ANY number/percentage not in the packet's numeric evidence), no fake URL, natural conversational English with contractions, non-duplicate, hook and ending related, and the actual narration word count inside {evidence_packet.get('word_range', [150, 260])[0]}-{evidence_packet.get('word_range', [150, 260])[1]} (counted from the lines, not claimed).
 """
         content, raw = call_groq_chat(prompt, reviewer, max_tokens=1400, temperature=0.3)
         raw["selection"] = report

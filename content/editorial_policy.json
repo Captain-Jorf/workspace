@@ -150,7 +150,14 @@
   "max_chars_per_line_en": 110,
   "hook_max_words": 15,
   "ending_max_words": 40,
-  "speech_rate_wps": [1.6, 3.4]
+  "speech_rate_wps": [1.6, 3.4],
+  "pre_render": {
+   "_comment": "Deterministic PRE-RENDER script gate (producer + pipeline) params only. QA thresholds are UNCHANGED: narration 150-260 words and rendered video 60-120 seconds stay the final authority. word_target is prompt/revision guidance to keep a safe duration margin, never a gate.",
+   "word_target": [175, 210],
+   "duration_margin_seconds": 4.0,
+   "narration_wpm_base": 150,
+   "chunk_pad_seconds": 0.28
+  }
  },
  "script_structure": ["hook", "problem", "explain", "example", "technique", "ending"],
  "beat_min_lines": {"hook": 1, "problem": 1, "explain": 2, "example": 2, "technique": 2, "ending": 1},

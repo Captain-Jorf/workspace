@@ -57,7 +57,9 @@ def calendar_topic(cal_id=10):
 
 def producer_json(numbers_line=None, ending="Save this reel for your next debugging session."):
     explain = ["The model is trained to be fluent, not calibrated.",
-               "Your brain wants to trust the fluency, because checking feels slower."]
+               "Your brain wants to trust the fluency, because checking feels slower.",
+               "A confident tone and a correct answer feel identical in the moment.",
+               "That's the gap: certainty you can hear, accuracy you can't."]
     if numbers_line:
         explain.append(numbers_line)
     return {
@@ -67,9 +69,16 @@ def producer_json(numbers_line=None, ending="Save this reel for your next debugg
         "hook": "Why does AI sound so sure, even when it's wrong?",
         "scenes": ["hook", "problem", "explain", "example", "technique", "ending"],
         "narration": {"hook": "Why does AI sound so sure, even when it's wrong?",
-                      "problem": explain[:1], "explain": explain[1:],
-                      "example": ["Ask the model for a library function that does not exist, and it will invent one."],
-                      "technique": ["Open the docs, run the code, and check one source."],
+                      "problem": ["Language models learn to answer, not to say when they're guessing.",
+                                  "So a made-up function arrives in the same calm tone as the real one.",
+                                  "You accept the tone, because auditing every answer feels too slow."] + explain[:1],
+                      "explain": explain[1:],
+                      "example": ["Ask the model for a library function that does not exist, and it will invent one.",
+                                  "The name looks right, the signature looks plausible, only the compiler knows.",
+                                  "That half-minute of skipping the check is exactly the tax you pay later."],
+                      "technique": ["Open the docs, run the code, and check one source before you trust the answer.",
+                                    "Make it a habit: one quick search per confident claim, no exceptions.",
+                                    "If docs and demo agree, you've earned the trust, not outsourced it."],
                       "ending": ending},
         "on_screen_text": ["A", "B", "C", "D", "E", "F"],
         "visual_direction": "confidence meter",

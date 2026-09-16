@@ -318,8 +318,10 @@ def check_script(rep, script, pol):
             dedup.append(b)
     if dedup != [b for b in need if b in dedup]:
         rep.block("script_quality", f"beats out of order {dedup}")
-    lines = [l["t"] for ch in script["chunks"] for l in ch["en"]]
-    words = sum(common.word_count(l) for l in lines)
+    # Single-sourced counting (common.narration_lines/spoken_word_count) — the
+    # deterministic PRE-RENDER gate and this QA check therefore count identically.
+    lines = common.narration_lines(script)
+    words = common.spoken_word_count(script)
     lo, hi = pol["length"]["narration_words"]
     if words < lo * 0.8 or words > hi * 1.15:
         rep.block("script_quality", f"words {words} outside {lo}-{hi}")
@@ -369,7 +371,7 @@ def check_script(rep, script, pol):
     rep.details["script"] = {"words": words, "hook_words": hw, "beats": beats}
 
 def check_english(rep, script, pol):
-    lines = [l["t"] for ch in script["chunks"] for l in ch["en"]]
+    lines = common.narration_lines(script)
     text = " ".join(lines)
     low = text.lower()
     markers = sum(1 for m in pol["tone"]["informality_markers"] if m in low)
@@ -510,7 +512,7 @@ def check_audio(rep, video, timing, script, pol):
     if peak_db is not None and peak_db > vp["max_peak_db"]:
         rep.warn("audio_quality", f"peak {peak_db} dB clipping", 2)
     total = float(timing.get("total", 0))
-    words = sum(common.word_count(l["t"]) for ch in script["chunks"] for l in ch["en"])
+    words = common.spoken_word_count(script)
     spoken = sum(ch["dur"] for ch in timing.get("chunks", [])) or total
     wps = words / max(spoken, 1)
     lo, hi = pol["length"]["speech_rate_wps"]
@@ -659,7 +661,7 @@ def check_buffer_readiness(rep, public_url, caption_path, skip_network, video):
             rep.block("buffer_readiness", f"public size {length} != local {os.path.getsize(video)}")
     rep.details["buffer"] = {"public_url": public_url, "http": code, "mime": ctype, "bytes": length}
 
-def check_reviewer(rep, script, topic, ep_dir):
+def check_reviewer(rep, script, topic, ep_dir, pol):
     # Load reviewer_report.json if present
     rev_path = os.path.join(ep_dir, "reviewer_report.json")
     if not os.path.exists(rev_path):
@@ -674,6 +676,21 @@ def check_reviewer(rep, script, topic, ep_dir):
         meta_rel = out.get("metacognition_relevance")
         blocking = out.get("blocking_errors", [])
         unsupported = out.get("unsupported_claims", [])
+
+        # Boundary fix (run 35050738918 / reel-2026-09-17): reviewer_check used to
+        # mirror ONLY the reviewer's structured fields and never looked at the
+        # script, so a reviewer-approved 106-word script passed this check and
+        # reached rendering. Structured reviewer output cannot override a
+        # deterministic check: an approval of a script that violates the QA word
+        # range (counted with the same single-sourced logic the gate uses) is
+        # itself a blocking error.
+        words = common.spoken_word_count(script)
+        lo, hi = pol["length"]["narration_words"]
+        if approved and not (lo <= words <= hi):
+            rep.block("reviewer_check", f"reviewer approved a script with {words} spoken words "
+                      f"outside policy {lo}-{hi} — structured approval cannot override "
+                      f"deterministic checks (the script must not reach rendering this way)")
+        rep.details["reviewer_words"] = {"spoken_words": words, "policy_range": [lo, hi]}
 
         if not approved:
             rep.block("reviewer_check", f"reviewer not approved (score {score})")
@@ -729,7 +746,7 @@ def evaluate(a, pol):
     check_posters(rep, a.poster, a.poster45, pol)
     check_duplicates(rep, script, topic, memory, pol)
     check_buffer_readiness(rep, a.public_url, a.caption, a.skip_network, a.video)
-    check_reviewer(rep, script, topic, ep)
+    check_reviewer(rep, script, topic, ep, pol)
 
     min_score = common.min_qa_score(pol)
     score = rep.score()

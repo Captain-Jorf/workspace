@@ -235,6 +235,32 @@ def produce(a):
             st["generation_mode"] = script.get("meta", {}).get("generation_mode", "unknown")
             save_state(tag, st)
 
+            # 2b. Deterministic PRE-RENDER script gate — enforced again here,
+            # BEFORE TTS, subtitle generation and video rendering, on whatever
+            # script.json holds. Uses the QA single-sourced word count
+            # (common.spoken_word_count: actual spoken words only, never a
+            # model-reported count) and the duration preflight from the
+            # configured narration rate. A known-short script must not spend
+            # TTS/render resources: on failure the existing ONE allowed script
+            # retry runs, then the run is skipped before media stages (no
+            # padding with filler, repeated CTA or silence is ever attempted).
+            gate_issues = common.pre_render_issues(script)
+            if gate_issues:
+                if st["retries"]["script"] == 0:
+                    print("[pipeline] pre-render script gate: " + "; ".join(gate_issues)
+                          + " → retry producer ONCE (variant 1) before any TTS/render", flush=True)
+                    st["retries"]["script"] = 1
+                    st["gate"] = {"stage": "script", "issues": gate_issues,
+                                  "words": common.spoken_word_count(script)}
+                    variant = 1
+                    continue
+                raise Stage("script", "pre-render script gate: " + "; ".join(gate_issues)
+                            + " — skipped before TTS/render (no media, no Buffer)")
+            st["gate"] = {"stage": "script", "ok": True,
+                          "words": common.spoken_word_count(script),
+                          "estimated_seconds": common.estimate_spoken_seconds(script)}
+            save_state(tag, st)
+
             # 3. tts + timing
             st["stage"] = "tts"
             for f in os.listdir(ep):
