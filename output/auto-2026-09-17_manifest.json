@@ -1,37 +1,43 @@
 {
  "content_id": "reel-2026-09-17",
  "content_date": "2026-09-17",
- "topic": "Autocomplete makes you faster today, slower next year. Deskilling",
- "normalized_topic": "autocomplete makes faster today slower next year deskilling",
+ "topic": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+ "normalized_topic": "feiskyer koder koder intuitive coding assistant interactive cli tool boosts developer productivity intelligent automation context aware support",
  "pillar": "CODING",
- "technology_angle": "autocomplete in code editors",
- "metacognition_concept": "skill decay through reliance on recognition",
+ "technology_angle": "feiskyer/koder AI coding assistant",
+ "metacognition_concept": "metacognitive monitoring of AI suggestions",
  "tags": [
-  "skill decay through reliance on recognition",
-  "autocomplete in code editors"
+  "metacognitive monitoring of AI suggestions",
+  "feiskyer/koder AI coding assistant"
  ],
  "cta_type": "question",
  "playbook": "llm-generated",
- "source_url": null,
+ "source_url": "https://github.com/feiskyer/koder",
  "sources": [
   {
-   "label": "Bainbridge (1983) – Ironies of automation",
-   "url": "",
-   "tier": "A"
+   "label": "github-search",
+   "url": "https://github.com/feiskyer/koder",
+   "tier": "C",
+   "role": "discovery"
+  },
+  {
+   "label": "Koder GitHub repository",
+   "url": "https://github.com/feiskyer/koder",
+   "tier": "C"
   }
  ],
- "script_hash": "e706316c52499a43beb033da15419bbffa5a4e65ed4ffd9299f0829d3b7b3e0b",
- "video_hash": "8455421402a25ff6aacbc61e5de81874fab80fd0c1e577245e7ca94941da11fe",
- "qa_score": 77,
+ "script_hash": "479210b64ce0cdf5df9e690770081ce5843d2bcbbeebf8f817864f0f5e5673ce",
+ "video_hash": "e369020e9a70efa59e75b0f1612935c42adf881dfacf8fdb05cf3c1d99a37914",
+ "qa_score": 79,
  "qa_approved": false,
  "buffer_post_id": null,
  "buffer_due_at": null,
- "status": "qa-failed",
+ "status": "render-error",
  "public_url": null,
  "branch": "drafts/2026-09-17",
- "run_id": "35050738918",
- "error": "[script_quality] words 106 outside 150-260; [video_quality] duration 45.3s outside 60-120",
- "timestamp_utc": "2026-09-16T03:14:51+00:00",
+ "run_id": "35201375950",
+ "error": "safe re-render invalid (duration 59.9s outside 60-120) — original preserved, fail-closed",
+ "timestamp_utc": "2026-09-17T08:52:20+00:00",
  "language": "en",
  "content_language": "en",
  "generation_mode": "groq"
