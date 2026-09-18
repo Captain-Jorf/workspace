@@ -172,27 +172,27 @@
   {
    "content_id": "reel-2026-09-18",
    "content_date": "2026-09-18",
-   "topic": "That notification just cost you twenty minutes. Context switching",
-   "normalized_topic": "notification just cost twenty minutes context switching",
-   "pillar": "ATTENTION",
+   "topic": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+   "normalized_topic": "feiskyer koder koder intuitive coding assistant interactive cli tool boosts developer productivity intelligent automation context aware support",
+   "pillar": "CODING",
    "tags": [
-    "attention residue and context switching",
-    "attention residue in digital work tools"
+    "mental gap awareness",
+    "Koder AI coding assistant"
    ],
-   "cta_type": "question",
+   "cta_type": "try-it",
    "playbook": "llm-generated",
-   "source_url": null,
-   "script_hash": "f10f9d804553c881a89be5ba5103b1c3d1354cb8cfb602c6c8f78542b1c8e87e",
-   "video_hash": "5ccfb90869e34d9e2f01cdc9d0c72d5c7a7ef80267d5d625dee8c36bb4e2a3cc",
-   "qa_score": 81,
+   "source_url": "https://github.com/feiskyer/koder",
+   "script_hash": "d38cfef3cfa9960096f5c6f35cc25ab0cdb76dccb3031eb055884ddea134a8ca",
+   "video_hash": "de1c39f4afff381540c6f97d6250102a63df62d1fe6aa2fb43c94852c97f068c",
+   "qa_score": 93,
    "buffer_post_id": null,
-   "status": "qa-failed",
-   "run_id": "35054292820",
-   "technology_angle": "attention residue in digital work tools",
-   "metacognition_concept": "attention residue and context switching",
-   "reason": "[source_quality] claim words ['researchers'] without tier A/B",
+   "status": "approved-dry-run",
+   "run_id": "35323956876",
+   "technology_angle": "Koder AI coding assistant",
+   "metacognition_concept": "mental gap awareness",
+   "reason": "",
    "hook_type": "question",
-   "updated_utc": "2026-09-16T04:11:09+00:00"
+   "updated_utc": "2026-09-18T08:27:02+00:00"
   },
   {
    "content_id": "reel-2026-09-19",
@@ -247,5 +247,5 @@
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-17T08:52:20+00:00"
+ "updated_utc": "2026-09-18T08:27:02+00:00"
 }
