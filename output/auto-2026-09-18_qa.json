@@ -1,0 +1,158 @@
+{
+ "approved": true,
+ "score": 93,
+ "min_score": 85,
+ "checks": {
+  "content_language": "pass",
+  "english_only": "pass",
+  "technology_relevance": "warn",
+  "metacognition_relevance": "pass",
+  "topic_relevance": "pass",
+  "source_quality": "pass",
+  "script_quality": "pass",
+  "english_quality": "warn",
+  "subtitle_layout": "pass",
+  "audio_quality": "pass",
+  "video_quality": "warn",
+  "caption_quality": "pass",
+  "duplicate_check": "pass",
+  "buffer_readiness": "warn",
+  "reviewer_check": "pass",
+  "visual_semantics": "pass"
+ },
+ "warnings": [
+  "[technology_relevance] technology relevance moderate (hits=3)",
+  "[english_quality] no contractions — formal",
+  "[video_quality] duration 62.4s outside target 70-105",
+  "[buffer_readiness] public URL not provided (pre-push)"
+ ],
+ "blocking_errors": [],
+ "details": {
+  "content_language": {
+   "policy": "en",
+   "meta": "en",
+   "env": "en"
+  },
+  "english_only": {
+   "fa_lines": 0,
+   "persian_ratio": 0.0,
+   "engine": ""
+  },
+  "technology": {
+   "technology_angle": "koder ai coding assistant",
+   "hits": 3,
+   "concept": "mental gap awareness"
+  },
+  "metacognition": {
+   "concept": "mental gap awareness",
+   "hits": 4
+  },
+  "topic": {
+   "field_terms": 13
+  },
+  "sources": {
+   "evidence": 2,
+   "best_tier": "C",
+   "claim_words": [],
+   "numbers": []
+  },
+  "script": {
+   "words": 179,
+   "hook_words": 10,
+   "beats": [
+    "hook",
+    "problem",
+    "explain",
+    "example",
+    "technique",
+    "ending"
+   ]
+  },
+  "english": {
+   "informality": 0,
+   "avg": 13.8
+  },
+  "layout": {
+   "en_lines": 17,
+   "fa_lines": 0,
+   "en_bottom_max": 434
+  },
+  "video": {
+   "w": 1080,
+   "h": 1920,
+   "duration": 62.4,
+   "fps": 30.0,
+   "size_mb": 21.02,
+   "codec": "h264"
+  },
+  "audio": {
+   "mean_db": -19.5,
+   "peak_db": -1.5,
+   "wps": 3.04
+  },
+  "frames": {
+   "sampled": 18,
+   "min_contrast": 15.64
+  },
+  "visuals": {
+   "present": true,
+   "scenes": 10,
+   "distinct_assets": 10,
+   "categories": [
+    "brand-close",
+    "brand-mark",
+    "code-scene",
+    "concept-web",
+    "confidence-gauge",
+    "failure-chain",
+    "system-diagram"
+   ],
+   "external": 0,
+   "photo_designated": 3,
+   "procedural": 8,
+   "brand": 2,
+   "code_scenes": [
+    "s3",
+    "s7"
+   ],
+   "pillar": "CODING",
+   "rendered_frames_checked": true,
+   "rendered_frames": 10,
+   "distinct_rendered": 7
+  },
+  "caption": {
+   "chars": 802,
+   "hashtags": 6
+  },
+  "duplicates": {
+   "compared": 8,
+   "script_hash": "d38cfef3cfa9"
+  },
+  "buffer": {
+   "public_url": null
+  },
+  "reviewer_words": {
+   "spoken_words": 179,
+   "policy_range": [
+    150,
+    260
+   ]
+  },
+  "reviewer": {
+   "present": true,
+   "approved": true,
+   "score": 90,
+   "tech": true,
+   "metacog": true,
+   "blocking": []
+  }
+ },
+ "content_id": "reel-2026-09-18",
+ "content_date": "2026-09-18",
+ "topic": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+ "script_hash": "d38cfef3cfa9960096f5c6f35cc25ab0cdb76dccb3031eb055884ddea134a8ca",
+ "video_hash": "de1c39f4afff381540c6f97d6250102a63df62d1fe6aa2fb43c94852c97f068c",
+ "evaluated_utc": "2026-09-18T08:26:45+00:00",
+ "supervisor_version": "2.0-english-only",
+ "language": "en"
+}

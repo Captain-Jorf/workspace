@@ -1,0 +1,28 @@
+Ever let an AI code suggestion take over without thinking?
+
+AI can speed coding, but it can also hide gaps in our understanding.
+
+✦ WHAT'S GOING ON
+→ You see a suggestion, hit Tab, and trust it.
+→ That shortcut can skip the mental check you need.
+
+✦ THE METACOGNITIVE GAP
+→ Metacognition is watching your own thinking.
+→ Missing the check creates a gap between confidence and knowledge.
+
+✦ REAL‑WORLD EXAMPLE
+→ Koder offers a one‑line fix instantly.
+→ Pressing Enter gives code, but you lose the chance to reflect.
+
+✦ THE QUICK TECHNIQUE
+→ Pause, read the suggestion out loud.
+→ Ask if it truly solves the problem and can you explain it.
+→ Write a short comment summarizing before you accept.
+
+📚 SOURCES
+1. github-search
+2. Koder GitHub
+
+Try this pause‑and‑explain habit with Koder on your next commit.
+
+#metacognition #metacognitionhq #AIcoding #Koder #productivity #techtips

@@ -1,0 +1,228 @@
+{
+ "meta": {
+  "title": "Pause the AI: How to Think Before Accepting Koder’s Code",
+  "topic": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+  "content_id": "reel-2026-09-18",
+  "content_date": "2026-09-18",
+  "pillar": "CODING",
+  "technology_angle": "Koder AI coding assistant",
+  "metacognition_concept": "mental gap awareness",
+  "playbook": "llm-generated",
+  "variant": 0,
+  "tags": [
+   "mental gap awareness",
+   "Koder AI coding assistant"
+  ],
+  "cta_type": "try-it",
+  "evidence_mode": "limited-claims",
+  "claim_note": "",
+  "language": "en",
+  "content_language": "en",
+  "generation_mode": "groq",
+  "handle": "@metacognition.hq",
+  "fps": 30,
+  "w": 1080,
+  "h": 1920,
+  "gap": 0.34,
+  "lead": 0.55,
+  "tail": 1.2,
+  "logo": "stand-in",
+  "visual_direction_request": "Matte‑black background with gold accents; show a sleek terminal window where Koder flashes a suggestion, then a thought bubble highlighting the pause, followed by a quick comment overlay. Include a su"
+ },
+ "scene_tags": {
+  "hook": "01 · THE QUESTION",
+  "problem": "02 · THE PROBLEM",
+  "explain": "03 · WHAT'S GOING ON",
+  "example": "04 · IN REAL LIFE",
+  "technique": "05 · TRY THIS",
+  "ending": "06 · YOUR TURN"
+ },
+ "web": [
+  "PAUSE",
+  "READ",
+  "ASK",
+  "EXPLAIN",
+  "COMMENT",
+  "CHECK"
+ ],
+ "sources": [
+  {
+   "label": "github-search",
+   "url": "https://github.com/feiskyer/koder",
+   "tier": "C",
+   "role": "discovery"
+  },
+  {
+   "label": "Koder GitHub",
+   "url": "https://github.com/feiskyer/koder",
+   "tier": "C"
+  }
+ ],
+ "chunks": [
+  {
+   "id": "c1",
+   "beat": "hook",
+   "en": [
+    {
+     "t": "Ever let an AI code suggestion take over without thinking?",
+     "scene": "hook",
+     "beat": "hook"
+    }
+   ],
+   "fa": [],
+   "tts_text": "Ever let an AI code suggestion take over without thinking?"
+  },
+  {
+   "id": "c2",
+   "beat": "problem",
+   "en": [
+    {
+     "t": "You see a suggestion pop up and hit Tab, trusting it feels easy.",
+     "scene": "problem",
+     "beat": "problem"
+    },
+    {
+     "t": "But that shortcut can hide gaps in how you actually understand the code.",
+     "scene": "problem",
+     "beat": "problem"
+    }
+   ],
+   "fa": [],
+   "tts_text": "You see a suggestion pop up and hit Tab, trusting it feels easy. But that shortcut can hide gaps in how you actually understand the code."
+  },
+  {
+   "id": "c3",
+   "beat": "explain",
+   "en": [
+    {
+     "t": "Metacognition means watching your own thinking, catching when you’re just going along.",
+     "scene": "explain",
+     "beat": "explain"
+    },
+    {
+     "t": "When you accept a suggestion blindly, you skip the mental check that reveals whether it truly fits.",
+     "scene": "explain",
+     "beat": "explain"
+    },
+    {
+     "t": "That missing check is the gap between feeling confident and actually knowing.",
+     "scene": "explain",
+     "beat": "explain"
+    },
+    {
+     "t": "Seeing the gap makes you decide whether to adapt the suggestion or rewrite it your way.",
+     "scene": "explain",
+     "beat": "explain"
+    }
+   ],
+   "fa": [],
+   "tts_text": "Metacognition means watching your own thinking, catching when you’re just going along. When you accept a suggestion blindly, you skip the mental check that reveals whether it truly fits. That missing check is the gap between feeling confident and actually knowing. Seeing the gap makes you decide whether to adapt the suggestion or rewrite it your way."
+  },
+  {
+   "id": "c4",
+   "beat": "example",
+   "en": [
+    {
+     "t": "In Koder, the CLI offers a one‑line fix as soon as you type a function name.",
+     "scene": "example",
+     "beat": "example"
+    },
+    {
+     "t": "If you just press Enter, you get the code but you miss the chance to ask why it works.",
+     "scene": "example",
+     "beat": "example"
+    }
+   ],
+   "fa": [],
+   "tts_text": "In Koder, the CLI offers a one‑line fix as soon as you type a function name. If you just press Enter, you get the code but you miss the chance to ask why it works."
+  },
+  {
+   "id": "c5",
+   "beat": "technique",
+   "en": [
+    {
+     "t": "Next time Koder suggests, pause and read the suggestion out loud.",
+     "scene": "technique",
+     "beat": "technique"
+    },
+    {
+     "t": "Then ask yourself: does this solve the problem, and can I explain each part?",
+     "scene": "technique",
+     "beat": "technique"
+    },
+    {
+     "t": "Write a quick comment summarizing the logic before you accept – that forces the mental check.",
+     "scene": "technique",
+     "beat": "technique"
+    }
+   ],
+   "fa": [],
+   "tts_text": "Next time Koder suggests, pause and read the suggestion out loud. Then ask yourself: does this solve the problem, and can I explain each part? Write a quick comment summarizing the logic before you accept – that forces the mental check."
+  },
+  {
+   "id": "c6",
+   "beat": "ending",
+   "en": [
+    {
+     "t": "Try this pause‑and‑explain habit with Koder on your next commit.",
+     "scene": "ending",
+     "beat": "ending"
+    }
+   ],
+   "fa": [],
+   "tts_text": "Try this pause‑and‑explain habit with Koder on your next commit."
+  }
+ ],
+ "caption": {
+  "hook": "Ever let an AI code suggestion take over without thinking?",
+  "intro": "AI can speed coding, but it can also hide gaps in our understanding.",
+  "sections": [
+   {
+    "title": "WHAT'S GOING ON",
+    "lines": [
+     "You see a suggestion, hit Tab, and trust it.",
+     "That shortcut can skip the mental check you need."
+    ]
+   },
+   {
+    "title": "THE METACOGNITIVE GAP",
+    "lines": [
+     "Metacognition is watching your own thinking.",
+     "Missing the check creates a gap between confidence and knowledge."
+    ]
+   },
+   {
+    "title": "REAL‑WORLD EXAMPLE",
+    "lines": [
+     "Koder offers a one‑line fix instantly.",
+     "Pressing Enter gives code, but you lose the chance to reflect."
+    ]
+   },
+   {
+    "title": "THE QUICK TECHNIQUE",
+    "lines": [
+     "Pause, read the suggestion out loud.",
+     "Ask if it truly solves the problem and can you explain it.",
+     "Write a short comment summarizing before you accept."
+    ]
+   }
+  ],
+  "sources": [
+   "github-search",
+   "Koder GitHub"
+  ],
+  "ctas": [
+   "Try this pause‑and‑explain habit with Koder on your next commit."
+  ],
+  "hashtags": [
+   "#metacognition",
+   "#metacognitionhq",
+   "#AIcoding",
+   "#Koder",
+   "#productivity",
+   "#techtips"
+  ]
+ },
+ "visual_direction": "debug trace, test suite, code concept, traceback read — matte black and gold duotone, ivory type",
+ "claims": []
+}

@@ -1,0 +1,193 @@
+{
+ "content_date": "2026-09-18",
+ "content_id": "reel-2026-09-18",
+ "title": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+ "normalized_topic": "feiskyer koder koder intuitive coding assistant interactive cli tool boosts developer productivity intelligent automation context aware support",
+ "pillar": "CODING",
+ "technology_angle": "CODING — feiskyer/koder",
+ "discovery_source": {
+  "name": "github-search",
+  "url": "https://github.com/feiskyer/koder",
+  "tier": "C"
+ },
+ "evidence_source": {
+  "label": "HN discovery only (not evidence)",
+  "tier": "C"
+ },
+ "evidence_mode": "limited-claims",
+ "score": 10,
+ "max_similarity_recent": 0.045,
+ "fallback_reason": "",
+ "calendar": null,
+ "ranked_trends": [
+  {
+   "title": "feiskyer/koder: Koder - An intuitive AI coding assistant and interactive CLI tool that boosts developer productivity with intelligent automation and context-aware support.",
+   "score": 10,
+   "source": "github-search",
+   "tech_hits": 5
+  },
+  {
+   "title": "MAL19INDUSTRIES/JARVIS-OS-V.2: JARVIS AI is an open-source AI assistant built for automation, productivity, and intelligent workflows. Featuring natural conversations, customizable tools, API integrations, memory, and a modern interface, it provides a powerful foundation for building personal assistants, AI agents, and next-generation applications.",
+   "score": 9,
+   "source": "github-search",
+   "tech_hits": 5
+  },
+  {
+   "title": "khoj-ai/khoj: Your AI second brain. Self-hostable. Get answers from the web or your docs. Build custom agents, schedule automations, do deep research. Turn any online or local LLM into your personal, autonomous AI (gpt, claude, gemini, llama, qwen, mistral). Get started - free.",
+   "score": 8,
+   "source": "github-search",
+   "tech_hits": 3
+  },
+  {
+   "title": "openshift-eng/ai-helpers: Developer productivity tools for Claude Code & other AI assistants",
+   "score": 8,
+   "source": "github-search",
+   "tech_hits": 4
+  },
+  {
+   "title": "ZhixiangLuo/10xProductivity: Personal AI assistant for work inside corporate constraints, built on coding agents and the tools, sessions, and permissions you already have.",
+   "score": 7,
+   "source": "github-search",
+   "tech_hits": 3
+  },
+  {
+   "title": "benmaster82/writher: 🎙️ Offline voice productivity for Windows - dictate text into any app and control a local AI assistant by voice. Manages notes, to-do lists, appointments & reminders. 100% local: faster-whisper + Ollama + SQLite. No cloud, no telemetry. Free and open source alternative to Wispr Flow",
+   "score": 7,
+   "source": "github-search",
+   "tech_hits": 3
+  },
+  {
+   "title": "theexperiencecompany/gaia: Your proactive personal AI assistant & companion for daily productivity 🌎",
+   "score": 6,
+   "source": "github-search",
+   "tech_hits": 2
+  },
+  {
+   "title": "atsushi-green/ds-ai-coding-skills: A collection of AGENTS.md configurations, skills, and prompts tailored for Data Scientists to maximize productivity with AI coding assistants.",
+   "score": 6,
+   "source": "github-search",
+   "tech_hits": 3
+  }
+ ],
+ "rejected": [
+  {
+   "title": "Hister: A private search engine for the pages you visit and the files you keep",
+   "why": "relevance -10 < 6 tech_hits=0"
+  },
+  {
+   "title": "Fujitsu launches made-in-Japan next-generation CPU FUJITSU-MONAKA",
+   "why": "relevance -10 < 6 tech_hits=0"
+  },
+  {
+   "title": "Astra for Law",
+   "why": "relevance -10 < 6 tech_hits=0"
+  },
+  {
+   "title": "Bend – A language that blocks AI mistakes via proof, on CPU and GPU",
+   "why": "relevance 3 < 6 tech_hits=1"
+  },
+  {
+   "title": "Bonsai 2 27B: Near-Lossless Compression in a 9x Smaller Footprint",
+   "why": "relevance 3 < 6 tech_hits=1"
+  },
+  {
+   "title": "Wax motor",
+   "why": "relevance -10 < 6 tech_hits=0"
+  },
+  {
+   "title": "A heap overflow and SSO misconfiguration to compromise OpenAI internal repos",
+   "why": "relevance 3 < 6 tech_hits=1"
+  },
+  {
+   "title": "Why I didn’t sign the Fields medallists’ letter",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "The American Religion of Self-Storage Facilities",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Qwen 3.8 Omni Flash",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "CrowdSec Source Code Leak",
+   "why": "negative ['leak', 'promo/rumor:leak']"
+  },
+  {
+   "title": "Infinite-Parameter LLMs: Generating and Adapting Weights from Live Data",
+   "why": "relevance 3 < 6 tech_hits=1"
+  },
+  {
+   "title": "How to Write with an LLM",
+   "why": "relevance 3 < 6 tech_hits=1"
+  },
+  {
+   "title": "How do we prevent mathemathics from devolving into the Medieval Era of secrecy?",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Flet 1.0 – Build cross-platform apps in Python",
+   "why": "relevance 1 < 6 tech_hits=1"
+  },
+  {
+   "title": "Waymo in Singapore",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "The most important product decision is what you don't build",
+   "why": "relevance 2 < 6 tech_hits=1"
+  },
+  {
+   "title": "The scourge of x86 emulation",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "How Uber Protects Against Retry Storms",
+   "why": "relevance 2 < 6 tech_hits=1"
+  },
+  {
+   "title": "Jemalloc 5.4.0",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Show HN: Snapdrop: Instantly share files between devices. No setup, no signup",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Pre-Greek: The lost language hidden within Ancient Greek",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Diplodocus, Long Thought Exclusively American, Turns Up in Spain",
+   "why": "relevance 2 < 6 tech_hits=1"
+  },
+  {
+   "title": "Shapelearn Qwen 3.8 27B (13.1 GB VRAM)",
+   "why": "relevance -11 < 6 tech_hits=0"
+  },
+  {
+   "title": "Telstra outage: The night a network decided the year was 2006",
+   "why": "relevance -11 < 6 tech_hits=0"
+  }
+ ],
+ "recent_pillars": [
+  "AI_JUDGMENT",
+  "PRODUCT",
+  "ATTENTION"
+ ],
+ "generated_utc": "2026-09-18T08:23:51+00:00",
+ "content_language": "en",
+ "language": "en",
+ "trend_policy": {
+  "allowed_domains": [
+   "AI",
+   "software",
+   "coding",
+   "product",
+   "digital behavior",
+   "future of work"
+  ],
+  "discovery_is_not_evidence": true
+ }
+}

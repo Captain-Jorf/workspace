@@ -1,0 +1,1086 @@
+{
+ "total": 62.4,
+ "lead": 0.55,
+ "tail": 1.2,
+ "gap": 0.34,
+ "chunks": [
+  {
+   "id": "c1",
+   "beat": "hook",
+   "start": 0.55,
+   "dur": 3.33,
+   "lines": [
+    {
+     "text": "Ever let an AI code suggestion take over without thinking?",
+     "scene": "hook",
+     "beat": "hook",
+     "start": 0.55,
+     "end": 3.88,
+     "words": [
+      {
+       "w": "Ever",
+       "start": 0.63,
+       "end": 0.868
+      },
+      {
+       "w": "let",
+       "start": 0.88,
+       "end": 1.034
+      },
+      {
+       "w": "an",
+       "start": 1.046,
+       "end": 1.201
+      },
+      {
+       "w": "AI",
+       "start": 1.213,
+       "end": 1.606
+      },
+      {
+       "w": "code",
+       "start": 1.618,
+       "end": 1.915
+      },
+      {
+       "w": "suggestion",
+       "start": 1.927,
+       "end": 2.522
+      },
+      {
+       "w": "take",
+       "start": 2.534,
+       "end": 2.784
+      },
+      {
+       "w": "over",
+       "start": 2.796,
+       "end": 3.022
+      },
+      {
+       "w": "without",
+       "start": 3.034,
+       "end": 3.344
+      },
+      {
+       "w": "thinking?",
+       "start": 3.356,
+       "end": 3.784
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "beat": "problem",
+   "start": 4.22,
+   "dur": 8.31,
+   "lines": [
+    {
+     "text": "You see a suggestion pop up and hit Tab, trusting it feels easy.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 4.22,
+     "end": 8.881,
+     "words": [
+      {
+       "w": "You",
+       "start": 4.3,
+       "end": 4.466
+      },
+      {
+       "w": "see",
+       "start": 4.478,
+       "end": 4.704
+      },
+      {
+       "w": "a",
+       "start": 4.716,
+       "end": 4.788
+      },
+      {
+       "w": "suggestion",
+       "start": 4.8,
+       "end": 5.395
+      },
+      {
+       "w": "pop",
+       "start": 5.407,
+       "end": 5.657
+      },
+      {
+       "w": "up",
+       "start": 5.669,
+       "end": 5.835
+      },
+      {
+       "w": "and",
+       "start": 5.847,
+       "end": 5.931
+      },
+      {
+       "w": "hit",
+       "start": 5.942,
+       "end": 6.133
+      },
+      {
+       "w": "Tab,",
+       "start": 6.145,
+       "end": 6.514
+      },
+      {
+       "w": "trusting",
+       "start": 6.704,
+       "end": 7.145
+      },
+      {
+       "w": "it",
+       "start": 7.157,
+       "end": 7.252
+      },
+      {
+       "w": "feels",
+       "start": 7.264,
+       "end": 7.609
+      },
+      {
+       "w": "easy.",
+       "start": 7.621,
+       "end": 8.061
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "But that shortcut can hide gaps in how you actually understand the code.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 8.881,
+     "end": 12.53,
+     "words": [
+      {
+       "w": "But",
+       "start": 8.881,
+       "end": 9.035
+      },
+      {
+       "w": "that",
+       "start": 9.047,
+       "end": 9.226
+      },
+      {
+       "w": "shortcut",
+       "start": 9.238,
+       "end": 9.785
+      },
+      {
+       "w": "can",
+       "start": 9.797,
+       "end": 9.928
+      },
+      {
+       "w": "hide",
+       "start": 9.94,
+       "end": 10.214
+      },
+      {
+       "w": "gaps",
+       "start": 10.226,
+       "end": 10.583
+      },
+      {
+       "w": "in",
+       "start": 10.595,
+       "end": 10.678
+      },
+      {
+       "w": "how",
+       "start": 10.69,
+       "end": 10.821
+      },
+      {
+       "w": "you",
+       "start": 10.833,
+       "end": 11.012
+      },
+      {
+       "w": "actually",
+       "start": 11.023,
+       "end": 11.452
+      },
+      {
+       "w": "understand",
+       "start": 11.464,
+       "end": 11.964
+      },
+      {
+       "w": "the",
+       "start": 11.976,
+       "end": 12.035
+      },
+      {
+       "w": "code.",
+       "start": 12.047,
+       "end": 12.464
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "beat": "explain",
+   "start": 12.87,
+   "dur": 19.8,
+   "lines": [
+    {
+     "text": "Metacognition means watching your own thinking, catching when you’re just going along.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 12.87,
+     "end": 17.971,
+     "words": [
+      {
+       "w": "Metacognition",
+       "start": 12.95,
+       "end": 13.807
+      },
+      {
+       "w": "means",
+       "start": 13.819,
+       "end": 14.069
+      },
+      {
+       "w": "watching",
+       "start": 14.081,
+       "end": 14.426
+      },
+      {
+       "w": "your",
+       "start": 14.438,
+       "end": 14.628
+      },
+      {
+       "w": "own",
+       "start": 14.64,
+       "end": 14.807
+      },
+      {
+       "w": "thinking,",
+       "start": 14.819,
+       "end": 15.247
+      },
+      {
+       "w": "catching",
+       "start": 15.485,
+       "end": 15.926
+      },
+      {
+       "w": "when",
+       "start": 15.938,
+       "end": 16.057
+      },
+      {
+       "w": "you’re",
+       "start": 16.069,
+       "end": 16.164
+      },
+      {
+       "w": "just",
+       "start": 16.176,
+       "end": 16.414
+      },
+      {
+       "w": "going",
+       "start": 16.426,
+       "end": 16.676
+      },
+      {
+       "w": "along.",
+       "start": 16.688,
+       "end": 17.152
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "When you accept a suggestion blindly, you skip the mental check that reveals whether it truly fits.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 17.971,
+     "end": 23.852,
+     "words": [
+      {
+       "w": "When",
+       "start": 17.971,
+       "end": 18.126
+      },
+      {
+       "w": "you",
+       "start": 18.138,
+       "end": 18.257
+      },
+      {
+       "w": "accept",
+       "start": 18.269,
+       "end": 18.626
+      },
+      {
+       "w": "a",
+       "start": 18.638,
+       "end": 18.688
+      },
+      {
+       "w": "suggestion",
+       "start": 18.697,
+       "end": 19.293
+      },
+      {
+       "w": "blindly,",
+       "start": 19.304,
+       "end": 19.804
+      },
+      {
+       "w": "you",
+       "start": 20.054,
+       "end": 20.15
+      },
+      {
+       "w": "skip",
+       "start": 20.162,
+       "end": 20.471
+      },
+      {
+       "w": "the",
+       "start": 20.483,
+       "end": 20.554
+      },
+      {
+       "w": "mental",
+       "start": 20.566,
+       "end": 20.876
+      },
+      {
+       "w": "check",
+       "start": 20.888,
+       "end": 21.185
+      },
+      {
+       "w": "that",
+       "start": 21.197,
+       "end": 21.34
+      },
+      {
+       "w": "reveals",
+       "start": 21.352,
+       "end": 21.781
+      },
+      {
+       "w": "whether",
+       "start": 21.792,
+       "end": 22.066
+      },
+      {
+       "w": "it",
+       "start": 22.078,
+       "end": 22.162
+      },
+      {
+       "w": "truly",
+       "start": 22.173,
+       "end": 22.531
+      },
+      {
+       "w": "fits.",
+       "start": 22.542,
+       "end": 23.031
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "That missing check is the gap between feeling confident and actually knowing.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 23.852,
+     "end": 28.388,
+     "words": [
+      {
+       "w": "That",
+       "start": 23.852,
+       "end": 24.102
+      },
+      {
+       "w": "missing",
+       "start": 24.114,
+       "end": 24.435
+      },
+      {
+       "w": "check",
+       "start": 24.447,
+       "end": 24.769
+      },
+      {
+       "w": "is",
+       "start": 24.781,
+       "end": 24.9
+      },
+      {
+       "w": "the",
+       "start": 24.912,
+       "end": 25.007
+      },
+      {
+       "w": "gap",
+       "start": 25.019,
+       "end": 25.328
+      },
+      {
+       "w": "between",
+       "start": 25.34,
+       "end": 25.685
+      },
+      {
+       "w": "feeling",
+       "start": 25.697,
+       "end": 26.054
+      },
+      {
+       "w": "confident",
+       "start": 26.066,
+       "end": 26.59
+      },
+      {
+       "w": "and",
+       "start": 26.602,
+       "end": 26.721
+      },
+      {
+       "w": "actually",
+       "start": 26.733,
+       "end": 27.102
+      },
+      {
+       "w": "knowing.",
+       "start": 27.114,
+       "end": 27.566
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Seeing the gap makes you decide whether to adapt the suggestion or rewrite it your way.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 28.388,
+     "end": 32.67,
+     "words": [
+      {
+       "w": "Seeing",
+       "start": 28.388,
+       "end": 28.745
+      },
+      {
+       "w": "the",
+       "start": 28.757,
+       "end": 28.852
+      },
+      {
+       "w": "gap",
+       "start": 28.864,
+       "end": 29.162
+      },
+      {
+       "w": "makes",
+       "start": 29.173,
+       "end": 29.423
+      },
+      {
+       "w": "you",
+       "start": 29.435,
+       "end": 29.519
+      },
+      {
+       "w": "decide",
+       "start": 29.531,
+       "end": 29.947
+      },
+      {
+       "w": "whether",
+       "start": 29.959,
+       "end": 30.197
+      },
+      {
+       "w": "to",
+       "start": 30.209,
+       "end": 30.34
+      },
+      {
+       "w": "adapt",
+       "start": 30.352,
+       "end": 30.733
+      },
+      {
+       "w": "the",
+       "start": 30.745,
+       "end": 30.828
+      },
+      {
+       "w": "suggestion",
+       "start": 30.84,
+       "end": 31.471
+      },
+      {
+       "w": "or",
+       "start": 31.483,
+       "end": 31.626
+      },
+      {
+       "w": "rewrite",
+       "start": 31.638,
+       "end": 32.007
+      },
+      {
+       "w": "it",
+       "start": 32.019,
+       "end": 32.09
+      },
+      {
+       "w": "your",
+       "start": 32.102,
+       "end": 32.257
+      },
+      {
+       "w": "way.",
+       "start": 32.269,
+       "end": 32.614
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "beat": "example",
+   "start": 33.01,
+   "dur": 9.67,
+   "lines": [
+    {
+     "text": "In Koder, the CLI offers a one‑line fix as soon as you type a function name.",
+     "scene": "example",
+     "beat": "example",
+     "start": 33.01,
+     "end": 38.337,
+     "words": [
+      {
+       "w": "In",
+       "start": 33.09,
+       "end": 33.268
+      },
+      {
+       "w": "Koder,",
+       "start": 33.28,
+       "end": 33.673
+      },
+      {
+       "w": "the",
+       "start": 33.875,
+       "end": 33.971
+      },
+      {
+       "w": "CLI",
+       "start": 33.982,
+       "end": 34.566
+      },
+      {
+       "w": "offers",
+       "start": 34.578,
+       "end": 34.947
+      },
+      {
+       "w": "a",
+       "start": 34.959,
+       "end": 35.03
+      },
+      {
+       "w": "one‑line",
+       "start": 35.042,
+       "end": 35.506
+      },
+      {
+       "w": "fix",
+       "start": 35.518,
+       "end": 35.852
+      },
+      {
+       "w": "as",
+       "start": 35.863,
+       "end": 35.994
+      },
+      {
+       "w": "soon",
+       "start": 36.006,
+       "end": 36.209
+      },
+      {
+       "w": "as",
+       "start": 36.221,
+       "end": 36.328
+      },
+      {
+       "w": "you",
+       "start": 36.34,
+       "end": 36.423
+      },
+      {
+       "w": "type",
+       "start": 36.435,
+       "end": 36.661
+      },
+      {
+       "w": "a",
+       "start": 36.673,
+       "end": 36.732
+      },
+      {
+       "w": "function",
+       "start": 36.744,
+       "end": 37.161
+      },
+      {
+       "w": "name.",
+       "start": 37.173,
+       "end": 37.518
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "If you just press Enter, you get the code but you miss the chance to ask why it works.",
+     "scene": "example",
+     "beat": "example",
+     "start": 38.337,
+     "end": 42.68,
+     "words": [
+      {
+       "w": "If",
+       "start": 38.337,
+       "end": 38.504
+      },
+      {
+       "w": "you",
+       "start": 38.516,
+       "end": 38.635
+      },
+      {
+       "w": "just",
+       "start": 38.647,
+       "end": 38.897
+      },
+      {
+       "w": "press",
+       "start": 38.909,
+       "end": 39.171
+      },
+      {
+       "w": "Enter,",
+       "start": 39.182,
+       "end": 39.492
+      },
+      {
+       "w": "you",
+       "start": 39.718,
+       "end": 39.79
+      },
+      {
+       "w": "get",
+       "start": 39.802,
+       "end": 39.944
+      },
+      {
+       "w": "the",
+       "start": 39.956,
+       "end": 40.04
+      },
+      {
+       "w": "code",
+       "start": 40.052,
+       "end": 40.421
+      },
+      {
+       "w": "but",
+       "start": 40.432,
+       "end": 40.563
+      },
+      {
+       "w": "you",
+       "start": 40.575,
+       "end": 40.671
+      },
+      {
+       "w": "miss",
+       "start": 40.682,
+       "end": 40.921
+      },
+      {
+       "w": "the",
+       "start": 40.932,
+       "end": 41.016
+      },
+      {
+       "w": "chance",
+       "start": 41.028,
+       "end": 41.385
+      },
+      {
+       "w": "to",
+       "start": 41.397,
+       "end": 41.48
+      },
+      {
+       "w": "ask",
+       "start": 41.492,
+       "end": 41.813
+      },
+      {
+       "w": "why",
+       "start": 41.825,
+       "end": 42.004
+      },
+      {
+       "w": "it",
+       "start": 42.016,
+       "end": 42.099
+      },
+      {
+       "w": "works.",
+       "start": 42.111,
+       "end": 42.587
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "beat": "technique",
+   "start": 43.02,
+   "dur": 14.56,
+   "lines": [
+    {
+     "text": "Next time Koder suggests, pause and read the suggestion out loud.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 43.02,
+     "end": 47.681,
+     "words": [
+      {
+       "w": "Next",
+       "start": 43.1,
+       "end": 43.421
+      },
+      {
+       "w": "time",
+       "start": 43.433,
+       "end": 43.695
+      },
+      {
+       "w": "Koder",
+       "start": 43.707,
+       "end": 44.016
+      },
+      {
+       "w": "suggests,",
+       "start": 44.028,
+       "end": 44.647
+      },
+      {
+       "w": "pause",
+       "start": 44.802,
+       "end": 45.195
+      },
+      {
+       "w": "and",
+       "start": 45.207,
+       "end": 45.35
+      },
+      {
+       "w": "read",
+       "start": 45.362,
+       "end": 45.552
+      },
+      {
+       "w": "the",
+       "start": 45.564,
+       "end": 45.647
+      },
+      {
+       "w": "suggestion",
+       "start": 45.659,
+       "end": 46.242
+      },
+      {
+       "w": "out",
+       "start": 46.254,
+       "end": 46.433
+      },
+      {
+       "w": "loud.",
+       "start": 46.445,
+       "end": 46.862
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Then ask yourself: does this solve the problem, and can I explain each part?",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 47.681,
+     "end": 52.669,
+     "words": [
+      {
+       "w": "Then",
+       "start": 47.681,
+       "end": 47.978
+      },
+      {
+       "w": "ask",
+       "start": 47.99,
+       "end": 48.216
+      },
+      {
+       "w": "yourself:",
+       "start": 48.228,
+       "end": 48.74
+      },
+      {
+       "w": "does",
+       "start": 48.99,
+       "end": 49.169
+      },
+      {
+       "w": "this",
+       "start": 49.181,
+       "end": 49.347
+      },
+      {
+       "w": "solve",
+       "start": 49.359,
+       "end": 49.621
+      },
+      {
+       "w": "the",
+       "start": 49.633,
+       "end": 49.716
+      },
+      {
+       "w": "problem,",
+       "start": 49.728,
+       "end": 50.169
+      },
+      {
+       "w": "and",
+       "start": 50.431,
+       "end": 50.538
+      },
+      {
+       "w": "can",
+       "start": 50.55,
+       "end": 50.693
+      },
+      {
+       "w": "I",
+       "start": 50.704,
+       "end": 50.788
+      },
+      {
+       "w": "explain",
+       "start": 50.8,
+       "end": 51.252
+      },
+      {
+       "w": "each",
+       "start": 51.264,
+       "end": 51.454
+      },
+      {
+       "w": "part?",
+       "start": 51.466,
+       "end": 51.847
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Write a quick comment summarizing the logic before you accept – that forces the mental check.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 52.669,
+     "end": 57.58,
+     "words": [
+      {
+       "w": "Write",
+       "start": 52.669,
+       "end": 52.931
+      },
+      {
+       "w": "a",
+       "start": 52.942,
+       "end": 53.002
+      },
+      {
+       "w": "quick",
+       "start": 53.014,
+       "end": 53.3
+      },
+      {
+       "w": "comment",
+       "start": 53.312,
+       "end": 53.692
+      },
+      {
+       "w": "summarizing",
+       "start": 53.704,
+       "end": 54.335
+      },
+      {
+       "w": "the",
+       "start": 54.347,
+       "end": 54.443
+      },
+      {
+       "w": "logic",
+       "start": 54.454,
+       "end": 54.847
+      },
+      {
+       "w": "before",
+       "start": 54.859,
+       "end": 55.181
+      },
+      {
+       "w": "you",
+       "start": 55.192,
+       "end": 55.311
+      },
+      {
+       "w": "accept",
+       "start": 55.323,
+       "end": 55.823
+      },
+      {
+       "w": "–",
+       "start": 55.823,
+       "end": 55.873
+      },
+      {
+       "w": "that",
+       "start": 56.05,
+       "end": 56.228
+      },
+      {
+       "w": "forces",
+       "start": 56.24,
+       "end": 56.681
+      },
+      {
+       "w": "the",
+       "start": 56.692,
+       "end": 56.764
+      },
+      {
+       "w": "mental",
+       "start": 56.776,
+       "end": 57.073
+      },
+      {
+       "w": "check.",
+       "start": 57.085,
+       "end": 57.514
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "beat": "ending",
+   "start": 57.92,
+   "dur": 3.28,
+   "lines": [
+    {
+     "text": "Try this pause‑and‑explain habit with Koder on your next commit.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 57.92,
+     "end": 61.2,
+     "words": [
+      {
+       "w": "Try",
+       "start": 58.0,
+       "end": 58.262
+      },
+      {
+       "w": "this",
+       "start": 58.273,
+       "end": 58.464
+      },
+      {
+       "w": "pause‑and‑explain",
+       "start": 58.476,
+       "end": 59.369
+      },
+      {
+       "w": "habit",
+       "start": 59.381,
+       "end": 59.714
+      },
+      {
+       "w": "with",
+       "start": 59.726,
+       "end": 59.857
+      },
+      {
+       "w": "Koder",
+       "start": 59.869,
+       "end": 60.238
+      },
+      {
+       "w": "on",
+       "start": 60.25,
+       "end": 60.345
+      },
+      {
+       "w": "your",
+       "start": 60.357,
+       "end": 60.452
+      },
+      {
+       "w": "next",
+       "start": 60.464,
+       "end": 60.738
+      },
+      {
+       "w": "commit.",
+       "start": 60.75,
+       "end": 61.119
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  }
+ ],
+ "language": "en",
+ "word_timing": {
+  "measured_lines": 13,
+  "lines": 13
+ }
+}

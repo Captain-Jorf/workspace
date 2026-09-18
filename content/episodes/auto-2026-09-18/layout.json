@@ -1,0 +1,526 @@
+{
+ "en": [
+  {
+   "text": "Ever let an AI code suggestion take over without thinking?",
+   "start": 0.63,
+   "end": 3.784,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    85,
+    200,
+    994,
+    434
+   ]
+  },
+  {
+   "text": "You see a suggestion pop up and hit Tab, trusting it feels easy.",
+   "start": 4.3,
+   "end": 8.061,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    72,
+    200,
+    1007,
+    434
+   ]
+  },
+  {
+   "text": "But that shortcut can hide gaps in how you actually understand the code.",
+   "start": 8.881,
+   "end": 12.464,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    121,
+    200,
+    959,
+    434
+   ]
+  },
+  {
+   "text": "Metacognition means watching your own thinking, catching when you’re just going along.",
+   "start": 12.95,
+   "end": 17.152,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    65,
+    200,
+    1015,
+    434
+   ]
+  },
+  {
+   "text": "When you accept a suggestion blindly,",
+   "start": 17.971,
+   "end": 19.804,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    56,
+    200,
+    1024,
+    356
+   ]
+  },
+  {
+   "text": "you skip the mental check that reveals whether it truly fits.",
+   "start": 20.054,
+   "end": 23.031,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    101,
+    200,
+    979,
+    434
+   ]
+  },
+  {
+   "text": "That missing check is the gap between feeling confident and actually knowing.",
+   "start": 23.852,
+   "end": 27.566,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    60,
+    200,
+    1019,
+    434
+   ]
+  },
+  {
+   "text": "Seeing the gap makes you decide whether to",
+   "start": 28.388,
+   "end": 30.34,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    120,
+    200,
+    960,
+    356
+   ]
+  },
+  {
+   "text": "adapt the suggestion or rewrite it your way.",
+   "start": 30.352,
+   "end": 32.614,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    160,
+    200,
+    919,
+    356
+   ]
+  },
+  {
+   "text": "In Koder, the CLI offers a one‑line fix as soon as you type a function name.",
+   "start": 33.09,
+   "end": 37.518,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    96,
+    200,
+    984,
+    434
+   ]
+  },
+  {
+   "text": "If you just press Enter, you get the code but",
+   "start": 38.337,
+   "end": 40.563,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    110,
+    200,
+    970,
+    356
+   ]
+  },
+  {
+   "text": "you miss the chance to ask why it works.",
+   "start": 40.575,
+   "end": 42.587,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    98,
+    200,
+    981,
+    356
+   ]
+  },
+  {
+   "text": "Next time Koder suggests, pause and read the suggestion out loud.",
+   "start": 43.1,
+   "end": 46.862,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    124,
+    200,
+    955,
+    434
+   ]
+  },
+  {
+   "text": "Then ask yourself: does this solve the problem, and can I explain each part?",
+   "start": 47.681,
+   "end": 51.847,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    81,
+    200,
+    998,
+    434
+   ]
+  },
+  {
+   "text": "Write a quick comment summarizing the logic before you accept –",
+   "start": 52.669,
+   "end": 55.873,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    86,
+    200,
+    993,
+    434
+   ]
+  },
+  {
+   "text": "that forces the mental check.",
+   "start": 56.05,
+   "end": 57.514,
+   "rows": 1,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    78,
+    200,
+    1001,
+    278
+   ]
+  },
+  {
+   "text": "Try this pause‑and‑explain habit with Koder on your next commit.",
+   "start": 58.0,
+   "end": 61.119,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    60,
+    200,
+    1020,
+    434
+   ]
+  }
+ ],
+ "fa": [],
+ "policy": {
+  "width": 1080,
+  "height": 1920,
+  "safe_top": 200,
+  "safe_bottom": 1450,
+  "right_button_column_x": 960,
+  "right_button_column_y": [
+   1100,
+   1700
+  ],
+  "en_top": 200,
+  "en_row_height": 78,
+  "en_max_rows": 3,
+  "en_max_width": 980,
+  "en_font_size": 54,
+  "scene_zone": [
+   500,
+   1300
+  ],
+  "min_contrast_ratio": 4.5,
+  "note": "FA layer removed, space used for bigger diagram, code visual, evidence card, confidence meter, decision tree, prediction graph, human-AI network"
+ },
+ "font_fallbacks": 0,
+ "total": 62.4,
+ "fps": 30,
+ "width": 1080,
+ "height": 1920,
+ "safe_mode": false,
+ "beats": [
+  {
+   "beat": "hook",
+   "start": 0.0
+  },
+  {
+   "beat": "problem",
+   "start": 4.22
+  },
+  {
+   "beat": "explain",
+   "start": 12.87
+  },
+  {
+   "beat": "example",
+   "start": 33.01
+  },
+  {
+   "beat": "technique",
+   "start": 43.02
+  },
+  {
+   "beat": "ending",
+   "start": 57.92
+  }
+ ],
+ "qa_frames": [
+  {
+   "beat": "hook",
+   "pos": "s",
+   "t": 0.6
+  },
+  {
+   "beat": "hook",
+   "pos": "m",
+   "t": 2.11
+  },
+  {
+   "beat": "hook",
+   "pos": "e",
+   "t": 3.7199999999999998
+  },
+  {
+   "beat": "problem",
+   "pos": "s",
+   "t": 4.819999999999999
+  },
+  {
+   "beat": "problem",
+   "pos": "m",
+   "t": 8.545
+  },
+  {
+   "beat": "problem",
+   "pos": "e",
+   "t": 12.37
+  },
+  {
+   "beat": "explain",
+   "pos": "s",
+   "t": 13.469999999999999
+  },
+  {
+   "beat": "explain",
+   "pos": "m",
+   "t": 22.939999999999998
+  },
+  {
+   "beat": "explain",
+   "pos": "e",
+   "t": 32.51
+  },
+  {
+   "beat": "example",
+   "pos": "s",
+   "t": 33.61
+  },
+  {
+   "beat": "example",
+   "pos": "m",
+   "t": 38.015
+  },
+  {
+   "beat": "example",
+   "pos": "e",
+   "t": 42.52
+  },
+  {
+   "beat": "technique",
+   "pos": "s",
+   "t": 43.620000000000005
+  },
+  {
+   "beat": "technique",
+   "pos": "m",
+   "t": 50.47
+  },
+  {
+   "beat": "technique",
+   "pos": "e",
+   "t": 57.42
+  },
+  {
+   "beat": "ending",
+   "pos": "s",
+   "t": 58.52
+  },
+  {
+   "beat": "ending",
+   "pos": "m",
+   "t": 60.16
+  },
+  {
+   "beat": "ending",
+   "pos": "e",
+   "t": 61.9
+  }
+ ],
+ "previews": [
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-18/preview_start.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-18/preview_middle.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-18/preview_end.jpg"
+ ],
+ "contact_sheet": "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-18/qa_contact_sheet.jpg",
+ "visual_plan": {
+  "pillar": "CODING",
+  "photo_policy": {
+   "target": 3,
+   "minimum": 2,
+   "designated": [
+    "s2",
+    "s4",
+    "s6"
+   ],
+   "source": "openverse-api (CC0/PDM only; CC-BY disabled until public attribution exists), $0, keyless",
+   "fallback": "distinct topic-specific procedural visual per scene",
+   "repo_hero_as_background": false
+  },
+  "scenes": [
+   {
+    "scene_id": "s1",
+    "beat": "hook",
+    "visual_category": "brand-mark",
+    "visual_purpose": "brand open — the emblem reveal over the dark gold field",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "repo",
+    "asset_id": "repo:assets/img/logo_emblem.png"
+   },
+   {
+    "scene_id": "s2",
+    "beat": "problem",
+    "visual_category": "failure-chain",
+    "visual_purpose": "show the cause-and-effect failure chain",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": true,
+    "asset_kind": "procedural",
+    "asset_id": "proc-failure-chain-1"
+   },
+   {
+    "scene_id": "s3",
+    "beat": "problem",
+    "visual_category": "code-scene",
+    "visual_purpose": "the code concept the narration is discussing",
+    "code_justified": true,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-code-scene-2"
+   },
+   {
+    "scene_id": "s4",
+    "beat": "explain",
+    "visual_category": "system-diagram",
+    "visual_purpose": "show the parts and how they connect",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": true,
+    "asset_kind": "procedural",
+    "asset_id": "proc-system-diagram-3"
+   },
+   {
+    "scene_id": "s5",
+    "beat": "explain",
+    "visual_category": "failure-chain",
+    "visual_purpose": "show the cause-and-effect failure chain",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-failure-chain-4"
+   },
+   {
+    "scene_id": "s6",
+    "beat": "example",
+    "visual_category": "system-diagram",
+    "visual_purpose": "show the parts and how they connect",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": true,
+    "asset_kind": "procedural",
+    "asset_id": "proc-system-diagram-5"
+   },
+   {
+    "scene_id": "s7",
+    "beat": "example",
+    "visual_category": "code-scene",
+    "visual_purpose": "the code concept the narration is discussing",
+    "code_justified": true,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-code-scene-6"
+   },
+   {
+    "scene_id": "s8",
+    "beat": "technique",
+    "visual_category": "concept-web",
+    "visual_purpose": "map the concept web for the topic",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-concept-web-7"
+   },
+   {
+    "scene_id": "s9",
+    "beat": "technique",
+    "visual_category": "confidence-gauge",
+    "visual_purpose": "show the gap between felt confidence and actual correctness",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-confidence-gauge-8"
+   },
+   {
+    "scene_id": "s10",
+    "beat": "ending",
+    "visual_category": "brand-close",
+    "visual_purpose": "brand close — the orbit and eye send the viewer to the question",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "repo",
+    "asset_id": "repo:assets/img/logo_eye.png"
+   }
+  ],
+  "code_scenes": [
+   "s3",
+   "s7"
+  ]
+ }
+}
