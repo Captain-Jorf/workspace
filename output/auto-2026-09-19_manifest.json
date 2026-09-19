@@ -1,45 +1,29 @@
 {
  "content_id": "reel-2026-09-19",
  "content_date": "2026-09-19",
- "topic": "Your user interviews proved you right. Did they? Confirmation bias",
- "normalized_topic": "user interviews proved right they confirmation bias",
- "pillar": "PRODUCT",
- "technology_angle": "confirmation bias in product and user research for software",
- "metacognition_concept": "confirmation bias",
- "tags": [
-  "confirmation-bias",
-  "user-research"
- ],
- "cta_type": "share-experience",
- "playbook": "confirmation-bias-research",
+ "topic": null,
+ "normalized_topic": "",
+ "pillar": null,
+ "technology_angle": null,
+ "metacognition_concept": null,
+ "tags": [],
+ "cta_type": null,
+ "playbook": null,
  "source_url": null,
- "sources": [
-  {
-   "label": "Nickerson (1998), Confirmation bias",
-   "url": "",
-   "tier": "A",
-   "role": "evidence"
-  },
-  {
-   "label": "NN/g user research guidelines",
-   "url": "",
-   "tier": "?",
-   "role": "evidence"
-  }
- ],
- "script_hash": "5a4579e1a157a3e3faf2fa8b2b69f7f5f1e9fb7f5c39a4fbd697f506145a1c86",
- "video_hash": "61ef11d40ab6c7696ad1404a78e060407993cd0882eb11432dfb2181119ddaba",
- "qa_score": 100,
- "qa_approved": true,
+ "sources": [],
+ "script_hash": null,
+ "video_hash": null,
+ "qa_score": null,
+ "qa_approved": null,
  "buffer_post_id": null,
  "buffer_due_at": null,
- "status": "approved-dry-run",
- "public_url": "https://raw.githubusercontent.com/Captain-Jorf/workspace/drafts/2026-09-19/output/auto-2026-09-19.mp4",
- "branch": "drafts/2026-09-19",
- "run_id": "35058904480",
+ "status": "automation-error",
+ "public_url": null,
+ "branch": null,
+ "run_id": null,
  "error": null,
- "timestamp_utc": "2026-09-16T05:22:52+00:00",
+ "timestamp_utc": "2026-09-19T08:11:11+00:00",
  "language": "en",
  "content_language": "en",
- "generation_mode": "static-fallback"
+ "generation_mode": null
 }
