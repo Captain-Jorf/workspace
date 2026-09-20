@@ -531,5 +531,49 @@ class CursorPolicyAndSafetyEnvelopesTests(unittest.TestCase):
         self.assertTrue(len(cfg["policy_notes"]) >= 2)
 
 
+# ===========================================================================
+# 7. UNITTEST DISCOVERY GUARD
+# ===========================================================================
+class CursorDiscoveryGuardTests(unittest.TestCase):
+    """Guard proving critical cursor regression test cases are discoverable by unittest."""
+
+    def test_cursor_cases_discoverable_by_unittest(self):
+        loader = unittest.defaultTestLoader
+        suite = loader.loadTestsFromName("tests.test_cursor_qa")
+        discovered_names = set()
+
+        def _collect(s):
+            for item in s:
+                if isinstance(item, unittest.TestCase):
+                    discovered_names.add(item._testMethodName)
+                else:
+                    _collect(item)
+
+        _collect(suite)
+
+        required_cases = [
+            "test_exact_scene_s1_reconstruction",
+            "test_20_percent_alpha_ring_produces_dim_blended_gold_not_solid",
+            "test_control_expanding_ellipse_tangent_not_cursor",
+            "test_component_area_rule_rejects_large_shapes",
+            "test_component_bounding_box_rule_rejects_wide_and_tall_shapes",
+            "test_control_unjustified_caret_in_product_scene_blocked",
+            "test_control_allowed_caret_in_justified_scene_passes",
+            "test_control_caret_leaking_outside_expected_code_region_blocked",
+            "test_h264_unjustified_cursor_positive_control_detected_and_blocked",
+            "test_control_uppercase_I_not_cursor",
+            "test_control_lowercase_l_not_cursor",
+            "test_control_pipe_glyph_not_cursor",
+            "test_control_card_border_not_cursor",
+            "test_control_3px_vertical_divider_not_cursor",
+            "test_control_narrow_chart_bar_not_cursor",
+            "test_control_network_line_not_cursor",
+            "test_control_moving_vertical_diagram_element_not_cursor",
+        ]
+        for case in required_cases:
+            self.assertIn(case, discovered_names,
+                          f"critical cursor regression test {case} must be discoverable by unittest")
+
+
 if __name__ == "__main__":
     unittest.main()
