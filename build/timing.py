@@ -87,6 +87,11 @@ def main():
     adir = adir or f"{ROOT}/audio"
     with open(sc_path, encoding="utf-8") as fh:
         sc = json.load(fh)
+    # Issue #32 §2: word tokens derive from the SAME normalized representation
+    # as TTS and the burned-in subtitles (idempotent — the producer already
+    # normalized; this is the fail-safe so timing can never drift from them).
+    import text_norm
+    text_norm.normalize_script(sc)
     meta = sc["meta"]
     gap, lead, tail = meta["gap"], meta["lead"], meta["tail"]
     tmp = tempfile.mkdtemp(prefix="timing_")

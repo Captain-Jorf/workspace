@@ -49,6 +49,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
+import layout_gate  # noqa: E402
+import text_norm  # noqa: E402
 import visual_plan as vp  # noqa: E402
 common.assert_content_language_en()
 W, H, FPS = 1080, 1920, 30
@@ -215,6 +217,10 @@ class Reel:
         self._widget_cache = {}
         self._photo_cache = {}
         self._last_frame = None
+        # Declared layout items per scene (issue #32 §5): the renderer records
+        # every rendered item's bounding box + z-layer; the layout gate runs on
+        # them BEFORE frame 0, and final QA re-checks them from layout.json.
+        self._scene_items = {}
         # ---- gated visual plan (fail closed: a blocked plan never renders) ----
         self.plan = None
         self.scene_times = []
@@ -223,6 +229,47 @@ class Reel:
         self.cursor_events = []
         if self.script.get("chunks"):
             self._load_plan()
+        self._assert_visible_text_renderable()
+
+    def _assert_visible_text_renderable(self):
+        """Issue #32 §1/§3: BEFORE a single frame exists, every visible string
+        (subtitles, on-screen labels, poster-bound text, handle, scene tags)
+        must be normalized and have a glyph in the ACTUAL production font
+        cmap. U+FFFD and any unsupported character are fail-closed here —
+        never OS font fallback, never a guessed allowlist. Also enforces
+        TTS/timing/display parity: the karaoke words must equal the
+        normalized script narration token-for-token.
+        """
+        extras = []
+        if self.plan:
+            for sc in self.plan.get("scenes", []):
+                spec = vp.C.get(sc.get("visual_category"), {})
+                for ls in spec.get("label_sets") or []:
+                    extras.extend(ls)
+                extras.extend(sc.get("code_lines") or [])
+        issues = text_norm.glyph_gate_issues(self.script, extra_texts=extras)
+        if issues:
+            raise RuntimeError("glyph coverage gate blocked the render before "
+                               "frame 0: " + " · ".join(issues[:6]))
+        for t in list(self.tags.values()) + [self.script.get("meta", {}).get("handle", "")]:
+            if text_norm.normalize_text(str(t)) != str(t):
+                raise RuntimeError(f"chrome text {t!r} is not normalized — "
+                                   "TTS/timing/display parity would drift")
+        parity = text_norm.parity_issues(self.script, self.tl)
+        if parity:
+            raise RuntimeError("TTS/timing/display parity broken before render: "
+                               + " · ".join(parity[:4]))
+        # Pre-render every procedural scene composition through the layout
+        # gate (fail closed): a cluttered/colliding scene never reaches a
+        # frame. Snapshots are cached, so rendering reuses them.
+        if self.plan:
+            for sc in self.plan.get("scenes", []):
+                if sc.get("visual_category") in vp.BRAND_CATEGORIES:
+                    continue
+                if (sc.get("asset") or {}).get("kind") in ("repo", "external") \
+                        and self._photo_for(sc) is not None:
+                    continue
+                self._scene_snapshot(sc)
 
     def _load_plan(self):
         plan_path = os.path.join(self.ep, "visual_plan.json")
@@ -323,6 +370,25 @@ class Reel:
         rnd = random.Random(7)
         z0, z1 = self.L["scene_zone"]
         self.lat = [(rnd.uniform(40, W - 40), rnd.uniform(z0 - 60, z1 + 60), rnd.uniform(0, 6.28), rnd.uniform(0.15, 0.5)) for _ in range(46)]
+
+    def draw_brand_accent(self, fr, t):
+        """Subtle brand motif (issue #32 §4): two faint gold arcs + a small
+        eye mark. Opacity ≤ 0.12, always behind content, geometrically clear
+        of the subtitle band, the scene zone and the handle zone — purely a
+        brand accent, never decoration competing with the semantic visual."""
+        ov = Image.new("RGBA", fr.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(ov)
+        # top arc: circle centred above the frame → arc only reaches y ≤ 190
+        d.arc([540 - 620, -430 - 620, 540 + 620, -430 + 620],
+              30, 150, fill=(233, 180, 74, 26), width=2)
+        # bottom arc: circle centred below the frame → arc only reaches y ≥ 1650
+        d.arc([540 - 700, 2350 - 700, 540 + 700, 2350 + 700],
+              210, 330, fill=(233, 180, 74, 22), width=2)
+        # eye mark: clear of subtitle band (≤~434), scene zone (470..1310),
+        # tag, progress bar and handle zone
+        eye = self._cached("accent_eye", lambda: self.eye.resize((64, 64), Image.LANCZOS))
+        ov.alpha_composite(with_alpha(eye, 0.12), (64, 1500))
+        fr.alpha_composite(ov)
 
     def draw_lattice(self, fr, t, alpha=1.0):
         d = ImageDraw.Draw(fr)
@@ -497,6 +563,17 @@ class Reel:
         L = self.L
         self.cap_lines = []
         for ln in self.lines:
+            # Issue #32 §2: the burned-in words must already BE the normalized
+            # representation (same as TTS/timing). Fail closed on drift —
+            # normalizing here alone would desynchronize word timing.
+            for wd in ln["words"]:
+                if text_norm.normalize_text(wd["w"]) != wd["w"]:
+                    raise RuntimeError(
+                        f"subtitle word {wd['w']!r} is not normalized — the "
+                        "burned-in text must derive from the same normalized "
+                        "representation as TTS and word timing")
+                if text_norm.contains_replacement_char(wd["w"]):
+                    raise RuntimeError("U+FFFD reached the subtitle renderer — blocked")
             for sub in self._split_words_for_rows(ln["words"]):
                 rows, size, lh = self._wrap_words(sub, L["en_font_size"])
                 # Escape hatch only (pathological single word): shrinking never
@@ -581,7 +658,13 @@ class Reel:
     def _scene_snapshot(self, scene):
         """Pre-render a scene's full-state composition (cached per scene).
         Compositions are drawn in the 1080x840 design space, then centered on
-        a padded canvas so Ken Burns can pan/zoom without exposing edges."""
+        a padded canvas so Ken Burns can pan/zoom without exposing edges.
+
+        Issue #32 §5: every composition DECLARES its items (bounding box +
+        z-layer + kind) and the deterministic layout gate must pass BEFORE a
+        frame is rendered — intersecting text, hidden labels, lines through
+        text, unreadable microtext and excessive density all fail closed here.
+        """
         key = ("scene", scene["scene_id"])
         if key in self._widget_cache:
             return self._widget_cache[key]
@@ -591,7 +674,14 @@ class Reel:
         fn = getattr(self, f"_comp_{comp}", None) if comp else None
         if fn is None:  # defensive: unknown comp → neutral brand comparison
             fn = self._comp_dual
-        fn(inner, d, scene)
+        items = fn(inner, d, scene) or []
+        issues = layout_gate.check_items(items)
+        if issues:
+            raise RuntimeError(
+                f"layout gate blocked scene {scene['scene_id']} "
+                f"({scene['visual_category']}) before render: "
+                + " · ".join(issues[:6]))
+        self._scene_items[scene["scene_id"]] = items
         canvas = Image.new("RGBA", (int(ZONE_W * CANVAS_PAD), int(ZONE_H * CANVAS_PAD)), (0, 0, 0, 0))
         canvas.paste(inner, (int(ZONE_W * (CANVAS_PAD - 1) / 2), int(ZONE_H * (CANVAS_PAD - 1) / 2)))
         self._widget_cache[key] = canvas
@@ -698,168 +788,251 @@ class Reel:
     # cost stays low and the file size stays small).
     # -----------------------------------------------------------------------
 
+    # -----------------------------------------------------------------------
+    # Issue #32 §4-6: every procedural composition now communicates ONE idea
+    # in under three seconds. Each comp DECLARES its rendered items (bbox,
+    # z-layer, kind) for the deterministic layout gate: a small number of
+    # meaningful labels, no random decorative words, no label behind another
+    # element, no line through text, no microtext, measurable density.
+    # -----------------------------------------------------------------------
+
+    BG_DECL = (16, 13, 10)  # declared zone background for contrast checks
+
     def _labels_for(self, scene):
         spec = vp.C.get(scene["visual_category"], {})
         sets = spec.get("label_sets") or [["IDEA"]]
         idx = len(scene.get("topic_keywords") or []) % len(sets)
         return sets[idx]
 
-    def _comp_dual(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        lab_a, lab_b = labs[0], labs[1] if len(labs) > 1 else "ACTUAL"
-        sub_a = self._topic_word(scene, 0)
-        sub_b = self._topic_word(scene, 1)
-        card = rounded_card(430, 560, 26, CARD + (238,), (233, 180, 74, 150), 2)
-        d2 = ImageDraw.Draw(card)
-        self._note_lines(d2, card, 5)
-        ta = gold_text(lab_a, font("en", 800, 34), spacing=1)
-        card.alpha_composite(ta, ((card.width - ta.width) // 2, 40))
-        if sub_a:
-            s = text_img(sub_a, font("en", 600, 22), WARM)
-            card.alpha_composite(s, ((card.width - s.width) // 2, 110))
-        canvas.alpha_composite(card, (40, 120))
-        card2 = rounded_card(430, 560, 26, (34, 26, 16, 245), (255, 228, 158, 220), 3)
-        d2 = ImageDraw.Draw(card2)
-        self._note_lines(d2, card2, 5, hot=True)
-        tb = gold_text(lab_b, font("en", 800, 34), spacing=1)
-        card2.alpha_composite(tb, ((card2.width - tb.width) // 2, 40))
-        if sub_b:
-            s = text_img(sub_b, font("en", 600, 22), IVORY)
-            card2.alpha_composite(s, ((card2.width - s.width) // 2, 110))
-        canvas.alpha_composite(card2, (616, 120))
-        vs = gold_text("VS", font("en", 800, 40), spacing=3)
-        disc = glow_disc(220, (255, 200, 110, 150), 70, 40)
-        canvas.alpha_composite(disc, (540 - 110, 120 + 280 - 110))
-        canvas.alpha_composite(vs, (540 - vs.width // 2, 120 + 280 - vs.height // 2))
+    @staticmethod
+    def _item(iid, kind, bbox, z=layout_gate.LAYER_DIAGRAM, **kw):
+        it = {"id": iid, "kind": kind,
+              "bbox": [int(round(v)) for v in bbox], "z": z}
+        it.update(kw)
+        return it
+
+    def _measure(self, text, fnt):
+        bb = fnt.getbbox(text)
+        return bb[2] - bb[0], bb[3] - bb[1]
+
+    def _fit_font(self, text, weight, size, max_w):
+        """Largest font size (stepping down by 2) at which `text` fits max_w —
+        never below the readable floor."""
+        while size > layout_gate.MIN_LABEL_FONT_PX:
+            f = font("en", weight, size)
+            if self._measure(text, f)[0] <= max_w:
+                return f, size
+            size -= 2
+        return font("en", weight, size), size
 
     def _topic_word(self, scene, i):
         kws = scene.get("topic_keywords") or []
         return kws[i].upper() if i < len(kws) else ""
 
-    def _note_lines(self, d, card, n, hot=False):
-        rnd = random.Random(len(card.size) * 3)
-        y = 190
-        for _ in range(n):
-            lw = rnd.randint(int(card.width * 0.3), int(card.width * 0.72))
-            col = (255, 228, 158, 170) if hot else (150, 130, 95, 110)
-            d.line([44, y, 44 + lw, y], fill=col, width=6)
-            y += 52
+    def _draw_centered_label(self, canvas, items, iid, text, fnt, size, color,
+                             bg, cx, y, parent=None, group=None):
+        """Draw one gold-gradient/flat label centered at cx and declare it."""
+        if color == "gold":
+            im = gold_text(text, fnt, spacing=1)
+        else:
+            im = text_img(text, fnt, color)
+        x = int(cx - im.width / 2)
+        canvas.alpha_composite(im, (x, y))
+        items.append(self._item(iid, "text",
+                                (x + 10, y + 10, x + im.width - 10, y + im.height - 10),
+                                layout_gate.LAYER_LABEL, text=text, font_px=size,
+                                color=GOLD_HI if color == "gold" else color, bg=bg,
+                                **({"parent": parent} if parent else {}),
+                                **({"group": group} if group else {})))
+
+    def _comp_dual(self, canvas, d, scene):
+        """One contrast: two cards, one label each, a VS badge — nothing else."""
+        labs = self._labels_for(scene)
+        lab_a, lab_b = labs[0], labs[1] if len(labs) > 1 else "ACTUAL"
+        items = []
+        card_w, card_h = 400, 470
+        pos = ((60, 160), (620, 160))
+        fills = (CARD + (242,), (34, 26, 16, 245))
+        outlines = ((233, 180, 74, 150), (255, 228, 158, 220))
+        for i, (lab, (cx, cy)) in enumerate(zip((lab_a, lab_b), pos)):
+            card = rounded_card(card_w, card_h, 26, fills[i], outlines[i], 2)
+            canvas.alpha_composite(card, (cx, cy))
+            items.append(self._item(f"card{i}", "card",
+                                    (cx, cy, cx + card_w, cy + card_h), group="dual"))
+            fnt, size = self._fit_font(lab, 800, 34, card_w - 56)
+            self._draw_centered_label(canvas, items, f"label{i}", lab, fnt, size,
+                                      "gold" if i else GOLD_HI, CARD,
+                                      cx + card_w / 2, cy + 150, parent=f"card{i}")
+        vs = gold_text("VS", font("en", 800, 40), spacing=3)
+        disc = glow_disc(220, (255, 200, 110, 150), 70, 40)
+        canvas.alpha_composite(disc, (540 - 110, 395 - 110))
+        canvas.alpha_composite(vs, (540 - vs.width // 2, 395 - vs.height // 2))
+        items.append(self._item("vs", "text",
+                                (540 - vs.width // 2 + 10, 395 - vs.height // 2 + 10,
+                                 540 + vs.width // 2 - 10, 395 + vs.height // 2 - 10),
+                                layout_gate.LAYER_LABEL, text="VS", font_px=40,
+                                color=GOLD_HI, bg=self.BG_DECL))
+        return items
 
     def _comp_notes(self, canvas, d, scene):
+        """One note card: title + ruled lines + the flagged highlight."""
         labs = self._labels_for(scene)
-        card = rounded_card(860, 640, 24, CARD + (240,), (233, 180, 74, 160), 2)
-        title = gold_text(labs[0], font("en", 800, 30), spacing=2)
-        card.alpha_composite(title, (40, 28))
-        d2 = ImageDraw.Draw(card)
-        # ruled note lines
-        rnd = random.Random(11)
-        y = 110
-        for i in range(6):
-            lw = rnd.randint(int(card.width * 0.35), int(card.width * 0.75))
-            d2.line([44, y, 44 + lw, y], fill=(150, 130, 95, 120), width=6)
-            y += 58
-        # the highlighted assumption (gold underline = the flagged belief)
-        hy = y - 58
-        d2.rectangle([40, hy + 8, 44 + int(card.width * 0.6), hy + 18], fill=(255, 228, 158, 230))
-        hl = text_img(labs[1] if len(labs) > 1 else "ASSUMPTION", font("en", 700, 22), GOLD_HI)
-        card.alpha_composite(hl, (48, hy - 34))
-        canvas.alpha_composite(card, (100, 90))
-        # quote bubble
-        q = rounded_card(330, 130, 20, (20, 16, 10, 245), (255, 228, 158, 200), 2)
-        qt = text_img("“" + (labs[2] if len(labs) > 2 else "SURE, MAYBE") + "”",
-                      font("en", 600, 24), IVORY)
-        q.alpha_composite(qt, ((q.width - qt.width) // 2, (q.height - qt.height) // 2))
-        canvas.alpha_composite(q, (640, 720))
-        d.line([640, 780, 600, 820, 680, 820], fill=(255, 228, 158, 120), width=4, joint="curve")
+        items = []
+        cx0, cy0, cw, ch = 110, 130, 860, 560
+        card = rounded_card(cw, ch, 24, CARD + (242,), (233, 180, 74, 160), 2)
+        canvas.alpha_composite(card, (cx0, cy0))
+        items.append(self._item("card", "card", (cx0, cy0, cx0 + cw, cy0 + ch),
+                                group="notes"))
+        fnt, size = self._fit_font(labs[0], 800, 36, cw - 88)
+        ti = gold_text(labs[0], fnt, spacing=1)
+        canvas.alpha_composite(ti, (cx0 + 44, cy0 + 40))
+        items.append(self._item("title", "text",
+                                (cx0 + 44, cy0 + 40, cx0 + 44 + ti.width, cy0 + 40 + ti.height),
+                                layout_gate.LAYER_LABEL, text=labs[0], font_px=size,
+                                color=GOLD_HI, bg=CARD, parent="card"))
+        for k, lw in enumerate((600, 680, 500)):
+            y = cy0 + 210 + k * 62
+            d.line([cx0 + 44, y, cx0 + 44 + lw, y], fill=(150, 130, 95, 42), width=6)
+            items.append(self._item(f"rule{k}", "decoration",
+                                    (cx0 + 44, y - 4, cx0 + 44 + lw, y + 4),
+                                    layout_gate.LAYER_DECORATION, opacity=0.16,
+                                    parent="card"))
+        hl_label = labs[1] if len(labs) > 1 else "ASSUMPTION"
+        hlf, hls = self._fit_font(hl_label, 700, 30, 480)
+        hw, hh = self._measure(hl_label, hlf)
+        hw += 64
+        chip = rounded_card(hw, 92, 20, GOLD_HI + (238,), (255, 228, 158, 255), 2)
+        canvas.alpha_composite(chip, (cx0 + 44, cy0 + ch - 150))
+        items.append(self._item("hl", "chip",
+                                (cx0 + 44, cy0 + ch - 150,
+                                 cx0 + 44 + hw, cy0 + ch - 58),
+                                group="notes", parent="card"))
+        d.text((cx0 + 44 + (hw - self._measure(hl_label, hlf)[0]) // 2,
+                cy0 + ch - 150 + (92 - hls) // 2 - 4),
+               hl_label, font=hlf, fill=INK)
+        items.append(self._item("hl_text", "text",
+                                (cx0 + 54, cy0 + ch - 140, cx0 + 34 + hw, cy0 + ch - 68),
+                                layout_gate.LAYER_LABEL, text=hl_label, font_px=hls,
+                                color=INK, bg=GOLD_HI, parent="hl"))
+        return items
 
     def _comp_ladder(self, canvas, d, scene):
+        """One vertical chain: 3-4 step chips joined by arrows."""
         labs = self._labels_for(scene)
-        n = min(len(labs), 5)
+        n = min(len(labs), 4)
         if n < 3:
             labs = list(labs) + ["NEXT", "CHECK", "DECIDE"]
-            n = min(len(labs), 5)
-        x = 540
-        y0, gap = 60, 150
-        for i in range(n):
-            y = y0 + i * gap
-            hot = (i == n - 1)
-            chip = self._chip(labs[i], 360, 74)
-            a = 1.0
-            canvas.alpha_composite(with_alpha(chip, a), (x - chip.width // 2, y - chip.height // 2))
-            num = text_img(str(i + 1), font("en", 800, 30), INK if hot else GOLD_HI)
-            canvas.alpha_composite(num, (x - chip.width // 2 + 22, y - chip.height // 2 + (chip.height - num.height) // 2))
+            n = min(len(labs), 3)
+        labs = labs[:n]
+        items = []
+        chip_w, chip_h, gap = 380, 76, 116
+        total = n * chip_h + (n - 1) * gap
+        y0 = (ZONE_H - total) // 2
+        x0 = 540 - chip_w // 2
+        for i, lab in enumerate(labs):
+            y = y0 + i * (chip_h + gap)
+            chip = self._chip(lab, chip_w, chip_h)
+            canvas.alpha_composite(chip, (x0, y))
+            items.append(self._item(f"chip{i}", "chip",
+                                    (x0, y, x0 + chip.width, y + chip_h), group="chain"))
+            t1 = gold_text(lab, font("en", 800, 30), spacing=2)
+            items.append(self._item(f"chip{i}_text", "text",
+                                    (x0 + (chip.width - t1.width) // 2,
+                                     y + (chip_h - t1.height) // 2,
+                                     x0 + (chip.width + t1.width) // 2,
+                                     y + (chip_h + t1.height) // 2),
+                                    layout_gate.LAYER_LABEL, text=lab, font_px=30,
+                                    color=GOLD_HI, bg=(26, 20, 13), parent=f"chip{i}",
+                                    group="chain"))
             if i < n - 1:
-                d.line([x, y + 37, x, y + gap - 37], fill=(233, 180, 74, 190), width=4)
-                d.polygon([(x, y + gap - 30), (x - 14, y + gap - 48), (x + 14, y + gap - 48)], fill=GOLD)
-        if n >= 4:
-            g = glow_disc(300, (255, 200, 110, 120), 90, 60)
-            canvas.alpha_composite(g, (x - 150, y0 + (n - 1) * gap - 120))
+                ay0 = y + chip_h + 10
+                ay1 = y + chip_h + gap - 12
+                d.line([540, ay0, 540, ay1], fill=(233, 180, 74, 210), width=4)
+                d.polygon([(540, ay1 + 12), (540 - 13, ay1 - 6), (540 + 13, ay1 - 6)],
+                          fill=GOLD)
+                items.append(self._item(f"arrow{i}", "line",
+                                        (527, ay0, 553, ay1 + 12),
+                                        layout_gate.LAYER_DIAGRAM, group="chain",
+                                        endpoints=[(540, ay0), (540, ay1 + 12)]))
+        return items
 
     def _comp_funnel(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        n = 5
-        rnd = random.Random(5)
-        for i in range(n):
-            wbar = int(860 - i * 150)
-            y = 60 + i * 130
+        """One funnel: three narrowing bars, one label each."""
+        labs = list(self._labels_for(scene))[:3]
+        while len(labs) < 3:
+            labs.append("DECISION")
+        items = []
+        widths = (860, 640, 420)
+        ys = (140, 372, 604)
+        for i, (wbar, y) in enumerate(zip(widths, ys)):
+            hot = (i == 2)
+            col = (233, 180, 74, 240) if hot else (150, 106, 44, 215)
             x0 = 540 - wbar // 2
-            hot = (i == n - 1)
-            col = (233, 180, 74, 235) if hot else (150, 106, 44, 210)
-            d.rounded_rectangle([x0, y, x0 + wbar, y + 64], 14, fill=col)
-            lab = labs[i] if i < len(labs) else ""
-            if lab:
-                t = text_img(lab, font("en", 800, 26), IVORY if hot else WARM, spacing=1)
-                canvas.alpha_composite(t, (540 - t.width // 2, y + (64 - t.height) // 2))
-            # items passing through; contradictory items diverted (the bias)
-            if i < n - 1:
-                for k in range(3):
-                    px = x0 + 60 + k * (wbar - 120) // 2
-                    d.ellipse([px - 7, y + 96, px + 7, y + 110], fill=(255, 214, 130, 200))
-                if i == 1:
-                    ex = x0 + wbar + 60
-                    d.line([x0 + wbar - 30, y + 103, ex, y + 103], fill=(150, 136, 112, 200), width=3)
-                    d.line([ex - 10, y + 93, ex + 10, y + 113], fill=(150, 136, 112, 230), width=4)
-                    d.line([ex + 10, y + 93, ex - 10, y + 113], fill=(150, 136, 112, 230), width=4)
-                    tl = text_img(labs[-1] if len(labs) > 1 else "DROPPED", font("en", 700, 20), DIM)
-                    canvas.alpha_composite(tl, (ex - 40, y + 130))
+            d.rounded_rectangle([x0, y, x0 + wbar, y + 84], 16, fill=col)
+            items.append(self._item(f"bar{i}", "bar",
+                                    (x0, y, x0 + wbar, y + 84), group="funnel"))
+            fnt, size = self._fit_font(labs[i], 800, 30, wbar - 60)
+            tw, th = self._measure(labs[i], fnt)
+            d.text((540 - tw // 2, y + (84 - th) // 2 - 6), labs[i],
+                   font=fnt, fill=INK if hot else WARM)
+            items.append(self._item(f"bar{i}_text", "text",
+                                    (540 - tw // 2, y + (84 - th) // 2 - 6,
+                                     540 + tw // 2, y + (84 + th) // 2 - 6),
+                                    layout_gate.LAYER_LABEL, text=labs[i], font_px=size,
+                                    color=INK if hot else WARM,
+                                    bg=(233, 180, 74) if hot else (150, 106, 44),
+                                    parent=f"bar{i}"))
+        return items
 
     def _comp_matrix(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        x0, y0, cw, ch = 120, 80, 760, 640
-        d.line([x0 + cw // 2, y0, x0 + cw // 2, y0 + ch], fill=(233, 180, 74, 120), width=2)
-        d.line([x0, y0 + ch // 2, x0 + cw, y0 + ch // 2], fill=(233, 180, 74, 120), width=2)
-        d.line([x0, y0 + ch, x0 + cw, y0 + ch], fill=(233, 180, 74, 220), width=4)
-        d.line([x0, y0, x0, y0 + ch], fill=(233, 180, 74, 220), width=4)
-        quad_labs = (labs[:4] if len(labs) >= 4 else
-                     list(labs) + ["COST", "VALUE", "RISK", "NOW?"])[:4]
-        pos = [(x0 + 60, y0 + 60), (x0 + cw - 260, y0 + 60),
-               (x0 + 60, y0 + ch - 120), (x0 + cw - 260, y0 + ch - 120)]
-        rnd = random.Random(3)
-        for i, ((px, py), lab) in enumerate(zip(pos, quad_labs)):
-            chip = self._chip(lab, 200, 56)
-            canvas.alpha_composite(chip, (px, py))
-            # plotted options
-            for k in range(2 + (i % 2)):
-                dx = rnd.randint(20, 180)
-                dy = rnd.randint(60, 180)
-                d.ellipse([x0 + 40 + dx, y0 + 30 + dy, x0 + 46 + dx, y0 + 36 + dy], fill=(255, 214, 130, 220))
-        ax = text_img(labs[0] if labs else "CRITERIA", font("en", 700, 22), DIM)
-        canvas.alpha_composite(ax, (x0 + cw - ax.width - 10, y0 + ch + 14))
-        ay = text_img("TRADE-OFF", font("en", 700, 22), DIM)
-        canvas.alpha_composite(ay, (x0 - 10, y0 - 8))
+        """One 2x2 quadrant map: four chips, two faint axes — no scatter noise."""
+        labs = list(self._labels_for(scene))[:4]
+        while len(labs) < 4:
+            labs += ["COST", "VALUE", "RISK", "NOW?"]
+        labs = labs[:4]
+        items = []
+        d.line([540, 130, 540, 710], fill=(233, 180, 74, 46), width=2)
+        items.append(self._item("axis_v", "decoration", (538, 130, 542, 710),
+                                layout_gate.LAYER_DECORATION, opacity=0.18, group="matrix"))
+        d.line([150, 420, 930, 420], fill=(233, 180, 74, 46), width=2)
+        items.append(self._item("axis_h", "decoration", (150, 418, 930, 422),
+                                layout_gate.LAYER_DECORATION, opacity=0.18, group="matrix"))
+        centers = ((320, 250), (760, 250), (320, 590), (760, 590))
+        for i, ((cx, cy), lab) in enumerate(zip(centers, labs)):
+            chip = self._chip(lab, 300, 68)
+            canvas.alpha_composite(chip, (cx - chip.width // 2, cy - 34))
+            items.append(self._item(f"quad{i}", "chip",
+                                    (cx - chip.width // 2, cy - 34,
+                                     cx + chip.width // 2, cy + 34), group="matrix"))
+            t1 = gold_text(lab, font("en", 800, 26), spacing=2)
+            items.append(self._item(f"quad{i}_text", "text",
+                                    (cx - t1.width // 2, cy - t1.height // 2,
+                                     cx + t1.width // 2, cy + t1.height // 2),
+                                    layout_gate.LAYER_LABEL, text=lab, font_px=26,
+                                    color=GOLD_HI, bg=(26, 20, 13),
+                                    parent=f"quad{i}", group="matrix"))
+        return items
 
     def _comp_gauges(self, canvas, d, scene):
+        """Focus before/after: two dials + labels, one THE GAP verdict."""
         labs = self._labels_for(scene)
-        lab_a, lab_b = labs[0], labs[1] if len(labs) > 1 else "ACTUALLY"
-        self._gauge(d, 300, 300, 150, 0.9, True)
-        self._gauge(d, 780, 300, 150, 0.38, False)
-        la = gold_text(lab_a, font("en", 800, 28), spacing=2)
-        lb = text_img(lab_b, font("en", 800, 28), DIM, spacing=2)
-        canvas.alpha_composite(la, (300 - la.width // 2, 500))
-        canvas.alpha_composite(lb, (780 - lb.width // 2, 500))
-        gap = gold_text("THE GAP", font("en", 800, 34), spacing=4)
-        canvas.alpha_composite(gap, (540 - gap.width // 2, 640))
-        d.line([390, 700, 690, 700], fill=(233, 180, 74, 200), width=3)
+        lab_a, lab_b = labs[0], labs[1] if len(labs) > 1 else "DISTRACTED"
+        items = []
+        self._gauge(d, 300, 320, 170, 0.9, True)
+        self._gauge(d, 780, 320, 170, 0.32, False)
+        items.append(self._item("gauge_a", "image", (130, 150, 470, 490),
+                                layout_gate.LAYER_PRIMARY, group="gauges"))
+        items.append(self._item("gauge_b", "image", (610, 150, 950, 490),
+                                layout_gate.LAYER_PRIMARY, group="gauges"))
+        for iid, lab, cx in (("label_a", lab_a, 300), ("label_b", lab_b, 780)):
+            fnt, size = self._fit_font(lab, 800, 30, 320)
+            self._draw_centered_label(canvas, items, iid, lab, fnt, size,
+                                      "gold" if cx == 300 else DIM, self.BG_DECL,
+                                      cx, 545)
+        gapf = font("en", 800, 36)
+        self._draw_centered_label(canvas, items, "gap", "THE GAP", gapf, 36,
+                                  "gold", self.BG_DECL, 540, 690)
+        return items
 
     def _gauge(self, d, cx, cy, r, val, hot):
         a0, sweep = 135, 270
@@ -871,110 +1044,211 @@ class Reel:
         d.ellipse([cx - 8, cy - 8, cx + 8, cy + 8], fill=GOLD_HI if hot else (200, 180, 140))
 
     def _comp_bars(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        rnd = random.Random(17)
-        n = 4
-        y0, gap = 80, 150
-        for i in range(n):
-            wbar = int(200 + rnd.random() * 620)
-            y = y0 + i * gap
-            x0 = 120
-            d.rounded_rectangle([x0, y, x0 + 760, y + 70], 12, fill=(46, 38, 28, 220))
-            d.rounded_rectangle([x0, y, x0 + wbar, y + 70], 12, fill=(233, 180, 74, 235) if i == 1 else (150, 106, 44, 220))
-            lab = labs[i] if i < len(labs) else f"TASK {i + 1}"
-            t = text_img(lab, font("en", 800, 24), IVORY, spacing=1)
-            canvas.alpha_composite(t, (x0 + 16, y + (70 - t.height) // 2))
-            if i == 1:
-                # the interruption marker
-                ix = x0 + wbar + 24
-                d.line([ix, y - 16, ix, y + 86], fill=(255, 228, 158, 230), width=4)
-                tl = text_img("SWITCH", font("en", 700, 20), GOLD_HI)
-                canvas.alpha_composite(tl, (ix + 12, y + 16))
+        """Task switch / attention residue: three labeled horizontal bars.
+        The label always sits ABOVE its bar — never behind or inside another
+        element — so the hierarchy is obvious at a glance."""
+        labs = list(self._labels_for(scene))[:3]
+        while len(labs) < 3:
+            labs.append("TASK")
+        items = []
+        widths = (760, 430, 610)
+        fills = ((233, 180, 74, 240), (150, 106, 44, 220), (96, 78, 52, 225))
+        for i, (y_top, wbar) in enumerate(zip((150, 390, 630), widths)):
+            fnt, size = self._fit_font(labs[i], 700, 28, 820)
+            tw, th = self._measure(labs[i], fnt)
+            d.text((120, y_top - 6), labs[i], font=fnt, fill=WARM)
+            items.append(self._item(f"row{i}_label", "text",
+                                    (120, y_top - 6, 120 + tw, y_top - 6 + th),
+                                    layout_gate.LAYER_LABEL, text=labs[i],
+                                    font_px=size, color=WARM, bg=self.BG_DECL))
+            yb = y_top + 56
+            d.rounded_rectangle([120, yb, 120 + wbar, yb + 64], 12, fill=fills[i])
+            items.append(self._item(f"row{i}_bar", "bar",
+                                    (120, yb, 120 + wbar, yb + 64), group="bars"))
+        return items
 
     def _comp_graph(self, canvas, d, scene):
+        """Prediction vs actual: one card, two lines, two legend chips."""
         labs = self._labels_for(scene)
-        card = rounded_card(900, 660, 24, CARD + (235,), (233, 180, 74, 120), 2)
-        canvas.alpha_composite(card, (90, 70))
-        d2 = ImageDraw.Draw(canvas)
-        ox, oy = 90 + 60, 70 + 560
-        d2.line([ox, oy, ox + 780, oy], fill=(140, 120, 90, 220), width=3)
-        d2.line([ox, oy, ox, 70 + 60], fill=(140, 120, 90, 220), width=3)
-        pred = [(ox + i * 86, oy - i * 44 - 24 * math.sin(i * 0.8)) for i in range(10)]
-        actual = [(ox + i * 86, oy - i * 30 - 12 * math.cos(i * 0.6)) for i in range(10)]
-        d2.line(pred, fill=(180, 160, 130, 200), width=3)
-        d2.line(actual, fill=GOLD, width=5)
-        d2.polygon([(pred[-1][0], pred[-1][1]), (pred[-1][0] - 16, pred[-1][1] - 22), (pred[-1][0] - 16, pred[-1][1] + 6)], fill=(180, 160, 130))
-        lab1 = gold_text(labs[0] if labs else "PREDICTION", font("en", 700, 24), spacing=1)
-        lab2 = text_img(labs[1] if len(labs) > 1 else "ACTUAL", font("en", 700, 24), GOLD_HI)
-        canvas.alpha_composite(lab1, (ox + 320, 70 + 40))
-        canvas.alpha_composite(lab2, (ox + 560, 70 + 40))
-        d2.line([ox + 300, 70 + 52, ox + 360, 70 + 52], fill=(180, 160, 130), width=3)
-        d2.line([ox + 540, 70 + 52, ox + 600, 70 + 52], fill=GOLD, width=5)
+        lab_a = labs[0] if labs else "PREDICTION"
+        lab_b = labs[1] if len(labs) > 1 else "ACTUAL"
+        items = []
+        cx0, cy0, cw, ch = 90, 150, 900, 560
+        card = rounded_card(cw, ch, 24, CARD + (238,), (233, 180, 74, 120), 2)
+        canvas.alpha_composite(card, (cx0, cy0))
+        items.append(self._item("card", "card", (cx0, cy0, cx0 + cw, cy0 + ch),
+                                group="graph"))
+        ox, oy = cx0 + 80, cy0 + 480
+        d.line([ox, oy, ox + 740, oy], fill=(140, 120, 90, 46), width=3)
+        d.line([ox, oy, ox, cy0 + 100], fill=(140, 120, 90, 46), width=3)
+        items.append(self._item("axes", "decoration",
+                                (ox, cy0 + 100, ox + 740, oy + 3),
+                                layout_gate.LAYER_DECORATION, opacity=0.18,
+                                parent="card", group="graph"))
+        pred = [(ox + 40 + i * 92, oy - 30 - i * 40 - 20 * math.sin(i * 0.8)) for i in range(8)]
+        actual = [(ox + 40 + i * 92, oy - 20 - i * 26 - 12 * math.cos(i * 0.6)) for i in range(8)]
+        d.line(pred, fill=(180, 160, 130, 220), width=3)
+        d.line(actual, fill=GOLD, width=5)
+        items.append(self._item("line_pred", "line",
+                                (min(x for x, _ in pred), min(y for _, y in pred),
+                                 max(x for x, _ in pred), max(y for _, y in pred)),
+                                layout_gate.LAYER_DIAGRAM, group="graph",
+                                endpoints=[pred[0], pred[-1]]))
+        items.append(self._item("line_actual", "line",
+                                (min(x for x, _ in actual), min(y for _, y in actual),
+                                 max(x for x, _ in actual), max(y for _, y in actual)),
+                                layout_gate.LAYER_DIAGRAM, group="graph",
+                                endpoints=[actual[0], actual[-1]]))
+        for i, (lab, lx) in enumerate(((lab_a, 500), (lab_b, 730))):
+            chip = self._chip(lab, 200, 54)
+            canvas.alpha_composite(chip, (lx, cy0 + 40))
+            items.append(self._item(f"legend{i}", "chip",
+                                    (lx, cy0 + 40, lx + chip.width, cy0 + 94),
+                                    parent="card", group="graph"))
+            t1 = gold_text(lab, font("en", 800, 24), spacing=1)
+            items.append(self._item(f"legend{i}_text", "text",
+                                    (lx + (chip.width - t1.width) // 2,
+                                     cy0 + 40 + (54 - t1.height) // 2,
+                                     lx + (chip.width + t1.width) // 2,
+                                     cy0 + 40 + (54 + t1.height) // 2),
+                                    layout_gate.LAYER_LABEL, text=lab, font_px=24,
+                                    color=GOLD_HI, bg=(26, 20, 13),
+                                    parent=f"legend{i}", group="graph"))
+        return items
 
     def _comp_loop(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        cx, cy, rx, ry = 540, 420, 330, 300
-        n = max(3, min(4, len(labs)))
-        labs = (list(labs) + ["CHECK", "AGREE"])[:n]
+        """The loop: 3-4 step chips on a ring with direction arrows, and the
+        eye kept ONLY as a low-opacity accent in the empty center."""
+        labs = list(self._labels_for(scene))[:4]
+        while len(labs) < 3:
+            labs.append("REPEAT")
+        n = len(labs)
+        items = []
+        cx, cy, rx, ry = 540, 430, 350, 285
+        d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=(233, 180, 74, 46), width=3)
+        items.append(self._item("ring", "decoration",
+                                (cx - rx, cy - ry, cx + rx, cy + ry),
+                                layout_gate.LAYER_DECORATION, opacity=0.18, group="loop"))
         pts = []
         for i in range(n):
             a = -math.pi / 2 + 2 * math.pi * i / n
             pts.append((cx + math.cos(a) * rx, cy + math.sin(a) * ry))
-        d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=(233, 180, 74, 140), width=3)
-        for i, (x, y) in enumerate(pts):
-            chip = self._chip(labs[i], 220, 64)
-            canvas.alpha_composite(chip, (int(x - chip.width / 2), int(y - chip.height / 2)))
-            d.ellipse([x - 8, y - 8, x + 8, y + 8], fill=GOLD_HI)
-        g = glow_disc(240, (255, 200, 110, 110), 80, 50)
-        canvas.alpha_composite(g, (cx - 120, cy - 120))
+        for i in range(n):
+            # direction arrowhead on the ring between this chip and the next
+            a_mid = -math.pi / 2 + 2 * math.pi * (i + 0.5) / n
+            mx, my = cx + math.cos(a_mid) * rx, cy + math.sin(a_mid) * ry
+            tang = a_mid + math.pi / 2
+            tip = (mx + math.cos(tang) * 14, my + math.sin(tang) * 14)
+            b1 = (mx + math.cos(tang + 2.6) * 12, my + math.sin(tang + 2.6) * 12)
+            b2 = (mx + math.cos(tang - 2.6) * 12, my + math.sin(tang - 2.6) * 12)
+            d.polygon([tip, b1, b2], fill=(233, 180, 74, 200))
+            items.append(self._item(f"dir{i}", "decoration",
+                                    (mx - 16, my - 16, mx + 16, my + 16),
+                                    layout_gate.LAYER_DECORATION, opacity=0.78,
+                                    group="loop"))
+        for i, ((x, y), lab) in enumerate(zip(pts, labs)):
+            chip = self._chip(lab, 260, 68)
+            canvas.alpha_composite(chip, (int(x - chip.width / 2), int(y - 34)))
+            items.append(self._item(f"step{i}", "chip",
+                                    (int(x - chip.width / 2), int(y - 34),
+                                     int(x + chip.width / 2), int(y + 34)), group="loop"))
+            t1 = gold_text(lab, font("en", 800, 28), spacing=2)
+            items.append(self._item(f"step{i}_text", "text",
+                                    (int(x - t1.width / 2), int(y - t1.height / 2),
+                                     int(x + t1.width / 2), int(y + t1.height / 2)),
+                                    layout_gate.LAYER_LABEL, text=lab, font_px=28,
+                                    color=GOLD_HI, bg=(26, 20, 13),
+                                    parent=f"step{i}", group="loop"))
         eye = self.eye.resize((110, 110), Image.LANCZOS)
-        canvas.alpha_composite(with_alpha(eye, 0.9), (cx - 55, cy - 55))
+        canvas.alpha_composite(with_alpha(eye, 0.30), (cx - 55, cy - 55))
+        items.append(self._item("eye_accent", "emblem",
+                                (cx - 55, cy - 55, cx + 55, cy + 55),
+                                layout_gate.LAYER_DECORATION + 5, opacity=0.30,
+                                group="loop"))
+        return items
 
     def _comp_web(self, canvas, d, scene):
-        cx, cy, rx, ry = 540, 430, 400, 280
-        angles = [-90, -30, 30, 90, 150, 210]
-        labs = (list(self._labels_for(scene)) + ["LINK", "IDEA", "WATCH", "CHECK", "LEARN", "NOTICE"])[:6]
-        pts = []
-        for i, ang in enumerate(angles):
-            a = math.radians(ang)
-            pts.append((cx + math.cos(a) * rx, cy + math.sin(a) * ry))
-        for i in range(6):
-            for j in range(i + 1, 6):
-                if (i + 3) % 6 == j or abs(i - j) == 1 or (i, j) in ((0, 3), (1, 4), (2, 5)):
-                    d.line([pts[i], pts[j]], fill=(233, 180, 74, 100), width=2)
-        for (x, y), lab in zip(pts, labs):
-            chip = self._chip(lab, 170, 54)
-            canvas.alpha_composite(chip, (int(x - chip.width / 2), int(y - chip.height / 2)))
+        """Concept link: three chips in a clear left-to-right chain — no dense
+        network, no crossing lines."""
+        labs = list(self._labels_for(scene))[:3]
+        while len(labs) < 3:
+            labs.append("LINK")
+        items = []
+        xs = (90, 410, 730)
+        cy = 420
+        for i, (x, lab) in enumerate(zip(xs, labs)):
+            chip = self._chip(lab, 240, 64)
+            canvas.alpha_composite(chip, (x, cy - 32))
+            items.append(self._item(f"node{i}", "chip",
+                                    (x, cy - 32, x + chip.width, cy + 32), group="chain"))
+            t1 = gold_text(lab, font("en", 800, 26), spacing=2)
+            items.append(self._item(f"node{i}_text", "text",
+                                    (x + (chip.width - t1.width) // 2, cy - t1.height // 2,
+                                     x + (chip.width + t1.width) // 2, cy + t1.height // 2),
+                                    layout_gate.LAYER_LABEL, text=lab, font_px=26,
+                                    color=GOLD_HI, bg=(26, 20, 13),
+                                    parent=f"node{i}", group="chain"))
+            if i < 2:
+                x0 = x + 240 + 10
+                x1 = xs[i + 1] - 10
+                d.line([x0, cy, x1 - 14, cy], fill=(233, 180, 74, 210), width=4)
+                d.polygon([(x1, cy), (x1 - 18, cy - 10), (x1 - 18, cy + 10)], fill=GOLD)
+                items.append(self._item(f"link{i}", "line", (x0, cy - 10, x1, cy + 10),
+                                        layout_gate.LAYER_DIAGRAM, group="chain",
+                                        endpoints=[(x0, cy), (x1, cy)]))
+        return items
 
     def _comp_notifications(self, canvas, d, scene):
-        labs = self._labels_for(scene)
-        # phone silhouette
-        ph = rounded_card(300, 620, 40, (18, 15, 11, 245), (233, 180, 74, 140), 3)
-        canvas.alpha_composite(ph, (140, 100))
-        for i in range(3):
-            y = 160 + i * 150
-            lab = labs[i] if i < len(labs) else "PING"
-            card = rounded_card(240, 100, 16, (40, 32, 22, 245), (255, 228, 158, 180), 2)
-            t = text_img(lab, font("en", 800, 24), GOLD_HI)
-            card.alpha_composite(t, ((card.width - t.width) // 2, (card.height - t.height) // 2))
-            canvas.alpha_composite(card, (170, y))
-            d.ellipse([392, y + 12, 412, y + 32], fill=AMBER + (240,))
-        # focus bar resetting (the cost of the switch)
-        y = 800
-        d.line([560, y, 1040, y], fill=(60, 50, 36, 255), width=14)
-        d.line([560, y, 700, y], fill=GOLD, width=14)
-        d.ellipse([694, y - 12, 718, y + 12], fill=GOLD_HI)
-        lab = gold_text("FOCUS RESETS", font("en", 800, 26), spacing=2)
-        canvas.alpha_composite(lab, (560, y + 40))
+        """Notification → attention shift: a phone with two pings, one arrow,
+        one dropping focus bar."""
+        labs = list(self._labels_for(scene))[:3]
+        while len(labs) < 3:
+            labs.append("FOCUS LOST")
+        items = []
+        ph = rounded_card(330, 640, 40, (18, 15, 11, 245), (233, 180, 74, 140), 3)
+        canvas.alpha_composite(ph, (110, 100))
+        items.append(self._item("phone", "card", (110, 100, 440, 740), group="notif"))
+        for i, y in enumerate((210, 360)):
+            card = rounded_card(270, 100, 16, (40, 32, 22, 245), (255, 228, 158, 180), 2)
+            canvas.alpha_composite(card, (140, y))
+            items.append(self._item(f"ping{i}", "chip", (140, y, 410, y + 100),
+                                    parent="phone", group="notif"))
+            fnt, size = self._fit_font(labs[i], 800, 26, 230)
+            tw, th = self._measure(labs[i], fnt)
+            d.text((140 + (270 - tw) // 2, y + (100 - th) // 2 - 4),
+                   labs[i], font=fnt, fill=GOLD_HI)
+            items.append(self._item(f"ping{i}_text", "text",
+                                    (140 + (270 - tw) // 2, y + (100 - th) // 2 - 4,
+                                     140 + (270 + tw) // 2, y + (100 + th) // 2 - 4),
+                                    layout_gate.LAYER_LABEL, text=labs[i], font_px=size,
+                                    color=GOLD_HI, bg=(40, 32, 22), parent=f"ping{i}",
+                                    group="notif"))
+        d.line([460, 420, 580, 420], fill=(255, 228, 158, 220), width=4)
+        d.polygon([(596, 420), (576, 408), (576, 432)], fill=GOLD_HI)
+        items.append(self._item("shift", "line", (460, 408, 596, 432),
+                                layout_gate.LAYER_DIAGRAM, group="notif",
+                                endpoints=[(460, 420), (596, 420)]))
+        d.line([620, 420, 1040, 420], fill=(60, 50, 36, 255), width=14)
+        d.line([620, 420, 760, 420], fill=GOLD, width=14)
+        items.append(self._item("focus_bar", "bar", (612, 410, 1048, 430), group="notif"))
+        fnt, size = self._fit_font(labs[2], 800, 28, 420)
+        tw, th = self._measure(labs[2], fnt)
+        d.text((620, 480), labs[2], font=fnt, fill=GOLD_HI)
+        items.append(self._item("focus_label", "text",
+                                (620, 480, 620 + tw, 480 + th),
+                                layout_gate.LAYER_LABEL, text=labs[2], font_px=size,
+                                color=GOLD_HI, bg=self.BG_DECL))
+        return items
 
     def _comp_code(self, canvas, d, scene):
         """Justified code scene: curated, syntax-coherent snippet only.
-        Warm palette (gold/ivory/bronze) — no cold syntax colors."""
+        Warm palette (gold/ivory/bronze) — no cold syntax colors. The snippet
+        is ONE semantic visual (declared as a single image item)."""
         lines = scene.get("code_lines") or vp.CODE_SNIPPETS["debug"]
+        items = []
         w, h = 920, 620
         card = rounded_card(w, h, 20, CARD + (242,), (233, 180, 74, 140), 2)
         d2 = ImageDraw.Draw(card)
-        # traffic dots (warm)
         for i, col in enumerate(((233, 180, 74, 220), (150, 106, 44, 220), (90, 74, 50, 220))):
             d2.ellipse([30 + i * 34, 26, 50 + i * 34, 46], fill=col)
         f = font("en", 500, 26)
@@ -990,9 +1264,20 @@ class Reel:
                 col = WARM
             d2.text((44, y), ln, font=f, fill=col)
             y += 56
-        lab = text_img(scene.get("visual_purpose", "").upper()[:28], font("en", 700, 20), DIM)
-        card.alpha_composite(lab, (44, h - 56))
-        canvas.alpha_composite(card, (80, 120))
+        canvas.alpha_composite(card, (80, 110))
+        items.append(self._item("code_card", "card", (80, 110, 80 + w, 110 + h),
+                                group="code"))
+        items.append(self._item("snippet", "image", (80 + 44, 110 + 84, 80 + w - 40, 110 + y),
+                                layout_gate.LAYER_PRIMARY, parent="code_card", group="code"))
+        purpose = text_norm.normalize_text(scene.get("visual_purpose", "").upper())[:28]
+        pf = font("en", 700, 22)
+        pw, phh = self._measure(purpose, pf)
+        d2.text((44, h - 52), purpose, font=pf, fill=WARM_DIM)
+        items.append(self._item("purpose", "text",
+                                (80 + 44, 110 + h - 52, 80 + 44 + pw, 110 + h - 52 + phh),
+                                layout_gate.LAYER_LABEL, text=purpose, font_px=22,
+                                color=WARM_DIM, bg=CARD, parent="code_card"))
+        return items
 
     # -----------------------------------------------------------------------
     # Legacy beat widgets — ONLY for pre-plan test fixtures (scripts without
@@ -1218,9 +1503,16 @@ class Reel:
             is_photo = scene["asset"].get("kind") in ("repo", "external") \
                 and self._photo_for(scene) is not None
         if not is_photo:
-            self.draw_lattice(fr, t, 0.35 if beat == "hook" else 1.0)
-            if beat != "hook" and not is_photo:
-                self.draw_web(fr, t, beat)
+            if self.plan is None:
+                # pre-plan test fixtures keep the legacy background treatment
+                self.draw_lattice(fr, t, 0.35 if beat == "hook" else 1.0)
+                if beat != "hook":
+                    self.draw_web(fr, t, beat)
+            else:
+                # Issue #32 §4: plan-driven scenes carry one dominant semantic
+                # visual — no dense generic network behind them, just a subtle
+                # low-opacity brand accent kept clear of every text zone.
+                self.draw_brand_accent(fr, t)
         if scene is not None:
             self._render_scene(fr, scene, sts, s_d)
             # short crossfade from the previous frame at scene starts
@@ -1228,7 +1520,7 @@ class Reel:
                 fr = Image.blend(self._last_frame.convert("RGBA"), fr, ease(sts / 0.4))
         else:
             self.widget(fr, t, beat, ts, sd)
-        if is_photo:
+        if is_photo and self.plan is None:
             self.draw_lattice(fr, t, 0.3)
         self.draw_captions(fr, t)
         self.draw_chrome(fr, t, beat, t0)
@@ -1248,9 +1540,12 @@ class Reel:
                 and self._photo_for(scene) is not None:
             self._render_photo(fr, scene, self._photo_for(scene), max(sts, 0.5), max(s_d, 1.0))
         else:
-            self.draw_lattice(fr, t)
-            if beat != "hook":
-                self.draw_web(fr, t, beat)
+            if self.plan is None:
+                self.draw_lattice(fr, t)
+                if beat != "hook":
+                    self.draw_web(fr, t, beat)
+            else:
+                self.draw_brand_accent(fr, t)
             if scene is not None:
                 self._render_scene(fr, scene, max(sts, 0.6), max(s_d, 1.0))
             else:

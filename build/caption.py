@@ -12,12 +12,19 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import text_norm
 common.assert_content_language_en()
 LIMIT = 2200
 
 
 def build(sc):
     c = sc.get("caption", {})
+    # Issue #32 §1/§2: the caption derives from the SAME normalized
+    # representation as TTS/timing/subtitles. U+FFFD is fail-closed here —
+    # corrupted text must never reach a public caption.
+    if text_norm.contains_replacement_char(json.dumps(c or {}, ensure_ascii=False)):
+        raise SystemExit("caption blocked: U+FFFD replacement character in "
+                         "caption source — corrupted text must never be posted")
     parts = [c.get("hook", "").strip(), "", c.get("intro", "").strip()]
     for sec in c.get("sections", []):
         parts += ["", f"{sec.get('icon', '✦')} {sec['title']}"]
@@ -33,6 +40,9 @@ def build(sc):
         pass                                     # never claim an official logo in captions
     cap = "\n".join(parts).strip()
     cap = re.sub(r"\n{3,}", "\n\n", cap)
+    # defensive single-sourced normalization (idempotent for already-normalized
+    # scripts; fixes any upstream drift without changing meaning)
+    cap = "\n".join(text_norm.normalize_text(ln) for ln in cap.split("\n"))
     # Limited non-spam hashtag set with the brand tags guaranteed present
     # (hashtag_policy.always, incl. #metacognitionhq), spam tags dropped and
     # the cap (hashtag_policy.max) respected.

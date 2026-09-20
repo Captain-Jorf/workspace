@@ -33,7 +33,9 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import cursor_qa
+import layout_gate
 import palette_qa
+import text_norm
 import visual_plan
 
 CHECKS = ["content_language", "english_only", "technology_relevance", "metacognition_relevance",
@@ -413,6 +415,12 @@ def check_english(rep, script, pol):
     lines = common.narration_lines(script)
     text = " ".join(lines)
     low = text.lower()
+    # Issue #32: the informality markers use STRAIGHT apostrophes while Groq
+    # narration carried curly ones (You're/brain's/you've with U+2019), so a
+    # reel full of contractions was flagged "no contractions — formal".
+    # Normalize first — the same single-sourced text_norm the renderer uses —
+    # so the detector sees the same representation as TTS/timing/display.
+    low = text_norm.normalize_text(low)
     markers = sum(1 for m in pol["tone"]["informality_markers"] if m in low)
     if markers == 0:
         rep.warn("english_quality", "no contractions — formal", 3)
@@ -431,6 +439,40 @@ def check_english(rep, script, pol):
     if avg > 18:
         rep.warn("english_quality", f"avg line {avg:.1f} words long", 2)
     rep.details["english"] = {"informality": markers, "avg": round(avg,1)}
+
+
+def check_text_renderability(rep, script, pol, timing=None):
+    """Issue #32 §1/§2/§11 — HARD BLOCKERS regardless of score:
+    * U+FFFD replacement character anywhere in visible/spoken text;
+    * any character without a glyph in the ACTUAL production font cmap
+      (the intersection of en-400..en-800 — never a guessed allowlist,
+      never OS font fallback);
+    * TTS/timing/display source mismatch after normalization (a stage that
+      normalized on its own would desynchronize the karaoke).
+    The renderer applies the identical gate before frame 0; QA re-checks it
+    here so a regression in ANY stage is rejected at final QA."""
+    blockers = text_norm.glyph_gate_issues(script)
+    for b in blockers:
+        rep.block("english_quality", f"unsupported glyph: {b}")
+    for t in text_norm.script_display_texts(script):
+        if text_norm.contains_replacement_char(t):
+            rep.block("english_quality",
+                      f"U+FFFD replacement character in display text {(t or '')[:60]!r} — "
+                      "corrupted text must never reach TTS/render")
+    if timing is not None and timing.get("chunks"):
+        for p in text_norm.parity_issues(script, timing):
+            rep.block("subtitle_layout",
+                      f"source/display mismatch after normalization: {p}")
+    try:
+        n_cov = len(text_norm.supported_codepoints())
+    except FileNotFoundError:
+        n_cov = 0
+    rep.details["text_renderability"] = {
+        "glyph_blockers": len(blockers),
+        "parity_checked": bool(timing and timing.get("chunks")),
+        "font_weights": list(text_norm.PRODUCTION_FONT_WEIGHTS),
+        "supported_codepoints": n_cov,
+    }
 
 def check_layout(rep, layout, timing, pol):
     L = pol["layout"]
@@ -672,10 +714,65 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
     for i in issues:
         rep.block("visual_semantics", i)
     try:
+        prov = visual_plan.photo_provenance_summary(plan)
+    except Exception:
+        prov = {}
+    try:
         rep.details["visuals"] = {"present": True, **visual_plan.plan_summary(plan),
-                                  "photo_provenance": visual_plan.photo_provenance_summary(plan)}
+                                  "photo_provenance": prov}
     except Exception:
         rep.details["visuals"] = {"present": True}
+
+    # Issue #32 §9: a zero-photo reel is NOT "fully visually complete". The
+    # photo service stays fail-soft (never blocks the pipeline), but QA must
+    # say WHY retrieval failed and flag the degraded mix for human review.
+    if prov.get("degraded"):
+        outcomes = prov.get("retrieval_outcomes") or {}
+        rep.warn("visual_semantics",
+                 "photo_mix_degraded — photo-designated scenes fell back to "
+                 f"procedural visuals (designated={prov.get('photo_designated', 0)}, "
+                 f"retrieved={prov.get('photos_retrieved', 0)}, reasons={outcomes}); "
+                 "the reel must not be described as photographic variety", 2)
+    elif prov.get("retrieval_outcomes"):
+        soft = {"search_http_error", "search_timeout", "no_results",
+                "no_allowed_license", "disabled", "cache_hit"}
+        soft_hits = {k: v for k, v in (prov.get("retrieval_outcomes") or {}).items()
+                     if k in soft and v}
+        if soft_hits and prov.get("photos_retrieved", 0) > 0:
+            rep.warn("visual_semantics",
+                     f"Openverse partially unavailable ({soft_hits}) — clean "
+                     "procedural fallback applied", 1)
+
+    # Issue #32 §5/§11: re-run the DETERMINISTIC layout gate on the declared
+    # items recorded in layout.json (the authoritative collision/density
+    # source — glyph/layout verdicts never come from OCR alone). Overlapping
+    # semantic text, hidden text, unreadable labels, lines through text and
+    # safe-zone intrusion block regardless of score.
+    layout = common.load_json(os.path.join(ep, "layout.json"), {}) or {}
+    scene_items = layout.get("scene_items") or {}
+    zone = layout.get("scene_zone") or {}
+    zy = int(zone.get("y", 0))
+    if scene_items:
+        Lz = pol["layout"]
+        band_bottom = int(Lz.get("en_top", 200)) + 3 * int(Lz.get("en_row_height", 78)) + 10
+        safe_boxes = [
+            ("subtitle", (0, 0, int(Lz.get("width", 1080)), band_bottom)),
+            ("bottom-reserved", (0, int(Lz.get("safe_bottom", 1450)),
+                                 int(Lz.get("width", 1080)), int(Lz.get("height", 1920)))),
+        ]
+        declared_issues = 0
+        for sid, items in scene_items.items():
+            shifted = []
+            for it in items or []:
+                it2 = dict(it)
+                b = it2.get("bbox") or [0, 0, 0, 0]
+                it2["bbox"] = [b[0], b[1] + zy, b[2], b[3] + zy]
+                shifted.append(it2)
+            for issue in layout_gate.check_items(shifted, safe_boxes=safe_boxes):
+                rep.block("visual_semantics", f"declared layout of scene {sid}: {issue}")
+                declared_issues += 1
+        rep.details["visuals"]["declared_layout_gate"] = {
+            "scenes_checked": len(scene_items), "issues": declared_issues}
     if not (video and os.path.exists(video)) or no_frames:
         rep.details["visuals"]["rendered_frames_checked"] = False
         return
@@ -730,6 +827,10 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
         for sid, beat, t_mid, arrs, times in frames:
             sc = sc_by_id.get(sid) or {"scene_id": sid, "beat": beat}
             is_code = bool(sc.get("code_justified"))
+            # (a0) blank/degenerate frames are a hard render failure
+            if max(float(np.std(arr)) for arr in arrs) < 2.0:
+                rep.block("visual_semantics",
+                          f"rendered frame of scene {sid} is blank (near-zero pixel variance)")
             # (a) the legacy cold code/terminal card must not appear anywhere
             cold_card = max(detect_code_card(arr) for arr in arrs)
             if cold_card > COLD_CARD_PX and not is_code:
@@ -1225,6 +1326,9 @@ def pre_render_text_gate(script, topic=None, pol=None, *, ep_dir=None,
     check_sources(rep, script, topic, pol, skip_network=True)
     check_script(rep, script, pol)
     check_english(rep, script, pol)
+    # Issue #32 §1: glyph coverage + U+FFFD block BEFORE TTS/render — same
+    # blockers final QA re-checks on the rendered episode.
+    check_text_renderability(rep, script, pol)
     check_caption_text(rep, caption_text if caption_text is not None else build_caption_text(script, pol),
                        script, pol)
     # Reviewer lifecycle: explicit not applicable for static fallback
@@ -1281,6 +1385,7 @@ def evaluate(a, pol):
     check_sources(rep, script, topic, pol, a.skip_network)
     check_script(rep, script, pol)
     check_english(rep, script, pol)
+    check_text_renderability(rep, script, pol, timing)
     check_layout(rep, layout, timing, pol)
     check_video(rep, a.video, timing, pol, layout)
     check_audio(rep, a.video, timing, script, pol)

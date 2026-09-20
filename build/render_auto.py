@@ -19,7 +19,8 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 common.assert_content_language_en()  # fail-closed EN-only  # noqa: E402
-from reel_engine import Reel, W, H, FPS, font  # noqa: E402
+from reel_engine import Reel, W, H, FPS, font, ZONE_Y, ZONE_W, ZONE_H  # noqa: E402
+import layout_gate  # noqa: E402
 
 
 def stills(reel, out_dir, tag):
@@ -84,6 +85,16 @@ def main():
         {"scene_id": sc.get("scene_id"), "beat": sc.get("beat"),
          "start": round(float(t0), 3), "end": round(float(t1), 3)}
         for sc, t0, t1 in (reel.scene_times or [])]
+    # Issue #32 §5: the DECLARED layout items (bbox + z-layer + kind) for
+    # every procedural scene, as validated by the layout gate before frame 0.
+    # Final QA re-runs the gate on these recorded items instead of trusting
+    # OCR — the authoritative source for collision/density checks. Items are
+    # in the 1080x840 design space; add scene_zone_offset to reach frame space.
+    layout["scene_items"] = {sid: items for sid, items in
+                             getattr(reel, "_scene_items", {}).items()}
+    layout["scene_zone"] = {"x": 0, "y": ZONE_Y, "w": ZONE_W, "h": ZONE_H}
+    layout["scene_density"] = {sid: layout_gate.scene_density_report(items)
+                               for sid, items in getattr(reel, "_scene_items", {}).items()}
     # Render manifest for the final rendered-visual QA: which scenes rendered
     # code visuals (the plan's justified set) — cross-checked by the supervisor
     # against the rendered frames.

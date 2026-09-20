@@ -15,9 +15,23 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import text_norm
 from reel_engine import Reel, W, H, GOLD, GOLD_HI, WARM, font, text_img, gold_text, glow_disc, rounded_card, with_alpha
 
 def build(reel, out_dir, tag):
+    # Issue #32 §1: poster text is visible text too — normalize and glyph-gate
+    # it against the ACTUAL production font cmap BEFORE drawing, fail closed.
+    meta = reel.script.get("meta", {}) or {}
+    extras = [
+        f"{meta.get('pillar', '')} · {meta.get('content_date', tag)}",
+        str(meta.get("technology_angle", "") or ""),
+        str(reel.visual_direction or ""),
+        str((reel.script.get("caption") or {}).get("hook", "") or ""),
+    ]
+    issues = text_norm.glyph_gate_issues(reel.script, extra_texts=extras)
+    if issues:
+        raise RuntimeError("poster glyph gate blocked before draw: "
+                           + " · ".join(issues[:6]))
     fr = reel.bg_crop("base", 0, 0, 1).convert("RGBA")
     reel.draw_lattice(fr, 3.0, 0.8)
     d = ImageDraw.Draw(fr)
@@ -39,8 +53,9 @@ def build(reel, out_dir, tag):
     fr.alpha_composite(em, (540 - 260, cy - 260))
     # top: pillar + technology_angle + date
     meta = reel.script["meta"]
-    tagline = f"{meta.get('pillar', 'AI_JUDGMENT')} · {meta.get('content_date', tag)}"
-    tech_angle = meta.get('technology_angle', '')[:50]
+    tagline = text_norm.normalize_text(
+        f"{meta.get('pillar', 'AI_JUDGMENT')} · {meta.get('content_date', tag)}")
+    tech_angle = text_norm.normalize_text(meta.get('technology_angle', '') or "")[:50]
     t = text_img(tagline, font("en", 700, 30), GOLD, spacing=6)
     fr.alpha_composite(t, (540 - t.width // 2, 280))
     if tech_angle:

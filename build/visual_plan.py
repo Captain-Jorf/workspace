@@ -264,17 +264,46 @@ _cat("skill-progression", "ladder", ["skill", "progress", "practice", "level", "
      [["STUCK", "HELPED", "SOLID", "OWN"]], photo_ok=True)
 
 # --- DIGITAL_ATTENTION -----------------------------------------------------------
+# Issue #32 §4: ATTENTION scenes must communicate ONE clear concept an ordinary
+# viewer reads in under three seconds (notification → attention shift,
+# listening vs drafting a reply, focus before/after, pause → count → refocus,
+# the pause-and-reflect loop) — never a generic dense network.
 _cat("notification-cascade", "notifications", ["notification", "alert", "ping", "slack",
-                                                "message", "badge"],
-     "show the notifications cascading into focus loss",
-     [["PING", "PING", "FOCUS LOST"]], beats=("problem", "example"))
+                                                "message", "badge", "suggestion"],
+     "show a notification arriving and attention shifting to it",
+     [["NEW MESSAGE", "ANOTHER PING", "FOCUS LOST"],
+      ["NEW MESSAGE", "SECOND PING", "FOCUS DROPS"]],
+     beats=("problem", "example"))
 _cat("focus-meter", "gauges", ["focus", "concentration", "deep work", "interrupted"],
-     "show focus dropping under interruption",
-     [["FOCUS", "AFTER SWITCH"]], beats=("problem", "explain"))
-_cat("task-queue", "bars", ["task", "queue", "switch", "context", "batch"],
+     "show focus before and after the interruption",
+     [["FOCUS", "DISTRACTED"], ["FOCUS", "AFTER SWITCH"]],
+     beats=("problem", "explain"))
+_cat("attention-drift", "dual", ["stand", "wander", "drift", "nod", "screen",
+                                 "thoughts", "elsewhere", "updates"],
+     "contrast eyes on the screen with a mind drifting elsewhere",
+     [["EYES ON SCREEN", "MIND ELSEWHERE"], ["LISTENING", "WANDERING"]],
+     photo_ok=True, beats=("problem", "explain"))
+_cat("listen-vs-draft", "dual", ["listening", "drafting", "reply", "replies",
+                                 "hearing", "gap", "typing", "imagine"],
+     "contrast actually listening with drafting a reply in your head",
+     [["HEARING", "DRAFTING A REPLY"], ["LISTENING", "TYPING"]],
+     photo_ok=True, beats=("problem", "explain", "example"))
+_cat("refocus-steps", "ladder", ["pause", "count", "refocus", "urge", "notice",
+                                 "hold", "silently", "voice"],
+     "the pause-count-refocus steps that bring attention back",
+     [["PAUSE", "COUNT", "REFOCUS"], ["NOTICE", "PAUSE", "RETURN"]],
+     beats=("technique", "explain"))
+_cat("reflect-loop", "loop", ["repeat", "loop", "reflect", "meeting", "train",
+                              "muscle", "practice", "each"],
+     "the repeat-pause-reflect loop that trains your attention",
+     [["PAUSE", "REFLECT", "REPEAT"], ["NOTICE", "PAUSE", "REFLECT"]],
+     photo_ok=True, beats=("technique",))
+_cat("task-queue", "bars", ["task", "queue", "switch", "context", "batch",
+                            "assignment", "missed"],
      "show the tasks waiting while attention switches",
-     [["TASK", "QUEUED", "WAITING"]])
-_cat("attention-residue", "bars", ["residue", "left behind", "minutes", "return", "reload"],
+     [["TASK A", "QUEUED", "WAITING"], ["TASK", "QUEUED", "WAITING"]])
+_cat("attention-residue", "bars", ["residue", "left behind", "minutes", "return",
+                                   "reload", "note", "jot"],
      "show the attention left behind after each switch",
      [["TASK A", "RESIDUE", "TASK B"]])
 _cat("context-timeline", "ladder", ["context", "timeline", "day", "window", "batch"],
@@ -322,9 +351,10 @@ PILLAR_CATEGORIES = {
     "PRODUCT": ["said-vs-did", "interview-notes", "hypothesis-ladder", "evidence-filter",
                 "decision-matrix", "funnel", "observation-log", "tradeoff-scale",
                 "prediction-graph", "concept-web"],
-    "ATTENTION": ["notification-cascade", "focus-meter", "task-queue",
-                  "attention-residue", "context-timeline", "prediction-graph",
-                  "concept-web"],
+    "ATTENTION": ["notification-cascade", "focus-meter", "attention-drift",
+                  "listen-vs-draft", "refocus-steps", "reflect-loop",
+                  "task-queue", "attention-residue", "context-timeline",
+                  "prediction-graph", "concept-web"],
     "HUMAN_AI": ["handoff-chain", "verification-gate", "role-complement",
                  "approval-gate", "shared-decision-loop", "human-ai-network",
                  "concept-web"],
@@ -669,17 +699,25 @@ def _external_asset_for(scene_narration, topic_kw, allow_external,
     Any problem → None → deterministic procedural fallback (the reel never
     fails because the external service is unavailable, and never reuses an
     image to compensate).
+
+    Returns (asset_or_None, reason): the reason is one of the safe
+    asset_fetch failure categories (no URLs, no remote bodies) so the plan —
+    and the daily Issue — can explain WHY a slot fell back. A slot that was
+    never attempted (external retrieval disabled) reports "disabled".
     """
     if not allow_external:
-        return None
+        return None, "disabled"
     try:
         import asset_fetch
     except Exception:
-        return None
+        return None, "disabled"
     if not asset_fetch.enabled():
-        return None
-    return asset_fetch.fetch_image(external_asset_query(category, topic_kw),
-                                   skip_urls=used_urls)
+        return None, "disabled"
+    asset = asset_fetch.fetch_image(external_asset_query(category, topic_kw),
+                                    skip_urls=used_urls)
+    reason = asset_fetch.last_outcome() or (
+        "retrieved" if asset is not None else "no_results")
+    return asset, reason
 
 
 # A normal 60-120 s reel intentionally carries a balanced visual mix
@@ -781,7 +819,8 @@ def build_visual_plan(script, pol=None, allow_external=None):
             slot_pref = None
             if beat == "problem" and sk["split"] == 0:
                 slot_pref = ("interview-notes", "evidence-filter", "hypothesis-ladder",
-                             "said-vs-did", "notification-cascade", "handoff-chain")
+                             "said-vs-did", "notification-cascade", "handoff-chain",
+                             "attention-drift", "listen-vs-draft")
             elif beat == "example" and sk["split"] == 0:
                 slot_pref = ("said-vs-did", "hallucination-trap", "source-comparison",
                              "tradeoff-scale", "worked-example", "failure-chain")
@@ -791,7 +830,8 @@ def build_visual_plan(script, pol=None, allow_external=None):
                              "focus-meter")
             elif beat == "technique" and sk["split"] == 0:
                 slot_pref = ("verification-checklist", "hypothesis-ladder", "retrieval-loop",
-                             "decision-matrix", "task-queue", "approval-gate")
+                             "decision-matrix", "task-queue", "approval-gate",
+                             "refocus-steps", "reflect-loop")
             cat = _pick_category(narration, tkw, pillar, used_cat, prev_cat, slot_pref,
                                  beat=sk["beat"])
             # code categories only when the narration genuinely justifies code;
@@ -814,12 +854,14 @@ def build_visual_plan(script, pol=None, allow_external=None):
 
     scenes = []
     ext_used_urls = []
+    retrieval_outcomes = {}
     for i, sk in enumerate(skeleton):
         beat = sk["beat"]
         narration = sk["narration"]
         dur = round(sk["words"] / wps, 2)
         cat = cats[i]
         purpose = C[cat]["purpose"]
+        retrieval_reason = "procedural"
         if beat == "hook":
             asset = _asset_repo("emblem", REPO_ASSETS["emblem"])
         elif beat == "ending":
@@ -829,8 +871,11 @@ def build_visual_plan(script, pol=None, allow_external=None):
             # (CC0/PDM only); on any failure the topic-specific procedural
             # visual for this scene — deterministic, distinct, never a reused
             # repository hero image
-            asset = _external_asset_for(narration, tkw, allow_external,
-                                        category=cat, used_urls=ext_used_urls)
+            asset, retrieval_reason = _external_asset_for(
+                narration, tkw, allow_external,
+                category=cat, used_urls=ext_used_urls)
+            retrieval_outcomes[retrieval_reason] = \
+                retrieval_outcomes.get(retrieval_reason, 0) + 1
             if asset is None:
                 asset = _asset_proc(cat, C[cat]["comp"], i)
             else:
@@ -873,10 +918,23 @@ def build_visual_plan(script, pol=None, allow_external=None):
             "code_justified": bool(just_code),
             "cursor_justified": bool(just_code and cursor_justified(pillar, narration)),
             "photo_designated": bool(beat not in ("hook", "ending") and i in photo_slots),
+            # Safe retrieval/fallback reason for this slot (issue #32 §8-9):
+            # one of the asset_fetch failure categories for a photo-designated
+            # scene, "procedural" for a scene that was never a photo slot, and
+            # "brand" for the hook/ending brand moments. No URLs, no bodies.
+            "retrieval_reason": ("brand" if beat in ("hook", "ending")
+                                 else retrieval_reason),
         }
         if C[cat]["code"] and just_code:
             scene["code_lines"] = code_snippet_for(meta, narration)
         scenes.append(scene)
+
+    # photo-mix honesty (issue #32 §9): a reel whose designated photo slots
+    # all fell back is still technically renderable, but it must NEVER be
+    # reported as fully visually complete — the plan carries an explicit
+    # degradation flag and the aggregate reason counts that explain WHY.
+    photos_retrieved = sum(1 for sc in scenes if sc["asset"].get("kind") == "external")
+    photo_degraded = bool(photo_slots) and photos_retrieved == 0
 
     plan = {
         "version": 1,
@@ -893,6 +951,15 @@ def build_visual_plan(script, pol=None, allow_external=None):
                       "attribution exists), $0, keyless",
             "fallback": "distinct topic-specific procedural visual per scene",
             "repo_hero_as_background": False,
+            # Aggregate safe reason counts for the designated photo slots
+            # (issue #32 §8): retrieved / cache_hit / search_http_error /
+            # search_timeout / no_results / no_allowed_license / ... — never
+            # URLs or remote bodies. An empty dict means no photo slot was
+            # attempted (external retrieval disabled).
+            "retrieval_outcomes": {k: v for k, v in
+                                   sorted(retrieval_outcomes.items())},
+            "photos_retrieved": photos_retrieved,
+            "degraded": photo_degraded,
         },
         "generation": "deterministic-visual-plan v2 (no LLM in the visual path)",
     }
@@ -1185,6 +1252,16 @@ def photo_provenance_summary(plan):
     procedural = [sc for sc in scenes if (sc.get("asset") or {}).get("kind") == "procedural"]
     brand_repo = [sc for sc in scenes if (sc.get("asset") or {}).get("origin") == "repository-assets"]
     brand_outside = [sc for sc in brand_repo if sc.get("visual_category") not in BRAND_CATEGORIES]
+    pp = (plan or {}).get("photo_policy") or {}
+    outcomes = pp.get("retrieval_outcomes") or {}
+    # per-scene aggregate of the safe failure categories (also computable from
+    # scenes when the plan predates the photo_policy block)
+    if not outcomes:
+        for sc in designated:
+            r = sc.get("retrieval_reason") or "unknown"
+            outcomes[r] = outcomes.get(r, 0) + 1
+    degraded = bool(pp.get("degraded")) if "degraded" in pp else bool(
+        designated) and not retrieved
     return {
         "scenes": len(scenes),
         "photo_designated": len(designated),
@@ -1198,6 +1275,10 @@ def photo_provenance_summary(plan):
         "distinct_assets": len({(sc.get("asset") or {}).get("id") for sc in scenes}),
         "licenses": licenses,
         "licenses_ok": all(k in ALLOWED_EXTERNAL_LICENSES for k in licenses),
+        "retrieval_outcomes": outcomes,
+        # issue #32 §9: a zero-photo reel is not "fully visually complete" —
+        # QA must surface this as an explicit human-review warning.
+        "degraded": degraded,
     }
 
 
@@ -1288,6 +1369,8 @@ _CATEGORY_NICE = {
     "retrieval-loop": "retrieval loop", "worked-example": "worked example",
     "skill-progression": "skill progression", "notification-cascade": "notification cascade",
     "focus-meter": "focus meter", "task-queue": "task queue", "attention-residue": "attention residue",
+    "attention-drift": "attention drift", "listen-vs-draft": "listening vs drafting",
+    "refocus-steps": "pause-count-refocus", "reflect-loop": "pause-and-reflect loop",
     "context-timeline": "context timeline", "handoff-chain": "handoff chain",
     "verification-gate": "verification gate", "role-complement": "complementary roles",
     "approval-gate": "approval gate", "shared-decision-loop": "shared decision loop",

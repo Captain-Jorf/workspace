@@ -14,6 +14,9 @@ import sys
 import imageio_ffmpeg
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import text_norm  # noqa: E402
+
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 SR = 24000
 
@@ -28,6 +31,14 @@ def burst(n, rng, f0):
 def main():
     ep = os.path.abspath(sys.argv[1])
     sc = json.load(open(f"{ep}/script.json", encoding="utf-8"))
+    # Issue #32 §1/§2: even the offline stand-in derives its words from the
+    # ONE normalized representation and fails closed on blockers.
+    text_norm.normalize_script(sc)
+    for ch in sc.get("chunks", []):
+        spoken = ch.get("tts_text") or " ".join(l["t"] for l in ch.get("en", []))
+        if text_norm.has_blockers(spoken):
+            raise SystemExit("tts-error: glyph blockers present before audio "
+                             "(unsupported character reached TTS input)")
     rng = np.random.default_rng(7)
     for i, ch in enumerate(sc["chunks"], 1):
         words = (ch.get("tts_text") or " ".join(l["t"] for l in ch["en"])).split()

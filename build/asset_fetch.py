@@ -89,6 +89,58 @@ import urllib.request
 import common  # noqa: E402  (central secret scrubber for the one diagnostic)
 
 API_URL = "https://api.openverse.org/v1/images/"
+
+# ---------------------------------------------------------------------------
+# Safe failure categories (issue #32 §8). fetch_image() is fail-soft, but the
+# WHY is now visible: each attempt records exactly one category here — no
+# URLs, no remote bodies, aggregate counts only (safe for the daily Issue).
+# ---------------------------------------------------------------------------
+OUTCOME_RETRIEVED = "retrieved"
+OUTCOME_CACHE_HIT = "cache_hit"
+OUTCOME_SEARCH_HTTP_ERROR = "search_http_error"
+OUTCOME_SEARCH_TIMEOUT = "search_timeout"
+OUTCOME_NO_RESULTS = "no_results"
+OUTCOME_NO_ALLOWED_LICENSE = "no_allowed_license"
+OUTCOME_UNSAFE_ASSET_URL = "unsafe_asset_url"
+OUTCOME_IMAGE_HTTP_ERROR = "image_http_error"
+OUTCOME_INVALID_CONTENT_TYPE = "invalid_content_type"
+OUTCOME_INVALID_IMAGE = "invalid_image"
+OUTCOME_DIMENSION_REJECTED = "dimension_rejected"
+OUTCOME_SECURITY_REJECTED = "security_rejected"
+OUTCOME_DUPLICATE_ASSET = "duplicate_asset"
+OUTCOME_CATEGORIES = (OUTCOME_RETRIEVED, OUTCOME_CACHE_HIT, OUTCOME_SEARCH_HTTP_ERROR,
+                      OUTCOME_SEARCH_TIMEOUT, OUTCOME_NO_RESULTS, OUTCOME_NO_ALLOWED_LICENSE,
+                      OUTCOME_UNSAFE_ASSET_URL, OUTCOME_IMAGE_HTTP_ERROR,
+                      OUTCOME_INVALID_CONTENT_TYPE, OUTCOME_INVALID_IMAGE,
+                      OUTCOME_DIMENSION_REJECTED, OUTCOME_SECURITY_REJECTED,
+                      OUTCOME_DUPLICATE_ASSET)
+
+_LAST_OUTCOME = ""
+_OUTCOME_COUNTS = {c: 0 for c in OUTCOME_CATEGORIES}
+
+
+def _outcome(category):
+    """Record the safe failure/success category of the most recent fetch."""
+    global _LAST_OUTCOME
+    if category not in OUTCOME_CATEGORIES:
+        category = OUTCOME_IMAGE_HTTP_ERROR
+    _LAST_OUTCOME = category
+    _OUTCOME_COUNTS[category] += 1
+    return category
+
+
+def last_outcome():
+    """Category of the most recent fetch_image() call ('' when none)."""
+    return _LAST_OUTCOME
+
+
+def outcome_counts(reset=False):
+    """Aggregate reason counts since process start (or since last reset)."""
+    global _OUTCOME_COUNTS
+    counts = {k: v for k, v in _OUTCOME_COUNTS.items() if v}
+    if reset:
+        _OUTCOME_COUNTS = {c: 0 for c in OUTCOME_CATEGORIES}
+    return counts
 # Attribution-free public-domain licenses ONLY (see module docstring,
 # LICENSE POLICY). CC-BY ("by") is intentionally absent: without a public
 # attribution channel on Instagram, a CC-BY image can never be published.
@@ -386,14 +438,57 @@ def _safe_get(url, timeout=TIMEOUT, max_bytes=MAX_BYTES, max_redirects=MAX_REDIR
         return None
 
 
+def _is_timeout(err):
+    """Timeout classification that never survives into a log (class check only)."""
+    if isinstance(err, (socket.timeout, TimeoutError)):
+        return True
+    reason = getattr(err, "reason", None)
+    return isinstance(reason, (socket.timeout, TimeoutError))
+
+
 def _get(url, timeout=TIMEOUT):
     """Bounded, SSRF-validated GET of the Openverse API (one attempt, no
     retries, no unbounded network dependency). Returns the JSON body bytes
-    (capped at MAX_BYTES) or None."""
-    res = _safe_get(url, timeout=timeout, accept="application/json")
-    if res is None:
+    (capped at MAX_BYTES) or None. Records the safe search failure category:
+    search_timeout vs search_http_error vs security_rejected."""
+    if not _validate_url(url):
+        _outcome(OUTCOME_SECURITY_REJECTED)
         return None
-    return res[2]
+    host = (urllib.parse.urlparse(url).hostname or "").lower().rstrip(".")
+    if not _is_ip_literal(host) and not _assert_public_host(host):
+        _outcome(OUTCOME_SECURITY_REJECTED)
+        return None
+    req = urllib.request.Request(
+        url.strip(), headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    resp = None
+    try:
+        resp = _open(req, timeout)
+    except Exception as e:
+        _note_error(e)
+        _outcome(OUTCOME_SEARCH_TIMEOUT if _is_timeout(e) else OUTCOME_SEARCH_HTTP_ERROR)
+        return None
+    try:
+        status = getattr(resp, "status", None)
+        if status is None:
+            status = getattr(resp, "code", 0)
+        if status != 200:
+            _outcome(OUTCOME_SEARCH_HTTP_ERROR)
+            return None
+        data = _read_capped(resp, MAX_BYTES)
+        if data is None:
+            _outcome(OUTCOME_SEARCH_HTTP_ERROR)
+            return None
+        return data
+    except Exception as e:
+        _note_error(e)
+        _outcome(OUTCOME_SEARCH_TIMEOUT if _is_timeout(e) else OUTCOME_SEARCH_HTTP_ERROR)
+        return None
+    finally:
+        if resp is not None:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -504,25 +599,54 @@ def _download_image(url, cache_path, timeout=TIMEOUT):
     destination is replaced (not followed), and a partial write never
     survives a failure. Returns the cache path or None (fail-soft — the
     caller falls back to the procedural visual)."""
-    res = _safe_get(url, timeout=timeout, accept="image/*")
+    path, _ = _download_image_with_reason(url, cache_path, timeout)
+    return path
+
+
+def _download_image_with_reason(url, cache_path, timeout=TIMEOUT):
+    """Same hardened download as _download_image, but also returns the safe
+    failure category so the daily report can explain WHY a photo slot fell
+    back. Returns (cache_path_or_None, category). Categories carry no URLs
+    and no remote bodies — they are aggregate-safe reason codes."""
+    if not _validate_url(url):
+        return None, OUTCOME_UNSAFE_ASSET_URL
+    host = (urllib.parse.urlparse(url).hostname or "").lower().rstrip(".")
+    if not _is_ip_literal(host) and not _assert_public_host(host):
+        return None, OUTCOME_SECURITY_REJECTED
+    try:
+        res = _safe_get(url, timeout=timeout, accept="image/*")
+    except Exception:
+        res = None
     if res is None:
-        return None
+        # _safe_get already validated structure; None here is transport/timeout
+        return None, OUTCOME_IMAGE_HTTP_ERROR
     _, headers, data = res
     if len(data) < MIN_BODY_BYTES:
-        return None
+        return None, OUTCOME_INVALID_IMAGE
     kind = _magic_kind(data)
     if kind is None:
-        return None  # SVG/HTML/XML/archives/GIF/BMP/TIFF/... — not allowed
+        return None, OUTCOME_INVALID_CONTENT_TYPE  # SVG/HTML/XML/archives/GIF/...
     ctype = (headers.get("Content-Type") or "").split(";")[0].strip().lower()
     if _MIME_TO_KIND.get(ctype) != kind:
-        return None  # declared type missing, foreign, or mismatched with magic
+        return None, OUTCOME_INVALID_CONTENT_TYPE
     if not _pixel_safe(data, kind):
-        return None
+        # distinguish dimension/aspect rejections from decode failures
+        try:
+            from PIL import Image
+            im = Image.open(io.BytesIO(data))
+            w, h = im.size
+            if (min(w, h) < MIN_IMAGE_DIM or max(w, h) > MAX_DIMENSION
+                    or w * h > MAX_TOTAL_PIXELS
+                    or max(w, h) / float(min(w, h)) > MAX_ASPECT):
+                return None, OUTCOME_DIMENSION_REJECTED
+        except Exception:
+            pass
+        return None, OUTCOME_INVALID_IMAGE
     try:
         _atomic_write(cache_path, data)
     except OSError:
-        return None
-    return cache_path
+        return None, OUTCOME_IMAGE_HTTP_ERROR
+    return cache_path, OUTCOME_RETRIEVED
 
 
 def _cache_dir():
@@ -546,27 +670,54 @@ def fetch_image(query, timeout=TIMEOUT, skip_urls=()):
         return None
     try:
         import datetime
+        # Official Openverse /v1/images/ parameter contract (verified against
+        # https://api.openverse.org/v1/ — getimages_search): license codes
+        # (cc0, pdm, by, ...) belong in `license`; `license_type` is the
+        # usage-category filter (all, all-cc, commercial, modification).
+        # Issue #32 root cause: `license_type=cc0,pdm` sent license CODES to
+        # the usage filter, so Openverse could never return our result set —
+        # 0 retrieved photos on reel-2026-09-24. Fixed here; post-response
+        # enforcement below stays unchanged.
         params = urllib.parse.urlencode({
-            "q": q, "license_type": ",".join(ALLOWED_LICENSES),
+            "q": q, "license": ",".join(ALLOWED_LICENSES),
             "size": "large", "page_size": "5",
         })
         raw = _get(API_URL + "?" + params, timeout)
-        if raw is None or len(raw) > MAX_BYTES:
+        if raw is None:
+            return None  # category already recorded by _get
+        if len(raw) > MAX_BYTES:
+            _outcome(OUTCOME_SEARCH_HTTP_ERROR)
             return None
-        data = json.loads(raw.decode("utf-8", "replace"))
+        try:
+            data = json.loads(raw.decode("utf-8", "replace"))
+        except (ValueError, UnicodeError):
+            _outcome(OUTCOME_SEARCH_HTTP_ERROR)
+            return None
         results = data.get("results") or []
+        if not results:
+            _outcome(OUTCOME_NO_RESULTS)
+            return None
+        saw_disallowed_license = False
+        candidate_reason = None   # most specific per-candidate failure so far
         for res in results:
             if not isinstance(res, dict):
                 continue
             license_ = _OPENVERSE_LICENSE.get(str(res.get("license") or "").lower())
             if license_ not in ALLOWED_LICENSES:
+                saw_disallowed_license = True
                 continue  # incl. every CC-BY variant — no public attribution
             asset_url = str(res.get("url") or "").strip()
             if not asset_url.startswith("https://"):
+                _outcome(OUTCOME_UNSAFE_ASSET_URL)
+                candidate_reason = OUTCOME_UNSAFE_ASSET_URL
                 continue
             if any(ord(ch) < 32 for ch in asset_url) or ".." in asset_url:
+                _outcome(OUTCOME_UNSAFE_ASSET_URL)
+                candidate_reason = OUTCOME_UNSAFE_ASSET_URL
                 continue
             if skip_urls and asset_url in set(skip_urls):
+                _outcome(OUTCOME_DUPLICATE_ASSET)
+                candidate_reason = OUTCOME_DUPLICATE_ASSET
                 continue  # already used by another scene of this reel
             source_url = str(res.get("foreign_landing_url") or res.get("source") or "").strip()
             if source_url and not source_url.startswith("https://"):
@@ -580,25 +731,38 @@ def fetch_image(query, timeout=TIMEOUT, skip_urls=()):
                 continue
             digest = hashlib.sha256(f"{q}|{asset_url}".encode("utf-8")).hexdigest()[:16]
             cache_path = os.path.join(_cache_dir(), f"ext_{digest}.jpg")
-            if not _cached_image_ok(cache_path):
+            from_cache = _cached_image_ok(cache_path)
+            if not from_cache:
                 if os.path.islink(cache_path):
                     # never trust a planted symlink in the cache directory
                     try:
                         os.unlink(cache_path)
                     except OSError:
+                        _outcome(OUTCOME_SECURITY_REJECTED)
+                        candidate_reason = OUTCOME_SECURITY_REJECTED
                         continue
-                if _download_image(asset_url, cache_path, timeout) is None:
+                path, reason = _download_image_with_reason(asset_url, cache_path, timeout)
+                if path is None:
+                    _outcome(reason)
+                    candidate_reason = reason
                     continue
                 if not _cached_image_ok(cache_path):
+                    _outcome(OUTCOME_INVALID_IMAGE)
+                    candidate_reason = OUTCOME_INVALID_IMAGE
                     continue
             try:
                 with open(cache_path, "rb") as fh:
                     blob = fh.read(MAX_BYTES + 1)
                 if len(blob) > MAX_BYTES or _magic_kind(blob) is None:
+                    _outcome(OUTCOME_INVALID_IMAGE)
+                    candidate_reason = OUTCOME_INVALID_IMAGE
                     continue
                 sha = hashlib.sha256(blob).hexdigest()
             except Exception:
+                _outcome(OUTCOME_INVALID_IMAGE)
+                candidate_reason = OUTCOME_INVALID_IMAGE
                 continue
+            _outcome(OUTCOME_CACHE_HIT if from_cache else OUTCOME_RETRIEVED)
             return {
                 "kind": "external",
                 "id": f"ext-{sha[:12]}",
@@ -615,5 +779,16 @@ def fetch_image(query, timeout=TIMEOUT, skip_urls=()):
             }
     except Exception as e:
         _note_error(e)
+        _outcome(OUTCOME_SEARCH_HTTP_ERROR)
         return None
+    # every candidate exhausted without a retrieved asset. The report keeps
+    # the MOST SPECIFIC reason (issue #32 §8): if a concrete candidate failed
+    # on safety/download/validity grounds, that category already counts and
+    # must not be papered over by a generic "no_results".
+    if candidate_reason is not None:
+        pass
+    elif saw_disallowed_license:
+        _outcome(OUTCOME_NO_ALLOWED_LICENSE)
+    else:
+        _outcome(OUTCOME_NO_RESULTS)
     return None
