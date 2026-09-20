@@ -32,6 +32,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import cursor_qa
 import palette_qa
 import visual_plan
 
@@ -611,101 +612,11 @@ def detect_code_card(arr):
     return int(mask.sum())
 
 
-def detect_cursor(arr):
-    """The old moving typing cursor: a SOLID vertical gold bar, 3-6px wide,
-    14-70px tall (a text caret, not a composition line). Thin 1-2px network
-    lines, long continuous spines (>70px) and decorative geometry do not
-    qualify — the bar must be solid across its whole height."""
-    if arr is None or arr.shape[0] < 1000 or arr.shape[1] < 600:
-        return False
-    import numpy as np
-    h = arr.shape[0]
-    band = arr[int(h * 0.30):int(h * 0.80), int(arr.shape[1] * 0.08):int(arr.shape[1] * 0.92)]
-    r, g, b = band[..., 0], band[..., 1], band[..., 2]
-    gold = (r > 170) & (g > 110) & (g < 235) & (b < 160) & (r > b + 80)
-    ncol = band.shape[1]
-    for x in range(ncol - 3):
-        col = gold[:, x]
-        if not col.any():
-            continue
-        # longest vertical run in this column
-        best_len, run, start, run_start = 0, 0, 0, 0
-        for y in range(col.shape[0]):
-            if col[y]:
-                if run == 0:
-                    run_start = y
-                run += 1
-                if run > best_len:
-                    best_len, start = run, run_start
-            else:
-                run = 0
-        if not (14 <= best_len <= 70):
-            continue
-        # solid width: consecutive columns that are gold for >=85% of the run
-        y0, y1 = start, start + best_len
-        seg = gold[y0:y1, x:x + 6]
-        solid = 0
-        for wdx in range(seg.shape[1]):
-            if float(seg[:, wdx].mean()) >= 0.85:
-                solid += 1
-            else:
-                break
-        if not (3 <= solid <= 6):
-            continue
-        # context: a typing caret floats on a dark background. The vertical
-        # EDGE of a solid shape (funnel bar, card, chip) is the same shape —
-        # exclude runs that abut a solid gold fill on either side.
-        edge_r = gold[y0:y1, min(x + solid, ncol - 1):min(x + solid + 14, ncol)]
-        edge_l = gold[y0:y1, max(x - 14, 0):x]
-        if (float(edge_r.mean()) > 0.5 if edge_r.size else False) or \
-           (float(edge_l.mean()) > 0.5 if edge_l.size else False):
-            continue
-        # rectangularity: flat top and bottom (a caret is a solid rectangle;
-        # a round particle tapers, an arc segment is diagonal at its ends)
-        if float(gold[y0, x:x + solid].mean()) < 0.6 or \
-           float(gold[y1 - 1, x:x + solid].mean()) < 0.6:
-            continue
-        # rectangular width at mid-height: a caret stays 3-6px wide through
-        # its whole height. A round particle (dot, node) is widest at the
-        # middle — its gold span at the mid row far exceeds the bar width.
-        ym = y0 + best_len // 2
-        row = gold[ym, :]
-        lo, hi = x, min(x + solid - 1, ncol - 1)
-        while lo > 0 and row[lo - 1]:
-            lo -= 1
-        while hi < ncol - 1 and row[hi + 1]:
-            hi += 1
-        if (hi - lo + 1) > 2 * solid + 2:
-            continue
-        # straightness: the run must stay vertically aligned (a caret, not a
-        # curved decorative stroke)
-        def _xc(y):
-            xs = np.nonzero(gold[max(0, y):y + 1, max(0, x - 5):min(ncol, x + solid + 5)])[0]
-            return float(xs.mean()) if xs.size else None
-        c0, cm, c2 = _xc(y0 + 1), _xc(y0 + best_len // 2), _xc(y1 - 2)
-        if None in (c0, cm, c2) or (max(c0, cm, c2) - min(c0, cm, c2)) > 2.5:
-            continue
-        # background: a caret stands on a dark field — the legacy card was
-        # cold (18,20,24); a decorative caret sits on the warm dark base.
-        # Bright photographic texture fails this test.
-        lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        sx0, sx1 = max(0, x - 40), min(ncol, x + solid + 40)
-        sy0, sy1 = max(0, y0 - 40), min(band.shape[0], y1 + 40)
-        surround = np.concatenate([lum[sy0:y0, sx0:sx1].ravel(),
-                                   lum[y1:sy1, sx0:sx1].ravel()])
-        if surround.size and float(np.median(surround)) >= 60:
-            continue
-        # adjacency: no other gold within 2px of the bar — an isolated caret.
-        # Intersecting strokes, network lines and photo texture all put gold
-        # here; the legacy caret sat alone on the cold card.
-        jy0, jy1 = max(0, y0 - 10), min(band.shape[0], y1 + 10)
-        left = gold[jy0:jy1, max(0, x - 30):max(0, x - 2)]
-        right = gold[jy0:jy1, min(ncol - 1, x + solid + 2):min(ncol, x + solid + 30)]
-        if (float(left.mean()) > 0.005 if left.size else False) or \
-           (float(right.mean()) > 0.005 if right.size else False):
-            continue
-        return True
-    return False
+def detect_cursor(arr, pol=None):
+    """The typing cursor detector: a SOLID vertical gold bar with connected-component
+    shape ownership (issue #28). Candidate vertical bars that belong to large shapes
+    (ellipses, rings, cards, diagrams, network lines, logos) are rejected."""
+    return cursor_qa.detect_cursor(arr, pol)
 
 
 def check_visuals(rep, ep, script, video, pol, no_frames):
@@ -791,10 +702,11 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
                 rep.block("visual_semantics",
                           f"rendered frame of scene {sid} shows a cold code card that violates "
                           "the warm profile palette")
-            # (b) cursor only in a justified code-entry scene
-            if detect_cursor(arrs[len(arrs) // 2]) and not sc.get("cursor_justified"):
-                rep.block("visual_semantics",
-                          f"rendered frame of scene {sid} contains an unjustified typing cursor")
+            # (b) cursor only in a justified code-entry scene — multi-frame,
+            #     shape-ownership and expected-region verified (issue #28)
+            cursor_res = cursor_qa.analyze_scene_cursors(arrs, times, sc=sc, layout=layout, pol=pol)
+            if not cursor_res["ok"]:
+                rep.block("visual_semantics", cursor_res["reason"])
             # (c) no blue/navy/cyan/purple (cold) element — perceptually gated,
             #     multi-frame, single-sourced in palette_qa (issue #26)
             scene_palette = palette_qa.analyze_scene(arrs, cfg)

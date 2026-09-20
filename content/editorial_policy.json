@@ -229,6 +229,31 @@
    "_comment": "rendered-frame analysis band: the scene zone between the hook area and the subtitle band, excluding the frame edges"
   }
  },
+ "cursor_qa": {
+  "_comment": "Deterministic typing-cursor QA and shape-ownership verification. Genuine typing carets (width 3-6px, height 14-70px, aspect ratio >= 6.0, 2 Hz blink) are allowed ONLY when code_justified=true and cursor_justified=true, within the expected code-entry region. Ellipses, rings, card borders, chart bars, network lines, glyphs, and animated shapes must never be classified as typing carets. Multi-frame temporal analysis and connected-component shape ownership (max area 450px, max bbox 16x80px) distinguish small standalone carets from large continuous shapes and moving animations. Hard safety envelopes are enforced in code; no environment variable can silently weaken cursor detection.",
+  "frames_per_scene": 3,
+  "min_cursor_width": 3,
+  "max_cursor_width": 6,
+  "min_cursor_height": 30,
+  "max_cursor_height": 70,
+  "min_aspect_ratio": 6.0,
+  "max_cursor_component_area": 450,
+  "max_component_bbox_width": 16,
+  "max_component_bbox_height": 80,
+  "temporal_stability_tol_px": 8,
+  "max_temporal_velocity_px_s": 25.0,
+  "expected_region_x_min": 256,
+  "expected_region_x_max": 340,
+  "expected_region_y_min": 880,
+  "expected_region_y_max": 1000,
+  "band": {
+   "top_fraction": 0.30,
+   "bottom_fraction": 0.80,
+   "left_fraction": 0.08,
+   "right_fraction": 0.92,
+   "_comment": "rendered-frame cursor analysis band: central vertical and horizontal scene area"
+  }
+ },
  "tts": {
   "engine": "edge-tts",
   "voice": "en-US-ChristopherNeural",

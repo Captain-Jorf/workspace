@@ -98,6 +98,8 @@ def main():
                           "asset_id": (sc.get("asset") or {}).get("id")}
                        for sc in reel.plan["scenes"]],
             "code_scenes": reel.code_scenes_rendered,
+            "cursor_scenes": getattr(reel, "cursor_scenes_rendered", []),
+            "cursor_events": getattr(reel, "cursor_events", []),
         }
     common.save_json(os.path.join(a.ep, "layout.json"), layout)
     print(f"[render] previews → {out_dir}  (contact sheet is a QA artifact, not a deliverable)")
