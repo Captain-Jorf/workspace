@@ -190,6 +190,30 @@
   "min_contrast_ratio": 4.5,
   "note": "FA layer removed, space used for bigger diagram, code visual, evidence card, confidence meter, decision tree, prediction graph, human-AI network"
  },
+ "minimal": {
+  "_comment": "issue #33 — the MINIMAL style is the default scheduled production format. Single source of the documented safe bounds, readable font floors and banner/CTA duration contracts. The renderer measures every text block with textbbox against these values; QA blocks any violation. floor_main/floor_label apply to kinetic text and scene labels; floor_brand (28px) applies to the fixed brand lockup (brand line + handle). Blue/navy/cyan/purple are forbidden everywhere.",
+  "safe": {"top": 220, "bottom": 1700, "side": 50,
+   "note": "explicit safe production zone at 1080x1920 protecting from the Instagram UI (status bar, action rail) and the 4:5 grid crop"},
+  "floor_main": 44,
+  "floor_label": 30,
+  "floor_brand": 28,
+  "max_lines_per_block": 3,
+  "hook_font_start": 64,
+  "cta_font_start": 56,
+  "line_spacing": 1.28,
+  "glow_alpha": 30,
+  "glow_blur": 10,
+  "underline_w": 3,
+  "fade_in": 0.30,
+  "banner_duration_target_s": [2.5, 4.0],
+  "banner_duration_hard_s": [1.5, 5.8],
+  "cta_duration_target_s": [3.0, 5.0],
+  "cta_duration_hard_s": [2.2, 6.0],
+  "max_labels_per_scene": 3,
+  "cta_line": "Follow @metacognition.hq for practical ways to think better with technology.",
+  "brand_line": "METACOGNITION FOR THE AI AGE",
+  "handle": "@metacognition.hq"
+ },
  "visual": {
   "style": "network / node-edge diagrams, gold on dark marble, animated, episode-aware, technology-relevant",
   "rules": [

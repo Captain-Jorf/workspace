@@ -1452,7 +1452,9 @@ class QAWeightInvariance(unittest.TestCase):
         rep2 = qa.Report(POL)
         for c in qa.CHECKS:
             rep2.block(c, "fixture")
-        self.assertEqual(sum(qa.WEIGHTS.values()), 135,
+        # 145 = 135 legacy budget + 10 for the minimal-contract blocker
+        # family (issue #33: banner/CTA/safe-bounds/font-floor hard gates)
+        self.assertEqual(sum(qa.WEIGHTS.values()), 145,
                          "the deduction budget must stay bounded by the weights")
         self.assertEqual(rep2.score(), 0, "a fully-blocked report floors at 0, never < 0")
         rep3 = qa.Report(POL)
