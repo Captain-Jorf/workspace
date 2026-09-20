@@ -1046,20 +1046,45 @@ def check_reviewer(rep, script, topic, ep_dir, pol):
         out = data.get("output") or data
         binding = data.get("binding")
         if isinstance(binding, dict):
-            expected = common.script_hash(script)
-            if binding.get("script_hash") != expected:
-                rep.block("reviewer_check", f"reviewer report hash mismatch (report {str(binding.get('script_hash','?'))[:8]} != script {expected[:8]}) — stale/mismatched review must not be applied")
-                rep.details["reviewer"] = {"present": True, "mismatched": True, "expected": expected, "found": binding.get("script_hash")}
-                return
+            meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+            expected_stage = str(meta.get("stage") or "initial")
+            expected_variant = meta.get("variant", 0)
+            expected_attempt = f"variant-{expected_variant}"
+            expected_content_id = str(meta.get("content_id", "") or "")
+            expected_cand_hash = common.reviewer_candidate_hash(script, expected_stage, expected_attempt)
+
+            cand_hash = binding.get("candidate_hash")
+            if cand_hash:
+                if cand_hash != expected_cand_hash:
+                    rep.block("reviewer_check", f"reviewer report candidate hash mismatch (report {str(cand_hash)[:8]} != candidate {expected_cand_hash[:8]}) — stale/mismatched review must not be applied")
+                    rep.details["reviewer"] = {"present": True, "mismatched": True, "expected": expected_cand_hash, "found": cand_hash}
+                    return
+            else:
+                expected_shash = common.script_hash(script)
+                if binding.get("script_hash") != expected_shash:
+                    rep.block("reviewer_check", f"reviewer report hash mismatch (report {str(binding.get('script_hash','?'))[:8]} != script {expected_shash[:8]}) — stale/mismatched review must not be applied")
+                    rep.details["reviewer"] = {"present": True, "mismatched": True, "expected": expected_shash, "found": binding.get("script_hash")}
+                    return
+
             if binding.get("generation_mode") != mode:
                 rep.block("reviewer_check", f"reviewer report generation_mode mismatch ({binding.get('generation_mode')} != {mode}) — mismatched report")
                 rep.details["reviewer"] = {"present": True, "mismatched": True}
                 return
-            # Stage mismatch is already covered by hash mismatch, but enforce stage present
-            if binding.get("stage") not in ("initial", "revision"):
-                rep.block("reviewer_check", f"reviewer report binding stage invalid ({binding.get('stage')}) — mismatched")
+
+            if binding.get("content_id") and binding.get("content_id") != expected_content_id:
+                rep.block("reviewer_check", f"reviewer report content_id mismatch ({binding.get('content_id')} != {expected_content_id}) — mismatched report")
+                rep.details["reviewer"] = {"present": True, "mismatched": True}
                 return
-            # Revision report cannot approve initial candidate and vice versa is enforced via hash; no extra check needed
+
+            if binding.get("attempt_id") and binding.get("attempt_id") != expected_attempt:
+                rep.block("reviewer_check", f"reviewer report attempt_id mismatch ({binding.get('attempt_id')} != {expected_attempt}) — mismatched report")
+                rep.details["reviewer"] = {"present": True, "mismatched": True}
+                return
+
+            if binding.get("stage") != expected_stage:
+                rep.block("reviewer_check", f"reviewer report stage mismatch ({binding.get('stage')} != {expected_stage}) — mismatched report")
+                rep.details["reviewer"] = {"present": True, "mismatched": True}
+                return
         valid, reason = _validate_reviewer_output(out)
         if not valid:
             rep.block("reviewer_check", f"reviewer output malformed ({reason}) — rejected groq candidate")

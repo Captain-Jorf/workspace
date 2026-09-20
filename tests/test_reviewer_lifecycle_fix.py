@@ -604,3 +604,199 @@ class SecretsSafety(unittest.TestCase):
                 pass
             shutil.rmtree(ep, ignore_errors=True)
 
+
+class CandidateBindingIntegrity(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="binding_integrity_")
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, ignore_errors=True))
+        self.topic = calendar_topic_for_0923()
+        self.topic_path = os.path.join(self.tmpdir, "topic.json")
+        common.save_json(self.topic_path, self.topic)
+        self.valid_out = make_valid_llm_output()
+        self.script = cp.build_script_from_llm(self.topic, POL, self.valid_out, variant=0, generation_mode="groq")
+        self.script["meta"]["stage"] = "initial"
+
+    def test_identical_narration_changed_source_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["sources"] = [{"label": "Changed Source (2026)", "url": "https://example.com/changed", "tier": "A", "role": "evidence"}]
+
+        h1 = common.reviewer_candidate_hash(self.script, "initial", 0)
+        h2 = common.reviewer_candidate_hash(script2, "initial", 0)
+        self.assertNotEqual(h1, h2)
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertIn("candidate hash mismatch", "; ".join(rep.blocking).lower())
+
+    def test_identical_narration_changed_claim_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["claims"] = ["New unsupported claim added to candidate script"]
+
+        h1 = common.reviewer_candidate_hash(self.script, "initial", 0)
+        h2 = common.reviewer_candidate_hash(script2, "initial", 0)
+        self.assertNotEqual(h1, h2)
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertIn("candidate hash mismatch", "; ".join(rep.blocking).lower())
+
+    def test_identical_narration_changed_caption_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["caption"]["hook"] = "Completely changed caption hook line"
+
+        h1 = common.reviewer_candidate_hash(self.script, "initial", 0)
+        h2 = common.reviewer_candidate_hash(script2, "initial", 0)
+        self.assertNotEqual(h1, h2)
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertIn("candidate hash mismatch", "; ".join(rep.blocking).lower())
+
+    def test_identical_narration_changed_tech_metacog_field_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["meta"]["technology_angle"] = "Completely different technology angle"
+
+        h1 = common.reviewer_candidate_hash(self.script, "initial", 0)
+        h2 = common.reviewer_candidate_hash(script2, "initial", 0)
+        self.assertNotEqual(h1, h2)
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertIn("candidate hash mismatch", "; ".join(rep.blocking).lower())
+
+    def test_identical_content_different_stage_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["meta"]["stage"] = "revision"
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertTrue(any(k in "; ".join(rep.blocking).lower() for k in ("stage mismatch", "candidate hash mismatch", "hash mismatch")))
+
+    def test_identical_content_different_variant_attempt_mismatch(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script2 = copy.deepcopy(self.script)
+        script2["meta"]["variant"] = 1
+
+        self.assertFalse(cp._is_bound_report_matching(report, script2))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script2, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            self.assertTrue(any(k in "; ".join(rep.blocking).lower() for k in ("attempt_id mismatch", "candidate hash mismatch", "hash mismatch")))
+
+    def test_identical_candidate_dict_keys_different_order_same_hash(self):
+        script1 = copy.deepcopy(self.script)
+        script2 = {
+            "web": list(script1["web"]),
+            "meta": dict(reversed(list(script1["meta"].items()))),
+            "sources": [dict(reversed(list(s.items()))) for s in script1["sources"]],
+            "chunks": [
+                {
+                    "tts_text": ch.get("tts_text"),
+                    "id": ch.get("id"),
+                    "en": [dict(reversed(list(line.items()))) for line in ch.get("en", [])],
+                    "beat": ch.get("beat")
+                }
+                for ch in script1["chunks"]
+            ],
+            "caption": dict(reversed(list(script1["caption"].items()))),
+            "scene_tags": dict(reversed(list(script1["scene_tags"].items()))),
+            "claims": list(script1.get("claims", [])),
+            "visual_direction": script1["visual_direction"]
+        }
+
+        h1 = common.reviewer_candidate_hash(script1, "initial", 0)
+        h2 = common.reviewer_candidate_hash(script2, "initial", 0)
+        self.assertEqual(h1, h2, "dictionary key ordering must not change SHA-256 digest")
+
+    def test_exact_matching_report_accepted(self):
+        binding = cp._reviewer_binding(self.script, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        self.assertTrue(cp._is_bound_report_matching(report, self.script))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, self.script, self.topic, tmp, POL)
+            self.assertFalse(rep.blocking, f"exact matching report must pass: {rep.blocking}")
+            self.assertEqual(rep.checks.get("reviewer_check"), "pass")
+
+    def test_static_fallback_reviewer_not_applicable_no_fabricated_hash_score(self):
+        fallback_script = cp.build_script_from_playbook(self.topic, POL, cp.PLAYBOOKS["metacognition-debugging"], "metacognition-debugging", variant=0, generation_mode="static-fallback")
+        producer_rep = {"selected": "static-fallback", "reviewer_not_applicable": True, "reviewer_not_applicable_reason": "validated static fallback — curated deterministic path, no LLM review"}
+
+        self.assertEqual(fallback_script["meta"]["generation_mode"], "static-fallback")
+        self.assertTrue(producer_rep.get("reviewer_not_applicable"))
+        self.assertNotIn("score", producer_rep)
+        self.assertNotIn("reviewer_report", producer_rep)
+
+        gate = qa.pre_render_text_gate(fallback_script, self.topic, POL, ep_dir=None, reviewer_output=None)
+        self.assertFalse(gate["blocking"])
+
+    def test_no_raw_candidate_content_or_secret_in_mismatch_errors(self):
+        secret_key = "gsk_fake999secretkeyvalue123456789"
+        script_with_secret = copy.deepcopy(self.script)
+        script_with_secret["chunks"][0]["en"][0]["t"] += f" {secret_key}"
+
+        binding = cp._reviewer_binding(script_with_secret, "initial", 0, PROD_CANDIDATE)
+        report = {"model": PROD_CANDIDATE, "raw": {}, "output": approved_review(), "binding": binding}
+
+        script_mismatched = copy.deepcopy(script_with_secret)
+        script_mismatched["sources"] = [{"label": f"Mismatched {secret_key}", "url": "https://example.com/s", "tier": "A", "role": "evidence"}]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            common.save_json(os.path.join(tmp, "reviewer_report.json"), report)
+            rep = qa.Report(POL)
+            qa.check_reviewer(rep, script_mismatched, self.topic, tmp, POL)
+            self.assertTrue(rep.blocking)
+            block_msg = "; ".join(rep.blocking)
+            self.assertNotIn(secret_key, block_msg)
+            scrubbed = common.scrub_secrets(block_msg)
+            self.assertNotIn(secret_key, scrubbed)
+
+

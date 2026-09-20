@@ -89,31 +89,59 @@ def _validate_reviewer_output(out):
 
 def _reviewer_binding(script, stage, variant, reviewer_model):
     """Deterministic binding for a candidate-bound Reviewer report."""
-    h = common.script_hash(script)
+    cand_hash = common.reviewer_candidate_hash(script, stage, variant)
+    meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+    attempt_id = f"variant-{variant}"
     return {
-        "candidate_id": f"candidate-{stage}-{variant}-{h[:8]}",
-        "attempt_id": f"variant-{variant}",
-        "script_hash": h,
-        "generation_mode": script.get("meta", {}).get("generation_mode", "groq"),
-        "stage": stage,
+        "candidate_id": f"candidate-{stage}-{variant}-{cand_hash[:8]}",
+        "attempt_id": attempt_id,
+        "candidate_hash": cand_hash,
+        "content_id": str(meta.get("content_id", "") or ""),
+        "generation_mode": str(meta.get("generation_mode", "groq") or ""),
+        "stage": str(stage or ""),
         "reviewer_model": reviewer_model,
+        "script_hash": common.script_hash(script),
     }
 
-def _is_bound_report_matching(report, script):
+def _is_bound_report_matching(report, script, expected_stage=None, expected_attempt_id=None):
     """True when a bound report's identity matches the script being evaluated."""
     if not isinstance(report, dict):
         return False
     binding = report.get("binding")
     if not isinstance(binding, dict):
         return False
-    cur_hash = common.script_hash(script)
-    if binding.get("script_hash") != cur_hash:
+
+    meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+    exp_stage = str(expected_stage or meta.get("stage") or "initial")
+    exp_attempt = str(expected_attempt_id or f"variant-{meta.get('variant', 0)}")
+    exp_cand_hash = common.reviewer_candidate_hash(script, exp_stage, exp_attempt)
+
+    # 1. candidate_hash
+    cand_hash = binding.get("candidate_hash")
+    if cand_hash:
+        if cand_hash != exp_cand_hash:
+            return False
+    else:
+        cur_hash = common.script_hash(script)
+        if binding.get("script_hash") != cur_hash:
+            return False
+
+    # 2. generation_mode
+    if binding.get("generation_mode") != meta.get("generation_mode"):
         return False
-    if binding.get("generation_mode") != script.get("meta", {}).get("generation_mode"):
+
+    # 3. content_id
+    if binding.get("content_id") and binding.get("content_id") != meta.get("content_id"):
         return False
-    # stage must be one of the expected values; no cross-stage approval
-    if binding.get("stage") not in ("initial", "revision"):
+
+    # 4. attempt_id
+    if binding.get("attempt_id") and binding.get("attempt_id") != exp_attempt:
         return False
+
+    # 5. exact stage
+    if binding.get("stage") != exp_stage:
+        return False
+
     return True
 
 
@@ -782,6 +810,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
             "topic": topic["title"],
             "content_id": topic["content_id"],
             "content_date": tag,
+            "stage": "initial",
             "pillar": pb["pillar"],
             "technology_angle": pb.get("technology_angle", "automation bias in AI assistants"),
             "metacognition_concept": pb.get("metacognition_concept", pb["pillar"]),
@@ -816,7 +845,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
     }
     return script
 
-def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
+def build_script_from_llm(topic, pol, llm_output, variant=0, generation_mode="groq"):
     """Build script.json from LLM producer output — English-only, validates schema."""
     # Validate required fields
     required = ["title", "technology_angle", "metacognition_concept", "hook", "scenes", "narration", "on_screen_text", "visual_direction", "actionable_technique", "ending"]
@@ -925,11 +954,12 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
             "topic": topic["title"],
             "content_id": topic["content_id"],
             "content_date": tag,
+            "stage": "initial",
             "pillar": topic.get("pillar", "AI_JUDGMENT"),
             "technology_angle": llm_output.get("technology_angle", "automation bias in AI assistants"),
             "metacognition_concept": llm_output.get("metacognition_concept", "automation bias"),
             "playbook": "llm-generated",
-            "variant": 0,
+            "variant": variant,
             "tags": [llm_output.get("metacognition_concept", ""), llm_output.get("technology_angle", "")],
             "cta_type": "question",
             "evidence_mode": topic.get("evidence_mode"),
@@ -1034,7 +1064,7 @@ def main():
             # never reach the render/QA stages from the LLM path.
             numeric_bad = numeric_guard(llm_out, evidence_packet, ctx="first output")
             # Validate and build script
-            script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
+            script = build_script_from_llm(topic, pol, llm_out, variant=a.variant, generation_mode="groq")
             generation_mode = "groq"
             # Invented-citation guard (issue #22): a model that "fixes" an
             # attribution blocker by adding a plausible-but-unsupported URL is
@@ -1180,7 +1210,8 @@ def main():
                             if isinstance(raw2, dict) and raw2.get("mock"):
                                 raise ValueError("mock revision rejected in daily path")
                             numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
-                            script2 = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
+                            script2 = build_script_from_llm(topic, pol, llm_out2, variant=a.variant, generation_mode="groq")
+                            script2["meta"]["stage"] = "revision"
                             citation_bad2 = citation_guard(script2.get("sources", []), evidence_packet,
                                                             ctx="revision")
                             gate2 = gate_report(script2, pol, "revision", topic=topic, packet=evidence_packet)
