@@ -47,6 +47,44 @@ WEIGHTS = {"content_language": 15, "english_only": 15, "technology_relevance": 1
            "visual_semantics": 10}
 EXIT_APPROVED, EXIT_REJECTED, EXIT_CANNOT = 0, 20, 21
 
+# --- Reviewer lifecycle fix (issue #30, run 35484782317) ---
+# Candidate-bound Reviewer reports: every report must be bound to the exact
+# candidate it reviewed. Malformed reports are classified as malformed, not
+# score-0. Stale/mismatched reports are never silently applied to another
+# script. Static Fallback is not applicable for review.
+REVIEWER_REQUIRED_FIELDS = {
+    "approved": bool,
+    "score": int,
+    "technology_relevance": bool,
+    "metacognition_relevance": bool,
+    "blocking_errors": list,
+    "unsupported_claims": list,
+}
+
+def _validate_reviewer_output(out):
+    if not isinstance(out, dict):
+        return False, "reviewer output not a dict"
+    for field, typ in REVIEWER_REQUIRED_FIELDS.items():
+        if field not in out:
+            return False, f"missing required field: {field}"
+        val = out[field]
+        if typ is bool:
+            if not isinstance(val, bool):
+                return False, f"field {field} not bool"
+        elif typ is int:
+            if not isinstance(val, int) or isinstance(val, bool):
+                return False, f"field {field} not int"
+            if field == "score" and not (0 <= val <= 100):
+                return False, f"score out of range: {val}"
+        elif typ is list:
+            if not isinstance(val, list):
+                return False, f"field {field} not list"
+        else:
+            if not isinstance(val, typ):
+                return False, f"field {field} not {typ.__name__}"
+    return True, ""
+
+
 def ffmpeg_bin():
     try:
         import imageio_ffmpeg
@@ -980,15 +1018,53 @@ def check_buffer_readiness(rep, public_url, caption_path, skip_network, video):
     rep.details["buffer"] = {"public_url": public_url, "http": code, "mime": ctype, "bytes": length}
 
 def check_reviewer(rep, script, topic, ep_dir, pol):
-    # Load reviewer_report.json if present, then run the shared core — the exact
-    # same implementation the PRE-RENDER text gate uses (issue #22).
+    # Candidate-bound Reviewer lifecycle (issue #30): Static Fallback never
+    # carries a Groq Reviewer report; a stale report is not applicable.
     rev_path = os.path.join(ep_dir, "reviewer_report.json")
+    mode = (script.get("meta", {}) or {}).get("generation_mode", "")
+    if mode == "static-fallback":
+        if os.path.exists(rev_path):
+            # Stale Groq report beside fallback — must not be silently applied.
+            # Do not block the validated fallback; report as not applicable and ignore stale file.
+            # The lifecycle fix ensures this file is not written; if present, it is a leftover.
+            rep.details["reviewer"] = {"present": True, "stale": True, "not_applicable": True, "reason": "stale reviewer report ignored for static fallback"}
+            rep.details["reviewer_check"] = "not applicable — validated static fallback (stale report ignored)"
+            rep.checks["reviewer_check"] = "pass"
+            # Optionally, the file could be removed by the caller (pipeline/producer), but QA does not delete.
+            return
+        rep.details["reviewer"] = {"present": False, "not_applicable": True, "reason": "validated static fallback — reviewer not applicable"}
+        rep.details["reviewer_check"] = "not applicable — validated static fallback"
+        rep.checks["reviewer_check"] = "pass"
+        return
     if not os.path.exists(rev_path):
+        # For Groq, a missing report is tolerated at QA level (content_producer
+        # already enforces strict threshold and fallback); keep legacy pass.
         rep.details["reviewer"] = {"present": False}
         return
     try:
         data = common.load_json(rev_path, {})
         out = data.get("output") or data
+        binding = data.get("binding")
+        if isinstance(binding, dict):
+            expected = common.script_hash(script)
+            if binding.get("script_hash") != expected:
+                rep.block("reviewer_check", f"reviewer report hash mismatch (report {str(binding.get('script_hash','?'))[:8]} != script {expected[:8]}) — stale/mismatched review must not be applied")
+                rep.details["reviewer"] = {"present": True, "mismatched": True, "expected": expected, "found": binding.get("script_hash")}
+                return
+            if binding.get("generation_mode") != mode:
+                rep.block("reviewer_check", f"reviewer report generation_mode mismatch ({binding.get('generation_mode')} != {mode}) — mismatched report")
+                rep.details["reviewer"] = {"present": True, "mismatched": True}
+                return
+            # Stage mismatch is already covered by hash mismatch, but enforce stage present
+            if binding.get("stage") not in ("initial", "revision"):
+                rep.block("reviewer_check", f"reviewer report binding stage invalid ({binding.get('stage')}) — mismatched")
+                return
+            # Revision report cannot approve initial candidate and vice versa is enforced via hash; no extra check needed
+        valid, reason = _validate_reviewer_output(out)
+        if not valid:
+            rep.block("reviewer_check", f"reviewer output malformed ({reason}) — rejected groq candidate")
+            rep.details["reviewer"] = {"present": True, "malformed": True, "reason": reason}
+            return
     except Exception as e:
         rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
         return
@@ -1003,6 +1079,14 @@ def check_reviewer_output(rep, script, topic, out, pol):
     A structured Reviewer approval can NEVER override a deterministic check:
     the word-range contradiction rule below is enforced identically by final QA
     and by the pre-render text gate (one implementation, shared by both)."""
+    # Validate required fields first — missing => malformed, not score 0
+    valid, reason = _validate_reviewer_output(out)
+    if not valid:
+        rep.block("reviewer_check", f"reviewer output malformed ({reason}) — rejected groq candidate")
+        rep.details["reviewer"] = {"present": True, "malformed": True, "reason": reason}
+        # Still record details for audit
+        rep.details["reviewer_words"] = {"spoken_words": common.spoken_word_count(script), "policy_range": list(pol["length"]["narration_words"])}
+        return
     approved = out.get("approved")
     score = out.get("score", 0)
     tech_rel = out.get("technology_relevance")
@@ -1118,15 +1202,27 @@ def pre_render_text_gate(script, topic=None, pol=None, *, ep_dir=None,
     check_english(rep, script, pol)
     check_caption_text(rep, caption_text if caption_text is not None else build_caption_text(script, pol),
                        script, pol)
+    # Reviewer lifecycle: explicit not applicable for static fallback
+    mode = (script.get("meta", {}) or {}).get("generation_mode", "")
     if reviewer_output is not None:
-        try:
-            check_reviewer_output(rep, script, topic, reviewer_output, pol)
-        except Exception as e:
-            rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
+        if mode == "static-fallback":
+            rep.block("reviewer_check", "reviewer output supplied for static fallback — not applicable (must be none)")
+            rep.details["reviewer"] = {"present": True, "error": "reviewer supplied for fallback"}
+            # still report not applicable but block to surface bug
+        else:
+            try:
+                check_reviewer_output(rep, script, topic, reviewer_output, pol)
+            except Exception as e:
+                rep.warn("reviewer_check", f"could not parse reviewer report {e}", 1)
     elif ep_dir:
         check_reviewer(rep, script, topic, ep_dir, pol)
     else:
-        rep.details["reviewer"] = {"present": False}
+        if mode == "static-fallback":
+            rep.details["reviewer"] = {"present": False, "not_applicable": True, "reason": "validated static fallback — reviewer not applicable"}
+            rep.details["reviewer_check"] = "not applicable — validated static fallback"
+            rep.checks["reviewer_check"] = "pass"
+        else:
+            rep.details["reviewer"] = {"present": False}
     return {"blocking": list(rep.blocking), "warnings": list(rep.warnings),
             "checks": dict(rep.checks),
             "words": common.spoken_word_count(script),
