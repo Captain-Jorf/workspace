@@ -32,6 +32,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
+import palette_qa
 import visual_plan
 
 CHECKS = ["content_language", "english_only", "technology_relevance", "metacognition_relevance",
@@ -598,13 +599,15 @@ def detect_code_card(arr):
     (the old card was (18,20,24) — blue-dominant, unlike any warm brand
     color). Counts qualifying pixels in the central scene band; the legacy
     card registered ~135k px, compression noise on warm frames stays well
-    under COLD_CARD_PX."""
+    under COLD_CARD_PX. The cold-dominance formula itself lives ONLY in
+    palette_qa (single source); this detector adds the legacy card's
+    darkness conditions."""
     if arr is None or arr.shape[0] < 1000 or arr.shape[1] < 600:
         return 0
     h = arr.shape[0]
     band = arr[int(h * 0.30):int(h * 0.80), int(arr.shape[1] * 0.08):int(arr.shape[1] * 0.92)]
     r, g, b = band[..., 0], band[..., 1], band[..., 2]
-    mask = (b > r + 2) & (r < 70) & (g < 70)
+    mask = palette_qa.cold_dominance_mask(band, 2) & (r < 70) & (g < 70)
     return int(mask.sum())
 
 
@@ -720,7 +723,8 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
     for i in issues:
         rep.block("visual_semantics", i)
     try:
-        rep.details["visuals"] = {"present": True, **visual_plan.plan_summary(plan)}
+        rep.details["visuals"] = {"present": True, **visual_plan.plan_summary(plan),
+                                  "photo_provenance": visual_plan.photo_provenance_summary(plan)}
     except Exception:
         rep.details["visuals"] = {"present": True}
     if not (video and os.path.exists(video)) or no_frames:
@@ -732,24 +736,53 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
     timing = common.load_json(os.path.join(ep, "timing.json"), {}) or {}
     layout = common.load_json(os.path.join(ep, "layout.json"), {}) or {}
     scenes = plan.get("scenes") or []
-    times = _plan_scene_times(timing, scenes)
+    total = float(timing.get("total", 0) or 0)
+    cfg = palette_qa.load_policy(pol)
+    windows, timing_source = scene_windows(layout, timing, scenes, total)
+    rep.details["visuals"]["scene_timing_source"] = timing_source
+    if not windows:
+        rep.block("visual_semantics",
+                  "no scene window could be determined for the rendered-frame QA "
+                  "(layout.json carries no scene_windows and the timing fallback is empty) — "
+                  "final rendered-media validation is mandatory")
+        return
     import tempfile
     tmp = tempfile.mkdtemp(prefix="qa_visuals_")
-    frames = []
-    for sc, t in times[:16]:
-        arr = _decode_frame(video, min(t, max(0.0, float(timing.get("total", 0)) - 0.3)), tmp)
-        if arr is None:
-            rep.block("visual_semantics",
-                      f"could not decode a rendered frame for scene {sc['scene_id']} — "
-                      "final rendered-media validation is mandatory")
-            return
-        frames.append((sc, arr))
+    frames = []          # [(scene_id, beat, t_mid, [decoded arrays], [sample times])]
+    decoded = 0
+    budget = palette_qa.frame_budget(cfg, len(windows))
     try:
-        for sc, arr in frames:
-            sid = sc.get("scene_id")
+        for sid, beat, a, b in windows:
+            if decoded >= budget:
+                break
+            times = palette_qa.sample_times(a, b, cfg, total=total)
+            arrs = []
+            for t in times:
+                if decoded >= budget:
+                    break
+                arr = _decode_frame(video, t, tmp)
+                if arr is None:
+                    rep.block("visual_semantics",
+                              f"could not decode a rendered frame for scene {sid} — "
+                              "final rendered-media validation is mandatory")
+                    return                      # finally: cleans the temp dir
+                decoded += 1
+                arrs.append(arr)
+            if arrs:
+                frames.append((sid, beat, times[len(arrs) // 2], arrs, times))
+        sc_by_id = {sc.get("scene_id"): sc for sc in scenes}
+        palette_summary = {"frames_sampled": decoded, "scenes_checked": len(frames),
+                           "method": cfg.get("method"), "blocked": False,
+                           "persistent_cold_regions": 0, "noise_only_px": 0,
+                           "raw_cold_px": 0, "max_meaningful_area_fraction": 0.0,
+                           "max_meaningful_core_px": 0, "scene_timing_source": timing_source,
+                           "cold_family_px": {"blue": 0, "cyan": 0, "purple": 0},
+                           "policy_notes": list(cfg.get("policy_notes") or [])}
+        for sid, beat, t_mid, arrs, times in frames:
+            sc = sc_by_id.get(sid) or {"scene_id": sid, "beat": beat}
             is_code = bool(sc.get("code_justified"))
             # (a) the legacy cold code/terminal card must not appear anywhere
-            cold_card = detect_code_card(arr)
+            cold_card = max(detect_code_card(arr) for arr in arrs)
             if cold_card > COLD_CARD_PX and not is_code:
                 rep.block("visual_semantics",
                           f"rendered frame of scene {sid} contains a cold code/terminal card "
@@ -759,40 +792,47 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
                           f"rendered frame of scene {sid} shows a cold code card that violates "
                           "the warm profile palette")
             # (b) cursor only in a justified code-entry scene
-            if detect_cursor(arr) and not sc.get("cursor_justified"):
+            if detect_cursor(arrs[len(arrs) // 2]) and not sc.get("cursor_justified"):
                 rep.block("visual_semantics",
                           f"rendered frame of scene {sid} contains an unjustified typing cursor")
-            # (c) no cold hue (blue/navy/cyan/purple) in the brand treatment
-            h = arr.shape[0]
-            band = arr[int(h * 0.25):int(h * 0.85), 40:arr.shape[1] - 40]
-            r, g, b = band[..., 0], band[..., 1], band[..., 2]
-            cold_frac = float(((b > r + 4) & (b >= g - 6)).mean())
-            if cold_frac > 0.002:
+            # (c) no blue/navy/cyan/purple (cold) element — perceptually gated,
+            #     multi-frame, single-sourced in palette_qa (issue #26)
+            scene_palette = palette_qa.analyze_scene(arrs, cfg)
+            palette_summary["blocked"] = palette_summary["blocked"] or scene_palette["blocked"]
+            palette_summary["persistent_cold_regions"] += scene_palette["persistent_cold_regions"]
+            palette_summary["noise_only_px"] += scene_palette["noise_only_px_total"]
+            palette_summary["raw_cold_px"] += scene_palette["raw_cold_px_total"]
+            for _fam, _n in (scene_palette.get("family_px_total") or {}).items():
+                palette_summary["cold_family_px"][_fam] = \
+                    palette_summary["cold_family_px"].get(_fam, 0) + _n
+            palette_summary["max_meaningful_area_fraction"] = max(
+                palette_summary["max_meaningful_area_fraction"],
+                scene_palette["max_meaningful_area_fraction"])
+            palette_summary["max_meaningful_core_px"] = max(
+                palette_summary["max_meaningful_core_px"],
+                scene_palette["max_meaningful_core_px"])
+            ok, reason = palette_qa.scene_verdict(scene_palette)
+            if not ok:
                 rep.block("visual_semantics",
-                          f"rendered frame of scene {sid} is {100 * cold_frac:.2f}% cold "
-                          "(blue/navy/cyan/purple) — profile palette is matte black/gold/amber/ivory")
+                          f"rendered frames of scene {sid}: {reason}")
             # (d) subtitle band must stay unobstructed (dark scrim zone)
             cues = layout.get("en") or []
-            t_mid = None
-            for sc2, t2 in times[:16]:
-                if sc2["scene_id"] == sid:
-                    t_mid = t2
-                    break
-            if t_mid is not None:
-                active = [c for c in cues if c.get("start", 1e9) <= t_mid <= c.get("end", -1)]
-                if active:
-                    L = pol["layout"]
-                    top = int(L["en_top"]) - 10
-                    bot = int(L["en_top"]) + 3 * int(L["en_row_height"]) + 10
-                    band2 = arr[top:bot, 60:arr.shape[1] - 60]
-                    lum = (0.2126 * band2[..., 0] + 0.7152 * band2[..., 1] + 0.0722 * band2[..., 2])
-                    if float(np.percentile(lum, 25)) > 96:
-                        rep.block("visual_semantics",
-                                  f"rendered frame of scene {sid}: the subtitle band is obstructed "
-                                  "by bright overlay content")
+            active = [c for c in cues if c.get("start", 1e9) <= t_mid <= c.get("end", -1)]
+            if active:
+                L = pol["layout"]
+                top = int(L["en_top"]) - 10
+                bot = int(L["en_top"]) + 3 * int(L["en_row_height"]) + 10
+                band2 = arrs[len(arrs) // 2][top:bot, 60:arrs[0].shape[1] - 60]
+                lum = (0.2126 * band2[..., 0] + 0.7152 * band2[..., 1] + 0.0722 * band2[..., 2])
+                if float(np.percentile(lum, 25)) > 96:
+                    rep.block("visual_semantics",
+                              f"rendered frame of scene {sid}: the subtitle band is obstructed "
+                              "by bright overlay content")
+        rep.details["visuals"]["palette_qa"] = palette_summary
         # (e) adjacent scenes must not be perceptual near-duplicates
-        hashes = [(sc["scene_id"], visual_plan.perceptual_hash(_frame_pil(sc, arr)))
-                  for sc, arr in frames]
+        hashes = [(sid, visual_plan.perceptual_hash(
+            _frame_pil(arrs[len(arrs) // 2])))
+            for sid, beat, t_mid, arrs, times in frames]
         for i in range(len(hashes) - 1):
             d = visual_plan.hamming(hashes[i][1], hashes[i + 1][1])
             if d <= 14:
@@ -812,9 +852,9 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
                       f"rendered frames collapse to {clusters} distinct visual(s) "
                       f"(need >= {need}) — the Reel repeats one underlying image")
         # (g) rendered code scenes must equal the plan's justified set
-        code_rendered = {sc["scene_id"] for sc, arr in frames
-                         if sc.get("visual_category") in visual_plan.CODE_CATEGORIES
-                         or detect_code_card(arr) > COLD_CARD_PX}
+        code_rendered = {sid for sid, beat, t_mid, arrs, times in frames
+                         if (sc_by_id.get(sid) or {}).get("visual_category") in visual_plan.CODE_CATEGORIES
+                         or max(detect_code_card(arr) for arr in arrs) > COLD_CARD_PX}
         code_planned = {sc["scene_id"] for sc in scenes
                         if sc.get("visual_category") in visual_plan.CODE_CATEGORIES}
         if code_rendered != code_planned:
@@ -829,14 +869,22 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def _frame_pil(sc, arr):
+def _frame_pil(arr):
     import numpy as np
     from PIL import Image
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
 
 
-def _plan_scene_times(timing, scenes):
-    """Real midpoint times per plan scene from the word-level timing."""
+def _estimate_scene_windows(timing, scenes):
+    """LEGACY FALLBACK ONLY — reconstruct scene windows from word-level timing.
+
+    The renderer writes the authoritative per-scene windows it actually used
+    (``layout.json`` → ``scene_windows``, produced by ``Reel._build_scene_times``
+    through build/render_auto.py); QA consumes those exact windows. This second
+    approximation exists only for historical fixtures whose layout.json predates
+    the recorded windows, and it is reported as
+    ``scene_timing_source = "estimated-fallback"`` in the QA details.
+    """
     from collections import OrderedDict
     groups = OrderedDict()
     for sc in scenes:
@@ -855,8 +903,48 @@ def _plan_scene_times(timing, scenes):
         n = len(groups.get(beat, []))
         start = t0 + (t1 - t0) * idx / max(1, n)
         end = t0 + (t1 - t0) * (idx + 1) / max(1, n)
-        out.append((sc, (start + end) / 2.0))
+        sid = sc.get("scene_id")
+        if end > start:
+            out.append((sid, beat, float(start), float(end)))
     return out
+
+
+def scene_windows(layout, timing, scenes, total):
+    """Authoritative per-scene rendered windows + their source.
+
+    Preferred: ``layout["scene_windows"]`` — the EXACT start/end timestamps the
+    renderer used for every scene (single source of truth, no second
+    approximation, issue #26 §4). It is accepted only when it covers every plan
+    scene, is well ordered and lies inside the render duration.
+
+    Fallback: ``_estimate_scene_windows`` (historical fixtures only), clearly
+    flagged by the returned source string.
+
+    Returns ``([(scene_id, beat, start, end), ...], source)``.
+    """
+    plan_ids = [sc.get("scene_id") for sc in scenes]
+    raw = (layout or {}).get("scene_windows")
+    windows = []
+    ok = bool(raw)
+    if ok:
+        for w in raw:
+            try:
+                windows.append((w["scene_id"], w.get("beat"), float(w["start"]), float(w["end"])))
+            except (TypeError, KeyError, ValueError):
+                ok = False
+                break
+    if ok and windows:
+        ids = [w[0] for w in windows]
+        ok = (len(ids) == len(set(ids))
+              and set(plan_ids) <= set(ids)
+              and all(b > a for _, _, a, b in windows)
+              and all(a >= -0.01 and (not total or b <= total + 0.5) for _, _, a, b in windows)
+              and windows == sorted(windows, key=lambda w: w[2]))
+    else:
+        ok = False
+    if ok:
+        return windows, "layout"
+    return _estimate_scene_windows(timing, scenes), "estimated-fallback"
 
 def check_caption(rep, caption_path, script, pol):
     if not caption_path or not os.path.exists(caption_path):
