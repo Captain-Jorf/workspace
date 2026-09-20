@@ -76,6 +76,14 @@ def main():
                    "beats": [{"beat": b, "start": t} for t, b in reel.cuts],
                    "qa_frames": [{"beat": b, "pos": p, "t": t} for b, p, t in qa_frames],
                    "previews": prev, "contact_sheet": sheet})
+    # AUTHORITATIVE scene windows (issue #26 §4): the exact start/end timestamps
+    # this render used for every scene, straight from Reel._build_scene_times().
+    # The final QA samples frames inside these windows instead of reconstructing
+    # a second approximation from the word-level timing.
+    layout["scene_windows"] = [
+        {"scene_id": sc.get("scene_id"), "beat": sc.get("beat"),
+         "start": round(float(t0), 3), "end": round(float(t1), 3)}
+        for sc, t0, t1 in (reel.scene_times or [])]
     # Render manifest for the final rendered-visual QA: which scenes rendered
     # code visuals (the plan's justified set) — cross-checked by the supervisor
     # against the rendered frames.

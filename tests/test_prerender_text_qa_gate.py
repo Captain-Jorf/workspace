@@ -886,15 +886,34 @@ class SafetyInvariants(unittest.TestCase):
             self.assertFalse(result["approved"])
 
     def test_rejected_reels_are_not_reused_or_republished(self):
+        """The safety requirement WITHOUT the mutable production file.
+
+        This test used to assert the CURRENT status of the generated
+        ``output/auto-2026-09-18_manifest.json`` — a file every pipeline run
+        rewrites. A later legitimate run changed that record to
+        ``approved-dry-run`` and the daily workflow's self-test step failed
+        before production (issue #26 §1). The deterministic, sandboxed proof
+        that a rejected artifact can never be promoted or published now lives in
+        ``tests/test_rejected_manifest_isolation.py`` (own TemporaryDirectory
+        fixtures, real ``pipeline.record``, no real file touched). What stays
+        here is the memory-side invariant, which is about RECORDED history and
+        is read from the curated, tracked editorial memory only.
+        """
         mem = common.load_memory()
         by_id = {e.get("content_id"): e for e in mem.get("entries", [])}
         for cid in ("reel-2026-09-16", "reel-2026-09-17", "reel-2026-09-18"):
             self.assertIn(cid, by_id, cid)
-            self.assertNotIn(by_id[cid].get("buffer_post_id"), ("mockpost",), cid)
-        m = common.load_json(os.path.join(ROOT, "output", "auto-2026-09-18_manifest.json"), {})
-        self.assertEqual(m["status"], "qa-failed")
-        self.assertIsNone(m["buffer_post_id"])
-        self.assertEqual(m["error"], "[source_quality] claim words ['researchers'] without tier A/B")
+            entry = by_id[cid]
+            self.assertNotIn(entry.get("buffer_post_id"), ("mockpost",), cid)
+            # a RECORDED non-approval can never carry a Buffer outcome status —
+            # no matter how many later runs rewrite the entry (the previous
+            # version of this test pinned a mutable generated FILE instead and
+            # broke the daily self-test when a later approved run rewrote it)
+            if entry.get("qa_approved") is False:
+                self.assertIn(entry.get("status"), pl.FAILURE_STATES,
+                              f"{cid}: a rejected artifact can never be relabelled as published")
+        # no generated output artifact is read here any more: the sandboxed
+        # proof lives in tests/test_rejected_manifest_isolation.py
 
     def test_no_mock_or_persian_path_or_key_rotation_restored(self):
         for rel in ("build/llm_provider.py", "build/content_producer.py", "build/pipeline.py"):

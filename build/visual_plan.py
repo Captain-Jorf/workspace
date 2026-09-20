@@ -42,6 +42,7 @@ import unicodedata
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
+import palette_qa  # noqa: E402  (single source of the cold-color family)
 
 # ---------------------------------------------------------------------------
 # Brand palette — matte black / charcoal / warm metallic gold / amber / bronze /
@@ -88,8 +89,12 @@ def subtitle_band(pol):
 
 
 def _is_cold(rgb):
-    r, g, b = (int(rgb[0]), int(rgb[1]), int(rgb[2]))
-    return b > r + 6 and b >= g - 6
+    """DECLARED-color cold check (a named palette swatch), delegated to the one
+    module that defines the cold family (palette_qa). Rendered decoded pixels
+    are judged by palette_qa.analyze_frame, which additionally requires real
+    luminance/chroma and coherent regions — the raw inequality here would flag
+    codec noise on near-black frames (issue #26)."""
+    return palette_qa.declared_color_is_cold(rgb)
 
 
 def assert_no_cold_colors(name, rgb):
@@ -620,13 +625,47 @@ def _pick_category(scene_narration, topic_kw, pillar, used, prev_cat, slot_pref,
     return best
 
 
+# Category keywords are cheap matching stems ("hallucinat", "collaborat").
+# A SEARCH QUERY must be human-readable words, so every stem that can reach an
+# Openverse query is expanded here (the mapping is asserted by the tests).
+STEM_WORD_FIXES = {
+    "hallucinat": "hallucination",
+    "collaborat": "collaboration",
+    "concentrat": "concentration",
+    "verif": "verification",
+    "uncertain": "uncertainty",
+    "substit": "substitution",
+    "distract": "distraction",
+    "complex": "complexity",
+}
+
+
+def human_query_term(category):
+    """The human-readable search subject for a scene category.
+
+    Openverse receives real words, never a stem: ``hallucination-trap`` →
+    ``hallucination``. Deterministic, no remote text involved.
+    """
+    keywords = C.get(category, {}).get("keywords") or [category]
+    term = str(keywords[0]).strip().lower()
+    term = STEM_WORD_FIXES.get(term, term)
+    term = re.sub(r"[^a-z0-9 ]+", " ", term).strip()
+    return term or str(category).replace("-", " ")
+
+
+def external_asset_query(category, topic_kw, max_topic_words=4):
+    """The exact human-readable query string handed to the $0 photo source."""
+    subject = human_query_term(category)
+    return " ".join([w for w in ((topic_kw or [])[:max_topic_words] + [subject]) if w])
+
+
 def _external_asset_for(scene_narration, topic_kw, allow_external,
                         category="", used_urls=()):
     """$0 license-aware photo for ONE photo-designated scene.
 
-    The query carries the topic keywords PLUS the scene category's subject
-    word so different slots retrieve different images; already-used asset
-    URLs are skipped so a reel can never silently repeat one photograph.
+    The query carries the topic keywords PLUS the scene category's human
+    subject word so different slots retrieve different images; already-used
+    asset URLs are skipped so a reel can never silently repeat one photograph.
     Any problem → None → deterministic procedural fallback (the reel never
     fails because the external service is unavailable, and never reuses an
     image to compensate).
@@ -639,9 +678,8 @@ def _external_asset_for(scene_narration, topic_kw, allow_external,
         return None
     if not asset_fetch.enabled():
         return None
-    subject = C.get(category, {}).get("keywords", [category])[0]
-    query = " ".join((topic_kw or [])[:4] + [subject])
-    return asset_fetch.fetch_image(query, skip_urls=used_urls)
+    return asset_fetch.fetch_image(external_asset_query(category, topic_kw),
+                                   skip_urls=used_urls)
 
 
 # A normal 60-120 s reel intentionally carries a balanced visual mix
@@ -811,7 +849,21 @@ def build_visual_plan(script, pol=None, allow_external=None):
             "visual_category": cat,
             "visual_purpose": purpose,
             "asset": asset,
-            "asset_query": " ".join(tkw[:4]),
+            "asset_query": external_asset_query(cat, tkw),
+            # Issue #26 §8: record the EXACT sanitized human-readable query the
+            # $0 source actually received (the fetcher stores what it sent) —
+            # not a different planned query — plus the retrieval outcome, so the
+            # daily report can show real photo provenance without exposing URLs,
+            # remote metadata or downloaded filenames.
+            "asset_query_sent": (asset.get("query_sanitized") or None)
+            if asset.get("kind") == "external" else None,
+            "asset_query_planned": external_asset_query(cat, tkw)
+            if (beat not in ("hook", "ending") and i in photo_slots) else None,
+            "asset_retrieval": ("retrieved" if asset.get("kind") == "external"
+                                else "procedural-fallback"
+                                if (beat not in ("hook", "ending") and i in photo_slots)
+                                else "procedural" if asset.get("kind") == "procedural"
+                                else "repository-brand-accent"),
             "animation": C[cat]["animation"],
             "content_top": C[cat]["content_top"],
             "content_bottom": C[cat]["content_bottom"],
@@ -1115,6 +1167,40 @@ def visual_semantic_issues(plan, script, pol=None):
     return issues
 
 
+def photo_provenance_summary(plan):
+    """Safe photo/variety observability for the daily Issue (issue #26 §8).
+
+    Counts only — no URLs, no query strings, no remote metadata, no downloaded
+    filenames. A procedural fallback is NEVER reported as a retrieved
+    photograph.
+    """
+    scenes = (plan or {}).get("scenes") or []
+    brand = [sc for sc in scenes if sc.get("visual_category") in BRAND_CATEGORIES]
+    designated = [sc for sc in scenes if sc.get("photo_designated")]
+    retrieved = [sc for sc in scenes if (sc.get("asset") or {}).get("kind") == "external"]
+    licenses = {}
+    for sc in retrieved:
+        lic = str((sc.get("asset") or {}).get("license") or "?").lower()
+        licenses[lic] = licenses.get(lic, 0) + 1
+    procedural = [sc for sc in scenes if (sc.get("asset") or {}).get("kind") == "procedural"]
+    brand_repo = [sc for sc in scenes if (sc.get("asset") or {}).get("origin") == "repository-assets"]
+    brand_outside = [sc for sc in brand_repo if sc.get("visual_category") not in BRAND_CATEGORIES]
+    return {
+        "scenes": len(scenes),
+        "photo_designated": len(designated),
+        "photos_retrieved": len(retrieved),
+        "photo_fallbacks": sum(1 for sc in designated
+                               if (sc.get("asset") or {}).get("kind") != "external"),
+        "procedural_scenes": len(procedural),
+        "brand_scenes": len(brand),
+        "brand_repo_assets": len(brand_repo),
+        "brand_accents_only": not brand_outside,
+        "distinct_assets": len({(sc.get("asset") or {}).get("id") for sc in scenes}),
+        "licenses": licenses,
+        "licenses_ok": all(k in ALLOWED_EXTERNAL_LICENSES for k in licenses),
+    }
+
+
 def plan_summary(plan):
     scenes = (plan or {}).get("scenes") or []
     aids = {sc.get("asset", {}).get("id") for sc in scenes}
@@ -1155,15 +1241,16 @@ def brand_grade(arr):
 
 
 def cold_pixel_fraction(arr, tol=4):
-    """Fraction of pixels whose blue channel dominates — the cold-theme
-    signature (blue/navy/cyan/purple) the final frame QA blocks."""
-    import numpy as np
-    a = np.asarray(arr)
-    if a.size == 0:
-        return 0.0
-    r, g, b = a[..., 0].astype(np.int16), a[..., 1].astype(np.int16), a[..., 2].astype(np.int16)
-    cold = (b > r + tol) & (b >= g - 6)
-    return float(cold.mean())
+    """Fraction of pixels whose blue channel dominates — the LEGACY raw cold
+    inequality, kept as a comparative diagnostic only.
+
+    The gate itself is ``palette_qa`` (issue #26): the raw inequality cannot
+    distinguish H.264 chroma noise in near-black regions from a real
+    blue/navy/cyan/purple object. This wrapper exists so the formula lives in
+    exactly one module (build/palette_qa.py) and tests share that source.
+    """
+    import palette_qa
+    return palette_qa.raw_cold_pixel_fraction(arr, tol)
 
 
 def perceptual_hash(img, size=16):

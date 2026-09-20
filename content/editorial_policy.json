@@ -201,6 +201,28 @@
   ],
   "logo_status": "stand-in"
  },
+ "palette_qa": {
+  "_comment": "Rendered-palette QA for the warm profile palette (matte black / charcoal / gold / amber / bronze / ivory). Blue, navy, cyan and purple stay prohibited: a decoded frame must not show a meaningful cold region. ONE configuration shared by the pre-encode plan gate, the final decoded-frame visual_semantics check and the tests (build/palette_qa.py). Key semantics: min_luma_visible = luminance floor that separates the VISIBLE cold path from the DARK-NAVY path; visible_min_chroma / visible_min_blue_excess = chroma magnitude and cold-channel dominance a visible cold element must reach; dark_min_chroma / dark_min_blue_excess = the same two floors for a dark-navy connected region (low luminance is NOT ignored); min_region_core_px = smallest spatially coherent (3x3-eroded) region that counts as meaningful rather than codec noise; single_frame_core_block_px = one obviously large cold object in a single decoded frame blocks immediately; max_frame_area_fraction = blocked cold-area share of the frame band when a meaningful region exists; frames_per_scene / max_total_frames = bounded deterministic frames sampled per scene and per reel; persist_min_frames = how many sampled frames the SAME region must appear in to block; region_iou_min / region_centroid_tol_px = how two regions are matched as the same object across frames. Calibrated against real libx264 codec chroma noise: near-black codec noise measures chroma <= ~10 and a 3x3-eroded core of <= 4 px, while a real dark-navy object (#0A1A2E) measures chroma 36. Hard safety envelopes are enforced in code; a value outside them is clamped and reported in the QA diagnostics. There is no environment-variable override for these rules.",
+  "min_luma_visible": 64,
+  "visible_min_chroma": 16,
+  "visible_min_blue_excess": 8,
+  "dark_min_chroma": 12,
+  "dark_min_blue_excess": 8,
+    "min_region_core_px": 256,
+    "single_frame_core_block_px": 1024,
+    "max_frame_area_fraction": 0.004,
+  "frames_per_scene": 3,
+  "persist_min_frames": 2,
+  "region_iou_min": 0.15,
+  "region_centroid_tol_px": 48,
+  "max_total_frames": 40,
+  "band": {
+   "top_fraction": 0.25,
+   "bottom_fraction": 0.85,
+   "side_margin_px": 40,
+   "_comment": "rendered-frame analysis band: the scene zone between the hook area and the subtitle band, excluding the frame edges"
+  }
+ },
  "tts": {
   "engine": "edge-tts",
   "voice": "en-US-ChristopherNeural",

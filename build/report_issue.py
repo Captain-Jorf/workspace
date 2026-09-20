@@ -79,6 +79,39 @@ def raw_url(repo, branch, path):
     return f"https://raw.githubusercontent.com/{repo}/{branch}/{path}"
 
 
+def visual_provenance_section(qa):
+    """Safe photo/variety observability for the daily report (issue #26 §8).
+
+    Shows ONLY counts and license names: no full URLs, no query strings, no
+    remote metadata, no downloaded filenames. Procedural fallbacks are never
+    reported as retrieved photographs.
+    """
+    vis = (qa or {}).get("details", {}).get("visuals") or {}
+    prov = vis.get("photo_provenance")
+    if not prov:
+        return []
+    lic = prov.get("licenses") or {}
+    lic_txt = ", ".join(f"{k}: {v}" for k, v in sorted(lic.items())) or "none"
+    rows = [
+        ("photo-designated scenes", prov.get("photo_designated")),
+        ("photos successfully retrieved (CC0/PDM)", prov.get("photos_retrieved")),
+        ("photo slots that fell back to a procedural visual", prov.get("photo_fallbacks")),
+        ("procedural scenes (of which brand moments)",
+         f"{prov.get('procedural_scenes')} ({prov.get('brand_scenes')})"),
+        ("distinct primary assets", prov.get("distinct_assets")),
+        ("license summary", lic_txt),
+        ("repository brand assets used only as accents",
+         "yes" if prov.get("brand_accents_only") else "NO"),
+    ]
+    L = ["<details><summary>Visual provenance (photo mix, licenses, brand accents)</summary>", "",
+         "| metric | value |", "|---|---|"]
+    L += [f"| {k} | {v} |" for k, v in rows]
+    L += ["", "External photos are $0, keyless, attribution-free public-domain (CC0/PDM) only; a "
+          "missing photo service never fails the run — the scene falls back to a distinct "
+          "topic-specific procedural visual.", "", "</details>", ""]
+    return L
+
+
 def checks_table(qa):
     icon = {"pass": "✅", "warn": "⚠️", "fail": "❌"}
     rows = ["| check | result |", "|---|---|"]
@@ -183,6 +216,8 @@ def render_body(tag, st, repo, run_url):
         L.append(f"### Quality Supervisor — score {qa.get('score', '?')}/100 (min {qa.get('min_score', '?')}) · "
                  f"{'approved' if qa.get('approved') else 'rejected'}")
         L.append(checks_table(qa))
+        L.append("")
+        L += visual_provenance_section(qa)
         if qa.get("warnings"):
             L.append("")
             L.append(f"<details><summary>{len(qa['warnings'])} warning(s)</summary>\n")
@@ -223,6 +258,8 @@ def render_body(tag, st, repo, run_url):
                 L += [f"- {b}" for b in qa["blocking_errors"]]
             L.append("")
             L.append(checks_table(qa))
+            L.append("")
+            L += visual_provenance_section(qa)
             if qa.get("warnings"):
                 L.append("")
                 L.append(f"<details><summary>{len(qa['warnings'])} warning(s)</summary>\n")
