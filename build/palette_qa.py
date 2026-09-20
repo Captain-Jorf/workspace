@@ -37,13 +37,26 @@ inequality:
   * ``blue_excess`` — b - max(r,g): how far blue dominates BOTH other channels
                       (negative for any warm pixel).
 
-Two detection paths (thresholds come from the documented policy block):
+THREE PROHIBITED FAMILIES, each classified independently (``family_masks``):
 
-  A. VISIBLE COLD — ``luma >= min_luma_visible``, ``chroma >=
-     visible_min_chroma``, ``blue_excess >= visible_min_blue_excess``:
-     a genuinely visible blue/navy/cyan/purple element.
-  B. DARK COLD — ``luma < min_luma_visible`` (a dark element), ``chroma >=
-     dark_min_chroma``, ``blue_excess >= dark_min_blue_excess``.
+  * ``blue``   — ``(b - r >= blue_min_excess) & (b - g >= blue_min_excess)``
+  * ``cyan``   — ``(g - r >= cyan_min_excess) & (b - r >= cyan_min_excess) &
+                  (g - b <= cyan_max_green_over_blue)``
+  * ``purple`` — ``(r - g >= purple_min_red_over_green) &
+                  (b - g >= purple_min_blue_over_green)``
+
+A blue-dominance-only rule is NOT sufficient: canonical cyan RGB(0,255,255) and
+canonical purple RGB(128,0,128) are balanced — ``b - max(r, g) == 0`` for both —
+even though the brand policy prohibits them. The cyan and purple rules above
+catch the balanced/dark variants while the green-lead and warm-rose guards keep
+ordinary green and rose/warm red allowed.
+
+Two detection paths on top of the families (thresholds from the policy block):
+
+  A. VISIBLE COLD — ``luma >= min_luma_visible`` and ``chroma >=
+     visible_min_chroma``: a genuinely visible cold element.
+  B. DARK COLD — ``luma < min_luma_visible`` (a dark element) and ``chroma >=
+     dark_min_chroma``.
      Low luminance is NOT ignored: a real dark-navy object still has a large
      absolute chroma (e.g. #0A1A2E = (10,26,46) → chroma 36), while measured
      H.264 noise on a near-black field stays at chroma <= ~10 with a dominant
@@ -120,9 +133,15 @@ DEFAULT_POLICY = {
     "method": METHOD,
     "min_luma_visible": 64,            # a pixel below this is treated as "dark"
     "visible_min_chroma": 16,          # visible cold must be clearly chromatic
-    "visible_min_blue_excess": 8,      # blue must beat max(r,g) by this much
     "dark_min_chroma": 12,             # dark cold needs real chroma (noise: <=10)
-    "dark_min_blue_excess": 8,
+    "blue_min_excess": 8,              # blue family: b beats r AND g by this much
+    "cyan_min_excess": 8,              # cyan family: g and b each beat r by this much
+    "cyan_hue_min": 165,               # ... inside the cyan/teal hue band (degrees)
+    "cyan_hue_max": 200,               #     (green is 120, navy is 213)
+    "purple_min_red_over_green": 24,   # purple family: r beats g by this much
+    "purple_min_blue_over_green": 32,  # ... b beats g by this much (excludes warm rose)
+    "purple_hue_min": 260,             # ... inside the violet/magenta hue band
+    "purple_hue_max": 335,             #     (blue is 240, rose/warm red is ~347)
     "min_region_core_px": 256,         # smallest MEANINGFUL coherent region
     "single_frame_core_block_px": 1024,  # one big obvious cold object
     "max_frame_area_fraction": 0.004,  # cold-dominant area share when a region exists
@@ -138,9 +157,15 @@ DEFAULT_POLICY = {
 _HARD_LIMITS = {
     "min_luma_visible": (24.0, 128.0),
     "visible_min_chroma": (10.0, 48.0),
-    "visible_min_blue_excess": (6.0, 32.0),
     "dark_min_chroma": (8.0, 40.0),
-    "dark_min_blue_excess": (6.0, 32.0),
+    "blue_min_excess": (6.0, 32.0),
+    "cyan_min_excess": (6.0, 32.0),
+    "cyan_hue_min": (120.0, 200.0),
+    "cyan_hue_max": (170.0, 260.0),
+    "purple_min_red_over_green": (6.0, 48.0),
+    "purple_min_blue_over_green": (6.0, 48.0),
+    "purple_hue_min": (200.0, 320.0),
+    "purple_hue_max": (300.0, 360.0),
     "min_region_core_px": (64.0, 20000.0),
     "single_frame_core_block_px": (256.0, 400000.0),
     "max_frame_area_fraction": (0.0005, 0.02),
@@ -151,8 +176,10 @@ _HARD_LIMITS = {
     "max_total_frames": (6.0, 120.0),
 }
 
-_INT_KEYS = ("min_luma_visible", "visible_min_chroma", "visible_min_blue_excess",
-             "dark_min_chroma", "dark_min_blue_excess", "min_region_core_px",
+_INT_KEYS = ("min_luma_visible", "visible_min_chroma", "dark_min_chroma",
+             "blue_min_excess", "cyan_min_excess", "cyan_hue_min", "cyan_hue_max",
+             "purple_min_red_over_green", "purple_min_blue_over_green",
+             "purple_hue_min", "purple_hue_max", "min_region_core_px",
              "single_frame_core_block_px", "frames_per_scene", "persist_min_frames",
              "region_centroid_tol_px", "max_total_frames")
 
@@ -200,6 +227,10 @@ def load_policy(pol=None):
     if cfg["single_frame_core_block_px"] < cfg["min_region_core_px"]:
         notes.append("single_frame_core_block_px < min_region_core_px — raised to fit")
         cfg["single_frame_core_block_px"] = cfg["min_region_core_px"]
+    for lo_key, hi_key in (("cyan_hue_min", "cyan_hue_max"), ("purple_hue_min", "purple_hue_max")):
+        if cfg[lo_key] >= cfg[hi_key]:
+            notes.append(f"{lo_key} >= {hi_key} — defaults used (empty hue band would disable the family)")
+            cfg[lo_key], cfg[hi_key] = DEFAULT_POLICY[lo_key], DEFAULT_POLICY[hi_key]
     if cfg["persist_min_frames"] > cfg["frames_per_scene"]:
         notes.append("persist_min_frames > frames_per_scene — reduced to fit")
         cfg["persist_min_frames"] = cfg["frames_per_scene"]
@@ -255,6 +286,23 @@ def blue_excess(arr):
     return b - np.maximum(r, g)
 
 
+def hue(arr):
+    """HSV hue in degrees (0-360) — the perceptual coordinate used to separate
+    cyan/teal from blue/navy and violet/magenta from warm rose. Pixels with zero
+    chroma report 0.0 (they can never match a family: every family rule also
+    requires a channel separation)."""
+    np = _np()
+    r, g, b = _channels(arr)
+    mx = np.maximum(np.maximum(r, g), b).astype(np.float32)
+    mn = np.minimum(np.minimum(r, g), b).astype(np.float32)
+    delta = np.where((mx - mn) > 0, mx - mn, 1.0)
+    h = np.zeros(mx.shape, np.float32)
+    h = np.where(mx == r, 60.0 * (((g - b) / delta) % 6.0), h)
+    h = np.where(mx == g, 60.0 * (((b - r) / delta) + 2.0), h)
+    h = np.where(mx == b, 60.0 * (((r - g) / delta) + 4.0), h)
+    return np.where((mx - mn) > 0, h % 360.0, 0.0)
+
+
 def cold_dominance_mask(arr, delta=4):
     """The LEGACY raw cold inequality, kept in exactly one place:
 
@@ -272,26 +320,147 @@ def raw_cold_pixel_fraction(arr, delta=4):
     return float(m.mean()) if m.size else 0.0
 
 
-def declared_color_is_cold(rgb, delta=6):
+def declared_color_is_cold(rgb, cfg=None):
     """Categorical cold check for a DECLARED brand color / palette swatch.
 
-    A named color is cold when blue dominates both other channels. No
-    luminance/chroma gating applies: a declared swatch has no codec noise to
-    reject. Rendered decoded pixels are judged by ``analyze_frame`` instead.
-    Defined here so the cold-color family exists in exactly ONE module.
+    A named color is cold when it belongs to any prohibited family under the
+    SAME three family rules used for rendered pixels — including their guards —
+    so canonical cyan RGB(0,255,255) and canonical purple RGB(128,0,128) are
+    rejected too, not only blue-dominant colors, while ordinary green and warm
+    rose stay allowed. Only the luminance/chroma floors and the spatial rules
+    are skipped here: a declared swatch is a solid brand color, carries no codec
+    noise and has no region geometry. Rendered DECODED pixels are judged by
+    ``analyze_frame`` instead. Defined here so the cold-color family exists in
+    exactly ONE module.
     """
-    r, g, b = (int(rgb[0]), int(rgb[1]), int(rgb[2]))
-    return b > r + delta and b >= g - 6
+    cfg = cfg or DEFAULT_POLICY
+    return bool(cold_families_of(rgb, cfg))
 
 
-def pixel_masks(band, cfg=None):
+COLD_FAMILIES = ("blue", "cyan", "purple")
+
+# Label precedence, NARROWEST family first. A cyan or purple color is often also
+# blue-dominant (e.g. teal (0,140,160) or violet (143,0,255)); the narrow
+# hue-banded families describe it better, so they win the region label on a tie.
+# The wide blue family has no hue band and therefore comes last.
+FAMILY_PRECEDENCE = ("cyan", "purple", "blue")
+
+
+def family_masks(band, cfg=None):
+    """The three prohibited cold-color FAMILIES, each classified independently.
+
+    A single blue-dominance inequality is not enough: the canonical, balanced
+    members of two prohibited families have equal blue and green (cyan
+    RGB(0,255,255)) or equal blue and red (purple RGB(128,0,128)), so
+    ``b - max(r, g)`` is ZERO for both — they would evade a blue-only detector.
+    Each family therefore has its own documented rule (all in 8-bit levels):
+
+      * ``blue``   — blue materially above BOTH other channels::
+            (b - r >= blue_min_excess) & (b - g >= blue_min_excess)
+        covers pure blue, navy, indigo, steel blue and blue-leaning cyan.
+
+      * ``cyan``   — green AND blue materially above red, INSIDE the cyan/teal
+        hue band (the band is what separates cyan from navy, whose hue is
+        blue; the channel floors separate it from ordinary green)::
+            (g - r >= cyan_min_excess) & (b - r >= cyan_min_excess)
+            & (cyan_hue_min <= hue < cyan_hue_max)
+        covers canonical cyan RGB(0,255,255) (hue 180), teal (hue 180), darker
+        cyan (hue 190) and cyan-leaning teal (hue 187), while pure green
+        RGB(0,200,0) (hue 120), spring green (hue 150) and navy (hue 213)
+        stay out.
+
+      * ``purple`` — red AND blue materially above green, INSIDE the
+        violet/magenta hue band (the band is what separates violet from blue;
+        the blue-over-green floor is what separates it from warm rose, which
+        also has blue slightly above green)::
+            (r - g >= purple_min_red_over_green)
+            & (b - g >= purple_min_blue_over_green)
+            & (purple_hue_min <= hue < purple_hue_max)
+        covers canonical purple RGB(128,0,128) (hue 300), violet (hue 274),
+        dark purple (hue 285) and magenta-purple (hue 286), while rose/warm
+        red (hue 347) and pure blue (hue 240) stay out.
+
+    The blue rule is a pure channel rule because blue/navy IS the wide
+    blue-dominance family; cyan and purple are the balanced families that need
+    the perceptual coordinate to be separated from it.
+
+    Achromatic pixels are excluded by construction (every rule needs a real
+    channel separation) and the luminance/chroma floors plus the coherent-region
+    and persistence rules below are applied on top, so the measured near-black
+    H.264 chroma noise (chroma <= ~10, isolated) is never treated as an object.
+    """
+    cfg = cfg or DEFAULT_POLICY
+    r, g, b = _channels(band)
+    h = hue(band)
+    blue = (b - r >= cfg["blue_min_excess"]) & (b - g >= cfg["blue_min_excess"])
+    cyan = ((g - r >= cfg["cyan_min_excess"]) & (b - r >= cfg["cyan_min_excess"])
+            & (h >= cfg["cyan_hue_min"]) & (h < cfg["cyan_hue_max"]))
+    purple = ((r - g >= cfg["purple_min_red_over_green"])
+              & (b - g >= cfg["purple_min_blue_over_green"])
+              & (h >= cfg["purple_hue_min"]) & (h < cfg["purple_hue_max"]))
+    return {"blue": blue, "cyan": cyan, "purple": purple}
+
+
+def hue_scalar(rgb):
+    """Pure-Python HSV hue in degrees for ONE RGB triple — mirrors ``hue``
+    exactly (same branch order, same tie behaviour), so declared-color checks
+    and rendered-pixel masks can never disagree. Deliberately numpy-free: the
+    declared-palette check runs while visual_plan is being imported, which must
+    stay possible in a minimal interpreter."""
+    r, g, b = int(rgb[0]), int(rgb[1]), int(rgb[2])
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    if d == 0:
+        return 0.0
+    h = 0.0
+    if mx == r:
+        h = 60.0 * (((g - b) / d) % 6)
+    if mx == g:
+        h = 60.0 * (((b - r) / d) + 2)
+    if mx == b:
+        h = 60.0 * (((r - g) / d) + 4)
+    return h % 360.0
+
+
+def cold_families_of(rgb, cfg=None):
+    """Family names matching a single RGB triple (used by the declared-swatch
+    check and by tests). Scalar twin of ``family_masks`` — the two are kept in
+    lockstep by tests/test_palette_qa_units.py::ScalarVectorEquivalence."""
+    cfg = cfg or DEFAULT_POLICY
+    r, g, b = int(rgb[0]), int(rgb[1]), int(rgb[2])
+    h = hue_scalar((r, g, b))
+    out = []
+    if (b - r >= cfg["blue_min_excess"]) and (b - g >= cfg["blue_min_excess"]):
+        out.append("blue")
+    if ((g - r >= cfg["cyan_min_excess"]) and (b - r >= cfg["cyan_min_excess"])
+            and cfg["cyan_hue_min"] <= h < cfg["cyan_hue_max"]):
+        out.append("cyan")
+    if ((r - g >= cfg["purple_min_red_over_green"])
+            and (b - g >= cfg["purple_min_blue_over_green"])
+            and cfg["purple_hue_min"] <= h < cfg["purple_hue_max"]):
+        out.append("purple")
+    return out
+
+
+def _family_index(families, shape):
+    """0 = none, 1..3 = cold family index in FAMILY_PRECEDENCE order — the
+    narrowest matching family wins (cyan, then purple, then blue)."""
+    np = _np()
+    idx = np.zeros(shape, np.int8)
+    for i, name in enumerate(FAMILY_PRECEDENCE, start=1):
+        idx = np.where((idx == 0) & families[name], np.int8(i), idx)
+    return idx
+
+
+def pixel_masks(band, cfg=None, families=None):
     """The two detection-path pixel masks for one frame BAND."""
     cfg = cfg or DEFAULT_POLICY
-    lum, ch, be = luma(band), chroma(band), blue_excess(band)
-    visible = (lum >= cfg["min_luma_visible"]) & (ch >= cfg["visible_min_chroma"]) \
-        & (be >= cfg["visible_min_blue_excess"])
-    dark = (lum < cfg["min_luma_visible"]) & (ch >= cfg["dark_min_chroma"]) \
-        & (be >= cfg["dark_min_blue_excess"])
+    if families is None:
+        families = family_masks(band, cfg)
+    cold = families["blue"] | families["cyan"] | families["purple"]
+    lum, ch = luma(band), chroma(band)
+    visible = cold & (lum >= cfg["min_luma_visible"]) & (ch >= cfg["visible_min_chroma"])
+    dark = cold & (lum < cfg["min_luma_visible"]) & (ch >= cfg["dark_min_chroma"])
     return visible, dark
 
 
@@ -381,12 +550,12 @@ def label_components(mask):
     return lut[labels], int(len(roots))
 
 
-def region_records(core_mask, visible_mask, lum, chroma_img, cfg):
+def region_records(core_mask, visible_mask, lum, chroma_img, cfg, family_idx=None):
     """Meaningful regions of an eroded core mask (deterministic order).
 
-    Each record: path visible|dark, coherent-core size, bounding box, centroid
-    and mean luma/chroma of the coherent core. Regions smaller than
-    ``min_region_core_px`` are codec-noise scale and are dropped here.
+    Each record: cold family, path visible|dark, coherent-core size, bounding
+    box, centroid and mean luma/chroma of the coherent core. Regions smaller
+    than ``min_region_core_px`` are codec-noise scale and are dropped here.
     """
     np = _np()
     labels, count = label_components(core_mask)
@@ -402,7 +571,13 @@ def region_records(core_mask, visible_mask, lum, chroma_img, cfg):
         visible_hits = int(visible_mask[ys, xs].sum())
         values = lum[ys, xs]
         chroma_values = chroma_img[ys, xs]
+        family = "blue"
+        if family_idx is not None:
+            hits = [(name, int((family_idx[ys, xs] == i).sum()))
+                    for i, name in enumerate(FAMILY_PRECEDENCE, start=1)]
+            family = max(hits, key=lambda kv: kv[1])[0]     # ties → narrowest family
         out.append({
+            "family": family,
             "path": "visible" if visible_hits * 2 >= int(counts[lab]) else "dark",
             "core_px": int(counts[lab]),
             "bbox": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())],
@@ -422,7 +597,8 @@ def analyze_frame(arr, cfg=None, band=None):
     band_arr = frame[band] if band is not None else frame[band_slice(frame, cfg)]
     band_px = int(band_arr[..., 0].size)
 
-    visible_mask, dark_mask = pixel_masks(band_arr, cfg)
+    families = family_masks(band_arr, cfg)
+    visible_mask, dark_mask = pixel_masks(band_arr, cfg, families)
     candidate = visible_mask | dark_mask
     candidate_px = int(candidate.sum())
     raw_px = int(cold_dominance_mask(band_arr).sum())
@@ -437,6 +613,7 @@ def analyze_frame(arr, cfg=None, band=None):
         "sub_threshold_px": max(0, raw_px - candidate_px),
         "visible_cold_px": int(visible_mask.sum()),
         "dark_cold_px": int(dark_mask.sum()),
+        "family_px": {name: int((families[name] & candidate).sum()) for name in COLD_FAMILIES},
         "coherent_core_px": core_px,
         "meaningful_area_px": 0,
         "noise_only_px": candidate_px,
@@ -451,7 +628,8 @@ def analyze_frame(arr, cfg=None, band=None):
 
     lum, ch = luma(band_arr), chroma(band_arr)
     if core_px > _HUGE_CORE_PX:
-        result["regions"] = [{"path": "area", "core_px": core_px, "bbox": None,
+        result["regions"] = [{"family": next(n for n in FAMILY_PRECEDENCE if families[n].any()),
+                              "path": "area", "core_px": core_px, "bbox": None,
                               "centroid": None, "mean_luma": None, "mean_chroma": None}]
         result["meaningful_area_px"] = candidate_px
         result["noise_only_px"] = 0
@@ -463,7 +641,8 @@ def analyze_frame(arr, cfg=None, band=None):
                                   "frame band")
         return result
 
-    result["regions"] = region_records(core_mask, visible_mask, lum, ch, cfg)
+    result["regions"] = region_records(core_mask, visible_mask, lum, ch, cfg,
+                                       _family_index(families, candidate.shape))
     meaningful_area = sum(r["core_px"] for r in result["regions"])
     result["meaningful_area_px"] = meaningful_area
     result["noise_only_px"] = max(0, candidate_px - meaningful_area)
@@ -473,10 +652,11 @@ def analyze_frame(arr, cfg=None, band=None):
     if result["regions"]:
         if result["max_region_core_px"] >= cfg["single_frame_core_block_px"]:
             result["blocked"] = True
+            top_family = result["regions"][0].get("family", "blue")
             result["block_reason"] = (
-                f"a single decoded frame contains a coherent blue/navy/cyan/purple region "
-                f"(core {result['max_region_core_px']}px) — the profile palette is matte "
-                "black/gold/amber/ivory")
+                f"a single decoded frame contains a coherent {top_family} cold region "
+                f"(blue/navy/cyan/purple family, core {result['max_region_core_px']}px) — the "
+                "profile palette is matte black/gold/amber/ivory")
         elif result["candidate_area_fraction"] >= cfg["max_frame_area_fraction"]:
             result["blocked"] = True
             result["block_reason"] = (
@@ -550,11 +730,11 @@ def analyze_scene(frames, cfg=None):
     if persistent:
         top = max((per_frame[fi]["regions"][ri] for c in persistent for (fi, ri) in c["regions"]),
                   key=lambda r: (r["core_px"], -r["centroid"][0]))
-        kind = "dark-navy" if top["path"] == "dark" else "visible"
-        reason = (f"a {kind} blue/navy/cyan/purple object persists across "
+        kind = f"{'dark ' if top['path'] == 'dark' else ''}{top.get('family', 'blue')}"
+        reason = (f"a {kind} cold object persists across "
                   f"{max(len(c['frames']) for c in persistent)} of {n} sampled frames of the "
-                  f"scene (coherent core {top['core_px']}px) — the profile palette is matte "
-                  "black/gold/amber/ivory")
+                  f"scene (blue/navy/cyan/purple family, coherent core {top['core_px']}px) — "
+                  "the profile palette is matte black/gold/amber/ivory")
     elif single_frame is not None:
         reason = single_frame["block_reason"]
 
@@ -568,6 +748,8 @@ def analyze_scene(frames, cfg=None):
         "coherent_core_px_total": sum(fr["coherent_core_px"] for fr in per_frame),
         "noise_only_px_total": sum(fr["noise_only_px"] for fr in per_frame),
         "raw_cold_px_total": sum(fr["raw_cold_px"] for fr in per_frame),
+        "family_px_total": {name: sum(fr["family_px"][name] for fr in per_frame)
+                            for name in COLD_FAMILIES},
         "blocked": bool(reason),
         "reason": reason,
         "per_frame": [
@@ -577,7 +759,8 @@ def analyze_scene(frames, cfg=None):
              "meaningful_area_px": fr["meaningful_area_px"],
              "max_region_core_px": fr["max_region_core_px"],
              "regions": [
-                 {"path": r["path"], "core_px": r["core_px"], "bbox": r["bbox"],
+                 {"family": r.get("family"), "path": r["path"], "core_px": r["core_px"],
+                  "bbox": r["bbox"],
                   "centroid": None if r["centroid"] is None
                   else [round(float(v), 1) for v in r["centroid"]],
                   "mean_luma": None if r["mean_luma"] is None else round(r["mean_luma"], 1),

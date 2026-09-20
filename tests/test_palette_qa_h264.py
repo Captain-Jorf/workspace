@@ -126,6 +126,38 @@ def warm_photo_scene(i):
     return vp.brand_grade(np.clip(rgb, 0, 255).astype(np.uint8)).astype(np.int16)
 
 
+def _mix(a, b, t):
+    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+def brand_blocks_scene(i):
+    """Every declared brand color as a large coherent block (warm palette)."""
+    im = Image.fromarray(warm_canvas().astype(np.uint8), "RGB")
+    d = ImageDraw.Draw(im)
+    for k, (_name, rgb) in enumerate(sorted(vp.BRAND_PALETTE.items())):
+        col, row = k % 4, k // 4
+        x, y = 80 + col * 300, 620 + row * 200
+        d.rectangle([x, y, x + 250, y + 160], fill=tuple(rgb))
+    return np.array(im, dtype=np.int16)
+
+
+def brand_and_aa_scene(i):
+    """Antialiased-style warm edges: linear ramps from each warm brand color to
+    the matte-black base, plus thin gold/ivory strokes (typography edges)."""
+    im = Image.fromarray(warm_canvas().astype(np.uint8), "RGB")
+    d = ImageDraw.Draw(im)
+    base = (16, 13, 10)
+    for k, warm in enumerate((vp.GOLD, vp.GOLD_HI, vp.IVORY, vp.BRONZE, vp.AMBER)):
+        y0 = 620 + k * 180
+        for row in range(140):
+            d.line([(90, y0 + row), (1200, y0 + row)], fill=_mix(base, warm, row / 139.0), width=1)
+    for k in range(9):                      # thin strokes = antialiased glyph edges
+        x = 120 + k * 130 + (i % 3)
+        d.rectangle([x, 1560, x + 3, 1700], fill=tuple(vp.GOLD))
+        d.rectangle([x + 8, 1580, x + 11, 1680], fill=tuple(vp.IVORY))
+    return np.array(im, dtype=np.int16)
+
+
 def with_block(frame, color, size=120, y=700, x=400):
     a = frame.copy()
     a[y:y + size, x:x + size] = color
@@ -198,11 +230,17 @@ class CodecRoundTrip(unittest.TestCase):
         self.assertFalse(scene["blocked"], scene["reason"])
 
     def test_decoded_frames_reproduce_the_legacy_cold_false_positive(self):
-        """The exact failure mechanism, on a REAL encode.
+        """The codec mechanism, on a REAL encode — NOT a threshold crossing.
 
-        If the encoder produced blue-biased near-black pixels (as it did for
-        reel-2026-09-21), they are near-black noise — the new detector must not
-        care, and the legacy metric must be able to see them.
+        The real incident (reel-2026-09-21) reported 0.23% legacy cold pixels and
+        was blocked by the old 0.20% gate. These local fixtures reproduce the
+        same near-black chroma-noise MECHANISM but measure far less of it
+        (approximately 0.015%-0.075%), i.e. BELOW the old 0.20% threshold — they
+        would NOT have triggered the old gate on their own. That exact >0.23%
+        case is covered deterministically by
+        tests/test_palette_qa_units.py::OldGateRegression, which builds a
+        decoded-frame-style fixture above the real incident's fraction and shows
+        the old rule blocking while the new detector passes it.
         """
         measured = 0
         for arr in self.gauge_decoded + self.typo_decoded:
@@ -219,7 +257,13 @@ class CodecRoundTrip(unittest.TestCase):
         # whatever the encoder did, the palette verdict is unchanged
         for decoded in (self.gauge_decoded, self.typo_decoded):
             self.assertFalse(pq.analyze_scene(decoded, self.cfg)["blocked"])
-        self.assertGreaterEqual(measured, 0)   # reported, not assumed
+        # and this fixture stays BELOW the old content-blind 0.20% gate: it is a
+        # mechanism demonstration, not a reproduction of the 0.23% threshold crossing
+        band_px = sum(int(np.asarray(a[pq.band_slice(a, self.cfg)][..., 0].size))
+                      for a in self.gauge_decoded + self.typo_decoded)
+        legacy_fraction = measured / max(1, band_px)
+        self.assertLess(legacy_fraction, 0.002,
+                        "if this ever exceeds the old 0.20% gate, update the report wording")
 
 
 class BlockedColdContent(unittest.TestCase):
@@ -277,6 +321,107 @@ class BlockedColdContent(unittest.TestCase):
         one = pq.analyze_scene([with_small_block(decoded[0], (20, 45, 95)),
                                 decoded[1], decoded[2]], self.cfg)
         self.assertFalse(one["blocked"], one["reason"])
+
+
+class CanonicalFamiliesBlocked(unittest.TestCase):
+    """Every prohibited family blocks a coherent region after a REAL encode —
+    including the two BALANCED canonical colors (RGB(0,255,255) and
+    RGB(128,0,128)) whose blue excess is exactly zero."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cfg = pq.load_policy()
+        cls.N = 12          # short clips: these fixtures are static
+
+    def _decoded(self, color, size=120, y=700, x=400):
+        frames = [with_block(gauge_scene(i, n=self.N), color, size=size, y=y, x=x)
+                  for i in range(self.N)]
+        return encode_decode(frames)
+
+    def _assert_blocked(self, color, family, size=120):
+        decoded = self._decoded(color, size=size)
+        scene = pq.analyze_scene(decoded, self.cfg)
+        self.assertTrue(scene["blocked"], f"{color} must block after H.264 round-trip")
+        fams = set()
+        for fr in scene["per_frame"]:
+            fams.update(r["family"] for r in fr["regions"])
+        self.assertIn(family, fams, f"{color} must be labelled {family}, got {fams}")
+
+    def test_pure_blue_object_is_blocked_after_round_trip(self):
+        self._assert_blocked((0, 0, 255), "blue", size=300)
+
+    def test_dark_navy_region_is_blocked_even_at_low_luminance(self):
+        decoded = self._decoded((10, 26, 46))
+        scene = pq.analyze_scene(decoded, self.cfg)
+        self.assertTrue(scene["blocked"])
+        self.assertEqual(scene["per_frame"][0]["regions"][0]["path"], "dark")
+
+    def test_canonical_cyan_is_blocked_after_round_trip(self):
+        self._assert_blocked((0, 255, 255), "cyan")
+
+    def test_darker_cyan_and_teal_are_blocked_after_round_trip(self):
+        self._assert_blocked((0, 100, 120), "cyan")      # darker cyan
+        self._assert_blocked((0, 128, 128), "cyan")      # teal
+        self._assert_blocked((0, 60, 70), "cyan")        # dark cyan/teal
+
+    def test_canonical_purple_is_blocked_after_round_trip(self):
+        self._assert_blocked((128, 0, 128), "purple")
+
+    def test_violet_dark_purple_and_magenta_are_blocked_after_round_trip(self):
+        self._assert_blocked((143, 0, 255), "purple")    # violet
+        self._assert_blocked((48, 0, 64), "purple")      # dark purple
+        self._assert_blocked((160, 32, 200), "purple")   # magenta-purple
+
+
+class WarmPaletteSurvivesEncoding(unittest.TestCase):
+    """Overblocking guard on REAL decoded frames: the declared brand palette,
+    warm/neutral neighbours and antialiased warm edges must all pass."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cfg = pq.load_policy()
+        cls.N = 12
+
+    def _decoded_scene(self, build):
+        frames = [build(i) for i in range(self.N)]
+        return encode_decode(frames)
+
+    def test_all_declared_brand_colors_pass_after_round_trip(self):
+        decoded = self._decoded_scene(brand_blocks_scene)
+        scene = pq.analyze_scene(decoded, self.cfg)
+        self.assertFalse(scene["blocked"], scene["reason"])
+        self.assertEqual(scene["persistent_cold_regions"], 0)
+        self.assertEqual(scene["max_meaningful_core_px"], 0)
+
+    def test_antialiased_gold_and_ivory_edges_pass_after_round_trip(self):
+        decoded = self._decoded_scene(brand_and_aa_scene)
+        scene = pq.analyze_scene(decoded, self.cfg)
+        self.assertFalse(scene["blocked"], scene["reason"])
+        self.assertEqual(scene["persistent_cold_regions"], 0)
+
+    def test_warm_boundary_colors_pass_after_round_trip(self):
+        """green without cyan, red, warm orange and rose/warm red stay allowed
+        even as large coherent blocks on decoded frames."""
+        for color, label in (((0, 200, 0), "green"), ((200, 0, 0), "red"),
+                             ((230, 140, 40), "orange"), ((196, 74, 88), "rose"),
+                             ((139, 69, 19), "warm brown"), ((128, 128, 128), "neutral gray")):
+            frames = [with_block(gauge_scene(i, n=self.N), color, size=240) for i in range(self.N)]
+            scene = pq.analyze_scene(encode_decode(frames), self.cfg)
+            self.assertFalse(scene["blocked"], f"{label} {color} must stay allowed: {scene['reason']}")
+
+    def test_warm_frames_keep_any_codec_noise_below_the_meaningful_floor(self):
+        """A warm frame may still produce a handful of chroma-quantisation
+        pixels. What must hold is that they never reach the meaningful-region
+        floor (no coherent object), and that the warm palette never produces a
+        cyan or purple hue at all."""
+        scene = pq.analyze_scene(self._decoded_scene(brand_blocks_scene), self.cfg)
+        total = sum(scene["family_px_total"].values())
+        self.assertLess(total, self.cfg["min_region_core_px"],
+                        f"codec noise must stay below the meaningful-region floor: {scene['family_px_total']}")
+        self.assertEqual(scene["family_px_total"]["cyan"], 0)
+        self.assertEqual(scene["family_px_total"]["purple"], 0)
+        self.assertEqual(scene["max_meaningful_core_px"], 0)
+        self.assertEqual(scene["persistent_cold_regions"], 0)
 
 
 class SceneSamplingEvidence(unittest.TestCase):

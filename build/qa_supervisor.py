@@ -776,6 +776,7 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
                            "persistent_cold_regions": 0, "noise_only_px": 0,
                            "raw_cold_px": 0, "max_meaningful_area_fraction": 0.0,
                            "max_meaningful_core_px": 0, "scene_timing_source": timing_source,
+                           "cold_family_px": {"blue": 0, "cyan": 0, "purple": 0},
                            "policy_notes": list(cfg.get("policy_notes") or [])}
         for sid, beat, t_mid, arrs, times in frames:
             sc = sc_by_id.get(sid) or {"scene_id": sid, "beat": beat}
@@ -801,6 +802,9 @@ def check_visuals(rep, ep, script, video, pol, no_frames):
             palette_summary["persistent_cold_regions"] += scene_palette["persistent_cold_regions"]
             palette_summary["noise_only_px"] += scene_palette["noise_only_px_total"]
             palette_summary["raw_cold_px"] += scene_palette["raw_cold_px_total"]
+            for _fam, _n in (scene_palette.get("family_px_total") or {}).items():
+                palette_summary["cold_family_px"][_fam] = \
+                    palette_summary["cold_family_px"].get(_fam, 0) + _n
             palette_summary["max_meaningful_area_fraction"] = max(
                 palette_summary["max_meaningful_area_fraction"],
                 scene_palette["max_meaningful_area_fraction"])
