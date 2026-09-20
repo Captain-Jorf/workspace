@@ -1,0 +1,45 @@
+{
+ "content_id": "reel-2026-09-24",
+ "content_date": "2026-09-24",
+ "topic": "When did you last notice you stopped listening in a standup? Attention",
+ "normalized_topic": "last notice stopped listening standup attention",
+ "pillar": "ATTENTION",
+ "technology_angle": "attention drift while using AI‑powered meeting tools",
+ "metacognition_concept": "mindful attention monitoring",
+ "tags": [
+  "mindful attention monitoring",
+  "attention drift while using AI‑powered meeting tools"
+ ],
+ "cta_type": "save",
+ "playbook": "llm-generated",
+ "source_url": null,
+ "sources": [
+  {
+   "label": "Clark & Schaefer (1989)",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  },
+  {
+   "label": "Mark et al. (2008)",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  }
+ ],
+ "script_hash": "0c8fd9da72a86f8cbbbc34192244dfad7e659f82d90aa542d02acfbf31a05840",
+ "video_hash": "c2fffdacec1ef717e79bbce2d1af1ae4a79ee13751aa5042d2af285e6f076ac8",
+ "qa_score": 93,
+ "qa_approved": true,
+ "buffer_post_id": null,
+ "buffer_due_at": null,
+ "status": "approved-dry-run",
+ "public_url": "https://raw.githubusercontent.com/Captain-Jorf/workspace/drafts/2026-09-24/output/auto-2026-09-24.mp4",
+ "branch": "drafts/2026-09-24",
+ "run_id": "35488263806",
+ "error": null,
+ "timestamp_utc": "2026-09-20T04:12:24+00:00",
+ "language": "en",
+ "content_language": "en",
+ "generation_mode": "groq"
+}

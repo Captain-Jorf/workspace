@@ -291,8 +291,33 @@
    "reason": "pre-render text QA: [reviewer_check] reviewer not approved (score 0); [reviewer_check] reviewer score 0 < 85 — skipped before TTS/render (no media, no Buffer)",
    "hook_type": "statement",
    "updated_utc": "2026-09-20T02:48:54+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-24",
+   "content_date": "2026-09-24",
+   "topic": "When did you last notice you stopped listening in a standup? Attention",
+   "normalized_topic": "last notice stopped listening standup attention",
+   "pillar": "ATTENTION",
+   "tags": [
+    "mindful attention monitoring",
+    "attention drift while using AI‑powered meeting tools"
+   ],
+   "cta_type": "save",
+   "playbook": "llm-generated",
+   "source_url": null,
+   "script_hash": "0c8fd9da72a86f8cbbbc34192244dfad7e659f82d90aa542d02acfbf31a05840",
+   "video_hash": "c2fffdacec1ef717e79bbce2d1af1ae4a79ee13751aa5042d2af285e6f076ac8",
+   "qa_score": 93,
+   "buffer_post_id": null,
+   "status": "approved-dry-run",
+   "run_id": "35488263806",
+   "technology_angle": "attention drift while using AI‑powered meeting tools",
+   "metacognition_concept": "mindful attention monitoring",
+   "reason": "",
+   "hook_type": "question",
+   "updated_utc": "2026-09-20T04:12:24+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-20T02:48:54+00:00"
+ "updated_utc": "2026-09-20T04:12:24+00:00"
 }
