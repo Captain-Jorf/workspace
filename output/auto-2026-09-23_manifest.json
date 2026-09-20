@@ -1,0 +1,45 @@
+{
+ "content_id": "reel-2026-09-23",
+ "content_date": "2026-09-23",
+ "topic": "The bug isn't in the code. It's in how you're looking. Debugging metacognition",
+ "normalized_topic": "bug isn code looking debugging metacognition",
+ "pillar": "CODING",
+ "technology_angle": "metacognition in debugging",
+ "metacognition_concept": "metacognitive monitoring",
+ "tags": [
+  "debugging",
+  "metacognition"
+ ],
+ "cta_type": "question",
+ "playbook": "metacognition-debugging",
+ "source_url": null,
+ "sources": [
+  {
+   "label": "Katz & Anderson (1988), Debugging",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  },
+  {
+   "label": "Grigoreanu et al. (2009), End-user debugging",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  }
+ ],
+ "script_hash": "908bd74b1beecd13fa9c76f5cc696d51e7b8d5b64a10c0b805af32d89c14bcf8",
+ "video_hash": null,
+ "qa_score": null,
+ "qa_approved": null,
+ "buffer_post_id": null,
+ "buffer_due_at": null,
+ "status": "qa-failed",
+ "public_url": null,
+ "branch": "drafts/2026-09-23",
+ "run_id": "35484782317",
+ "error": "pre-render text QA: [reviewer_check] reviewer not approved (score 0); [reviewer_check] reviewer score 0 < 85 — skipped before TTS/render (no media, no Buffer)",
+ "timestamp_utc": "2026-09-20T02:48:54+00:00",
+ "language": "en",
+ "content_language": "en",
+ "generation_mode": "static-fallback"
+}
