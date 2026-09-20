@@ -264,6 +264,114 @@ def script_hash(script):
     core = [l["t"] for ch in script.get("chunks", []) for l in ch.get("en", [])]
     return sha256_text(json.dumps(core, ensure_ascii=False, sort_keys=True))
 
+def reviewer_candidate_hash(script, stage, attempt_id):
+    """Deterministic canonical reviewer-candidate SHA-256 digest.
+
+    Hashes all fields the Reviewer's decision applies to:
+    content_id, content_date, generation_mode, pillar, technology_angle,
+    metacognition_concept, complete English narration/chunks, hook, ending,
+    actionable_technique, claims, sources using safe canonical fields,
+    caption content, stage (initial or revision), attempt_id / variant.
+    """
+    if not isinstance(script, dict):
+        return ""
+    meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+
+    stage_str = str(stage or "")
+    attempt_str = str(attempt_id if attempt_id is not None else meta.get("variant", 0))
+    if not attempt_str.startswith("variant-") and attempt_str.isdigit():
+        attempt_str = f"variant-{attempt_str}"
+
+    raw_sources = script.get("sources", [])
+    canonical_sources = []
+    if isinstance(raw_sources, list):
+        for s in raw_sources:
+            if isinstance(s, dict):
+                canonical_sources.append({
+                    "label": str(s.get("label", "") or ""),
+                    "role": str(s.get("role", "") or ""),
+                    "tier": str(s.get("tier", "") or ""),
+                    "url": str(s.get("url", "") or ""),
+                })
+            elif isinstance(s, str):
+                canonical_sources.append({"label": s, "role": "", "tier": "", "url": ""})
+
+    raw_claims = script.get("claims", [])
+    canonical_claims = []
+    if isinstance(raw_claims, list):
+        canonical_claims = [str(c) for c in raw_claims]
+
+    raw_chunks = script.get("chunks", [])
+    canonical_chunks = []
+    if isinstance(raw_chunks, list):
+        for ch in raw_chunks:
+            if isinstance(ch, dict):
+                en_lines = []
+                for l in ch.get("en", []):
+                    if isinstance(l, dict):
+                        en_lines.append({
+                            "beat": str(l.get("beat", "") or ""),
+                            "scene": str(l.get("scene", "") or ""),
+                            "t": str(l.get("t", "") or ""),
+                        })
+                    elif isinstance(l, str):
+                        en_lines.append({"beat": "", "scene": "", "t": l})
+                canonical_chunks.append({
+                    "beat": str(ch.get("beat", "") or ""),
+                    "en": en_lines,
+                    "id": str(ch.get("id", "") or ""),
+                    "tts_text": str(ch.get("tts_text", "") or ""),
+                })
+
+    caption = script.get("caption", {})
+    if isinstance(caption, dict):
+        canonical_caption = {}
+        for k, v in caption.items():
+            if isinstance(v, (str, int, float, bool, type(None))):
+                canonical_caption[k] = v
+            elif isinstance(v, list):
+                canonical_caption[k] = [str(x) if not isinstance(x, (dict, list)) else x for x in v]
+            elif isinstance(v, dict):
+                canonical_caption[k] = v
+    else:
+        canonical_caption = {}
+
+    hook = str(canonical_caption.get("hook", "") or "")
+    ctas = canonical_caption.get("ctas", [])
+    ending = str(ctas[0] if isinstance(ctas, list) and ctas else "")
+    actionable_tech = str(
+        script.get("actionable_technique") or
+        meta.get("actionable_technique") or
+        ""
+    )
+
+    candidate_obj = {
+        "actionable_technique": actionable_tech,
+        "attempt_id": attempt_str,
+        "caption": canonical_caption,
+        "claims": canonical_claims,
+        "content_date": str(meta.get("content_date", "") or ""),
+        "content_id": str(meta.get("content_id", "") or ""),
+        "ending": ending,
+        "generation_mode": str(meta.get("generation_mode", "groq") or ""),
+        "hook": hook,
+        "metacognition_concept": str(meta.get("metacognition_concept", "") or ""),
+        "pillar": str(meta.get("pillar", "") or ""),
+        "sources": canonical_sources,
+        "stage": stage_str,
+        "technology_angle": str(meta.get("technology_angle", "") or ""),
+        "chunks": canonical_chunks,
+    }
+
+    canonical_bytes = json.dumps(
+        candidate_obj,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(',', ':')
+    ).encode('utf-8')
+
+    return hashlib.sha256(canonical_bytes).hexdigest()
+
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 

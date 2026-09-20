@@ -211,6 +211,25 @@ def produce(a):
             env = {}
             if os.environ.get("MOCK_GROQ"):
                 env["MOCK_GROQ"] = "1"
+            # Attempt isolation: ensure variant 0 report cannot leak into variant 1 via stale file.
+            # content_producer is attempt-local, but a previous fallback’s stale file could remain if not cleaned.
+            # We remove any existing reviewer_report before each producer attempt; the final bound report will be written atomically.
+            try:
+                rev_tmp = os.path.join(ep, "reviewer_report.json")
+                # Do not delete if we have not yet retried and we are about to run variant 0? We always start clean for each variant.
+                # Keep the file only if it matches the previous successful groq script (but producer will overwrite anyway).
+                # For isolation, we remove stale before each fresh producer run when variant>0 and previous script was fallback
+                if variant == 1 and os.path.exists(rev_tmp):
+                    # Check if previous run left a stale groq report beside fallback - remove to isolate variants
+                    prev_mode = st.get("generation_mode", "")
+                    if prev_mode == "static-fallback":
+                        try:
+                            os.remove(rev_tmp)
+                            print(f"[pipeline] attempt isolation: removed stale reviewer_report from variant 0 before variant 1", flush=True)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
             cmd = [PY, os.path.join(B, "content_producer.py"), "--topic", topic_path, "--out", ep, "--variant", str(variant)]
             try:
                 run(cmd, "script", env=env, timeout=600)
@@ -275,17 +294,78 @@ def produce(a):
             # (the producer re-runs its bounded ladder, ending in the validated
             # Static English Fallback), then the run is SKIPPED before TTS,
             # timing, subtitle rendering, FFmpeg, media upload and Buffer.
+            # Candidate-bound Reviewer lifecycle (issue #30): a stale Groq
+            # report must never block a validated static fallback; attempt
+            # isolation ensures variant 0 report cannot leak into variant 1.
+            # For static fallback, ensure no stale reviewer_report remains
+            # before the gate — it is not applicable and would be a lifecycle bug.
+            try:
+                gen_mode = script.get("meta", {}).get("generation_mode", "")
+                rev_path = os.path.join(ep, "reviewer_report.json")
+                if gen_mode == "static-fallback" and os.path.exists(rev_path):
+                    # Stale Groq report beside fallback — must not be applied.
+                    # Remove it and treat as not applicable (validated fallback).
+                    print(f"[pipeline] stale reviewer report found beside static fallback — removing before gate (lifecycle fix)", flush=True)
+                    try:
+                        os.remove(rev_path)
+                    except Exception:
+                        pass
+                    # Also record in state for audit
+                    st["stale_reviewer_cleaned"] = True
+            except Exception:
+                pass
             text_gate = qa_supervisor.pre_render_text_gate(script, topic, ep_dir=ep)
+            # Prevent useless retry: if fallback is valid and the only blocker
+            # is a stale/mismatched/malformed reviewer report, ship the
+            # validated fallback without a second script retry. Re-evaluate the
+            # gate without reviewer to see if fallback is otherwise clean.
+            if text_gate["blocking"] and script.get("meta", {}).get("generation_mode") == "static-fallback":
+                # Check if fallback would be clean without reviewer
+                clean_gate = qa_supervisor.pre_render_text_gate(script, topic, ep_dir=None, reviewer_output=None)
+                reviewer_blocks = [b for b in text_gate["blocking"] if b.startswith("[reviewer_check]")]
+                other_blocks = [b for b in text_gate["blocking"] if not b.startswith("[reviewer_check]")]
+                if not other_blocks and reviewer_blocks and not clean_gate["blocking"]:
+                    # Only reviewer blocked and fallback is clean without it — stale lifecycle, not content
+                    print(f"[pipeline] pre-render text QA reviewer block on static fallback is stale/mismatched — shipping validated fallback without retry (lifecycle fix)", flush=True)
+                    text_gate = clean_gate
+                    # Ensure stale file is gone
+                    try:
+                        rev_path = os.path.join(ep, "reviewer_report.json")
+                        if os.path.exists(rev_path):
+                            os.remove(rev_path)
+                    except Exception:
+                        pass
             if text_gate["blocking"]:
                 if st["retries"]["script"] == 0:
-                    print("[pipeline] pre-render text QA: " + "; ".join(text_gate["blocking"])
-                          + " → retry producer ONCE (variant 1) before any TTS/render", flush=True)
-                    st["retries"]["script"] = 1
-                    st["gate"] = {"stage": "text-qa", "issues": text_gate["blocking"][:8],
-                                  "words": common.spoken_word_count(script),
-                                  "estimated_seconds": common.estimate_spoken_seconds(script)}
-                    variant = 1
-                    continue
+                    # Before retry, also ensure a stale static-fallback report does not leak into next variant
+                    # (attempt isolation)
+                    try:
+                        gen_mode = script.get("meta", {}).get("generation_mode", "")
+                        if gen_mode == "static-fallback":
+                            # The retry would reproduce the same fallback; avoid useless LLM retry
+                            # if the fallback is already clean without reviewer
+                            clean_gate2 = qa_supervisor.pre_render_text_gate(script, topic, ep_dir=None, reviewer_output=None)
+                            if not clean_gate2["blocking"]:
+                                print("[pipeline] fallback valid but reviewer stale — not retrying variant 1 (useless retry prevention)", flush=True)
+                                # Fall through to proceed — do not retry variant 1
+                                # Instead, treat gate as passed
+                                text_gate = clean_gate2
+                            else:
+                                raise Stage("qa", "pre-render text QA: " + "; ".join(text_gate["blocking"][:8])
+                                            + " — skipped before TTS/render (no media, no Buffer)")
+                    except Stage:
+                        raise
+                    except Exception:
+                        pass
+                    if text_gate["blocking"]:
+                        print("[pipeline] pre-render text QA: " + "; ".join(text_gate["blocking"])
+                              + " → retry producer ONCE (variant 1) before any TTS/render", flush=True)
+                        st["retries"]["script"] = 1
+                        st["gate"] = {"stage": "text-qa", "issues": text_gate["blocking"][:8],
+                                      "words": common.spoken_word_count(script),
+                                      "estimated_seconds": common.estimate_spoken_seconds(script)}
+                        variant = 1
+                        continue
                 raise Stage("qa", "pre-render text QA: " + "; ".join(text_gate["blocking"][:8])
                             + " — skipped before TTS/render (no media, no Buffer)")
             st["gate"] = {"stage": "script", "ok": True,

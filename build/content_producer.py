@@ -48,6 +48,103 @@ import visual_plan as vp
 
 HANDLE = "@metacognition.hq"
 
+# --- Reviewer lifecycle fix (issue #30, run 35484782317) ---
+# Every Reviewer report is bound to the exact candidate it reviewed.
+# Binding fields are deterministic and verified before a report is applied.
+# A stale, malformed or mismatched report is classified safely and never
+# written beside the Static Fallback.
+
+REVIEWER_REQUIRED_FIELDS = {
+    "approved": bool,
+    "score": int,
+    "technology_relevance": bool,
+    "metacognition_relevance": bool,
+    "blocking_errors": list,
+    "unsupported_claims": list,
+}
+
+def _validate_reviewer_output(out):
+    """Validate structured Reviewer output; malformed != score 0."""
+    if not isinstance(out, dict):
+        return False, "reviewer output not a dict"
+    for field, typ in REVIEWER_REQUIRED_FIELDS.items():
+        if field not in out:
+            return False, f"missing required field: {field}"
+        val = out[field]
+        if typ is bool:
+            if not isinstance(val, bool):
+                return False, f"field {field} not bool"
+        elif typ is int:
+            if not isinstance(val, int) or isinstance(val, bool):
+                return False, f"field {field} not int"
+            if field == "score" and not (0 <= val <= 100):
+                return False, f"score out of range: {val}"
+        elif typ is list:
+            if not isinstance(val, list):
+                return False, f"field {field} not list"
+        else:
+            if not isinstance(val, typ):
+                return False, f"field {field} not {typ.__name__}"
+    return True, ""
+
+def _reviewer_binding(script, stage, variant, reviewer_model):
+    """Deterministic binding for a candidate-bound Reviewer report."""
+    cand_hash = common.reviewer_candidate_hash(script, stage, variant)
+    meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+    attempt_id = f"variant-{variant}"
+    return {
+        "candidate_id": f"candidate-{stage}-{variant}-{cand_hash[:8]}",
+        "attempt_id": attempt_id,
+        "candidate_hash": cand_hash,
+        "content_id": str(meta.get("content_id", "") or ""),
+        "generation_mode": str(meta.get("generation_mode", "groq") or ""),
+        "stage": str(stage or ""),
+        "reviewer_model": reviewer_model,
+        "script_hash": common.script_hash(script),
+    }
+
+def _is_bound_report_matching(report, script, expected_stage=None, expected_attempt_id=None):
+    """True when a bound report's identity matches the script being evaluated."""
+    if not isinstance(report, dict):
+        return False
+    binding = report.get("binding")
+    if not isinstance(binding, dict):
+        return False
+
+    meta = script.get("meta", {}) if isinstance(script.get("meta"), dict) else {}
+    exp_stage = str(expected_stage or meta.get("stage") or "initial")
+    exp_attempt = str(expected_attempt_id or f"variant-{meta.get('variant', 0)}")
+    exp_cand_hash = common.reviewer_candidate_hash(script, exp_stage, exp_attempt)
+
+    # 1. candidate_hash
+    cand_hash = binding.get("candidate_hash")
+    if cand_hash:
+        if cand_hash != exp_cand_hash:
+            return False
+    else:
+        cur_hash = common.script_hash(script)
+        if binding.get("script_hash") != cur_hash:
+            return False
+
+    # 2. generation_mode
+    if binding.get("generation_mode") != meta.get("generation_mode"):
+        return False
+
+    # 3. content_id
+    if binding.get("content_id") and binding.get("content_id") != meta.get("content_id"):
+        return False
+
+    # 4. attempt_id
+    if binding.get("attempt_id") and binding.get("attempt_id") != exp_attempt:
+        return False
+
+    # 5. exact stage
+    if binding.get("stage") != exp_stage:
+        return False
+
+    return True
+
+
 # English-only tech×metacognition playbooks (fallback only, filtered to tech domain)
 # Each must have tech relevance, not general metacognition without tech use
 PLAYBOOKS = {
@@ -713,6 +810,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
             "topic": topic["title"],
             "content_id": topic["content_id"],
             "content_date": tag,
+            "stage": "initial",
             "pillar": pb["pillar"],
             "technology_angle": pb.get("technology_angle", "automation bias in AI assistants"),
             "metacognition_concept": pb.get("metacognition_concept", pb["pillar"]),
@@ -747,7 +845,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
     }
     return script
 
-def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
+def build_script_from_llm(topic, pol, llm_output, variant=0, generation_mode="groq"):
     """Build script.json from LLM producer output — English-only, validates schema."""
     # Validate required fields
     required = ["title", "technology_angle", "metacognition_concept", "hook", "scenes", "narration", "on_screen_text", "visual_direction", "actionable_technique", "ending"]
@@ -856,11 +954,12 @@ def build_script_from_llm(topic, pol, llm_output, generation_mode="groq"):
             "topic": topic["title"],
             "content_id": topic["content_id"],
             "content_date": tag,
+            "stage": "initial",
             "pillar": topic.get("pillar", "AI_JUDGMENT"),
             "technology_angle": llm_output.get("technology_angle", "automation bias in AI assistants"),
             "metacognition_concept": llm_output.get("metacognition_concept", "automation bias"),
             "playbook": "llm-generated",
-            "variant": 0,
+            "variant": variant,
             "tags": [llm_output.get("metacognition_concept", ""), llm_output.get("technology_angle", "")],
             "cta_type": "question",
             "evidence_mode": topic.get("evidence_mode"),
@@ -932,7 +1031,17 @@ def main():
     script = None
     generation_mode = "static-fallback"
     producer_report = {}
-    reviewer_report = {}
+    # Attempt-local report state — never load stale reviewer_report.json from
+    # a previous variant attempt; publish atomically only after final selection.
+    reviewer_report_final = None
+    # Track Groq rejection for static-fallback bookkeeping
+    groq_candidate_rejected = False
+    groq_rejected_reason = ""
+    reviewer_malformed_flag = False
+
+    # Do not load stale reviewer_report.json at start; we will publish only
+    # the bound final report. If a stale file exists from a previous attempt it
+    # is ignored and will be cleaned if fallback is selected.
 
     # Try Groq Producer if requested
     if producer_mode == "groq":
@@ -955,7 +1064,7 @@ def main():
             # never reach the render/QA stages from the LLM path.
             numeric_bad = numeric_guard(llm_out, evidence_packet, ctx="first output")
             # Validate and build script
-            script = build_script_from_llm(topic, pol, llm_out, generation_mode="groq")
+            script = build_script_from_llm(topic, pol, llm_out, variant=a.variant, generation_mode="groq")
             generation_mode = "groq"
             # Invented-citation guard (issue #22): a model that "fixes" an
             # attribution blocker by adding a plausible-but-unsupported URL is
@@ -979,7 +1088,10 @@ def main():
             # Reviewer step
             rev = None
             review_out = None
+            review_raw = None
             reviewer_rejected = False
+            reviewer_malformed = False
+            reviewer_candidate = None
             try:
                 reviewer_mode = os.environ.get("CONTENT_REVIEWER", "groq")
                 if reviewer_mode == "groq":
@@ -987,22 +1099,58 @@ def main():
                     review_out, review_raw = rev.review(llm_out, evidence_packet,
                                                        _discovered=discovered,
                                                        producer_model=prod.model)
-                    reviewer_report = {"model": rev.model, "raw": review_raw, "output": review_out}
-                    # Requirement (issue #22): the Reviewer must not approve
-                    # evidence-requiring claim words when no qualifying evidence
-                    # exists. Its own structured report is checked too — an
-                    # "approved: true" flag cannot contradict a non-empty
-                    # blocking_errors / unsupported_claims list, so those lists
-                    # reject the candidate exactly like a missing approval does.
-                    reviewer_rejected = (not review_out.get("approved", False)
+                    valid, reason = _validate_reviewer_output(review_out)
+                    if not valid:
+                        print(f"[producer] reviewer malformed — rejecting groq candidate: {common.scrub_secrets(reason)}")
+                        reviewer_malformed = True
+                        reviewer_malformed_flag = True
+                        reviewer_rejected = True
+                        groq_candidate_rejected = True
+                        groq_rejected_reason = f"malformed reviewer ({reason})"
+                        producer_report["reviewer_malformed"] = reason
+                        producer_report["reviewer_malformed_stage"] = "initial"
+                    else:
+                        binding = _reviewer_binding(script, "initial", a.variant, rev.model)
+                        reviewer_candidate = {"model": rev.model, "raw": review_raw, "output": review_out, "binding": binding}
+                        # Requirement (issue #22): the Reviewer must not approve
+                        # evidence-requiring claim words when no qualifying evidence
+                        # exists. Its own structured report is checked too — an
+                        # "approved: true" flag cannot contradict a non-empty
+                        # blocking_errors / unsupported_claims list, so those lists
+                        # reject the candidate exactly like a missing approval does.
+                        reviewer_rejected = (not review_out.get("approved", False)
                                          or review_out.get("score", 0) < 85
+                                         or not review_out.get("technology_relevance")
+                                         or not review_out.get("metacognition_relevance")
                                          or bool(review_out.get("blocking_errors"))
                                          or bool(review_out.get("unsupported_claims")))
+                        if reviewer_rejected:
+                            groq_candidate_rejected = True
+                            groq_rejected_reason = (f"reviewer rejected (approved={review_out.get('approved')}, "
+                                                    f"score={review_out.get('score')}, "
+                                                    f"blocking={review_out.get('blocking_errors') or []})")
+                        else:
+                            # Check if candidate passes all other gates — if so, keep it
+                            if not numeric_bad and not citation_bad and not rejected_by_gate:
+                                reviewer_report_final = reviewer_candidate
+                            else:
+                                # Candidate rejected by numeric/citation/gate even though reviewer approved
+                                groq_candidate_rejected = True
+                                if numeric_bad:
+                                    groq_rejected_reason = f"numeric claims {numeric_bad}"
+                                elif citation_bad:
+                                    groq_rejected_reason = f"invented citation {citation_bad}"
+                                elif rejected_by_gate:
+                                    groq_rejected_reason = f"gate issues {gate1['issues']}"
             except Exception as e:
                 print(f"[producer] reviewer error, will fallback if needed: "
                       f"{common.scrub_secrets(str(e))}")
+                # On reviewer exception, treat as rejection but do not keep stale report
+                reviewer_rejected = True
+                groq_candidate_rejected = True
+                groq_rejected_reason = f"reviewer error: {common.scrub_secrets(str(e))[:120]}"
 
-            # Rejection is any of: reviewer rejection, the deterministic numeric
+            # Rejection is any of: reviewer rejection/malformed, the deterministic numeric
             # pre-gate, the citation guard, or the deterministic pre-render TEXT
             # QA gate. A reviewer APPROVAL cannot keep an out-of-range or
             # ungrounded script — structured output never overrides deterministic
@@ -1016,8 +1164,14 @@ def main():
                     print("[producer] reviewer unavailable — static fallback (policy caps the chain at "
                           "Producer → Reviewer → one Revision → final Reviewer)", flush=True)
                     script = None
+                    reviewer_report_final = None
+                    generation_mode = "static-fallback"
                 else:
-                    required_changes = list((review_out or {}).get("required_changes") or [])
+                    # Prepare revision request only from valid reviewer output; malformed
+                    # reviewers contribute no required_changes (they are rejected safely)
+                    required_changes = []
+                    if review_out is not None and not reviewer_malformed:
+                        required_changes = list(review_out.get("required_changes") or [])
                     for n in (numeric_bad or []):
                         required_changes.append(
                             f"remove or rewrite the unsupported numeric claim '{n}' — "
@@ -1056,7 +1210,8 @@ def main():
                             if isinstance(raw2, dict) and raw2.get("mock"):
                                 raise ValueError("mock revision rejected in daily path")
                             numeric_bad2 = numeric_guard(llm_out2, evidence_packet, ctx="revision")
-                            script2 = build_script_from_llm(topic, pol, llm_out2, generation_mode="groq")
+                            script2 = build_script_from_llm(topic, pol, llm_out2, variant=a.variant, generation_mode="groq")
+                            script2["meta"]["stage"] = "revision"
                             citation_bad2 = citation_guard(script2.get("sources", []), evidence_packet,
                                                             ctx="revision")
                             gate2 = gate_report(script2, pol, "revision", topic=topic, packet=evidence_packet)
@@ -1065,6 +1220,12 @@ def main():
                                                                   producer_model=prod.model)
                             if isinstance(review_raw2, dict) and review_raw2.get("mock"):
                                 raise ValueError("mock reviewer output rejected in daily path")
+                            valid2, reason2 = _validate_reviewer_output(review_out2)
+                            if not valid2:
+                                print(f"[producer] revision reviewer malformed — rejecting: {common.scrub_secrets(reason2)}")
+                                producer_report["reviewer_malformed"] = reason2
+                                producer_report["reviewer_malformed_stage"] = "revision"
+                                raise ValueError(f"revision reviewer malformed: {reason2}")
                             reviewer2_blocks = bool(review_out2.get("blocking_errors")
                                                      or review_out2.get("unsupported_claims"))
                             review_ok2 = (review_out2.get("approved") and review_out2.get("score", 0) >= 85
@@ -1075,8 +1236,9 @@ def main():
                                     and not gate2["issues"]):
                                 script = script2
                                 generation_mode = "groq"
-                                reviewer_report = {"model": rev.model, "raw": review_raw2,
-                                                   "output": review_out2, "revision": True}
+                                binding2 = _reviewer_binding(script2, "revision", a.variant, rev.model)
+                                reviewer_report_final = {"model": rev.model, "raw": review_raw2,
+                                                   "output": review_out2, "binding": binding2, "revision": True}
                             else:
                                 # Second rejection, surviving numbers or invented
                                 # citations, or the one allowed Revision still
@@ -1103,8 +1265,15 @@ def main():
                             print(f"[producer] reviewer second rejection / revision unusable, falling back: "
                                   f"{common.scrub_secrets(str(e_rev))}")
                             script = None
+                            reviewer_report_final = None
+                            generation_mode = "static-fallback"
+                            groq_candidate_rejected = True
+                            groq_rejected_reason = common.scrub_secrets(str(e_rev))[:200]
                     else:
                         script = None
+                        reviewer_report_final = None
+                        generation_mode = "static-fallback"
+                        groq_candidate_rejected = True
 
         except Exception as e:
             # Every provider error is classified by build/groq_http.py and
@@ -1116,6 +1285,10 @@ def main():
             if category:
                 print(f"[producer] groq error category: {category}")
             script = None
+            reviewer_report_final = None
+            generation_mode = "static-fallback"
+            groq_candidate_rejected = True
+            groq_rejected_reason = safe_error[:200]
             producer_report["error"] = safe_error
             producer_report["error_category"] = category
             producer_report["mode"] = "groq-failed"
@@ -1139,6 +1312,16 @@ def main():
         generation_mode = "static-fallback"
         if not producer_report:
             producer_report = {"mode": "static-fallback", "playbook": playbook_key}
+        # Record Groq rejection for audit — do not fabricate a Reviewer score
+        if groq_candidate_rejected:
+            producer_report["groq_candidate_rejected"] = True
+            producer_report["groq_rejected_reason"] = groq_rejected_reason
+            producer_report["selected"] = "static-fallback"
+            producer_report["fallback_reason"] = "Groq candidate/review rejected — validated static fallback selected"
+            if reviewer_malformed_flag:
+                producer_report["reviewer_malformed"] = True
+        # Ensure no stale Reviewer report is attached to the fallback
+        reviewer_report_final = None
 
     # CTA diversity: rolling editorial memory avoids repeating the most recent
     # CTA type (cta_policy.avoid_same_type_consecutive). The label is derived
@@ -1154,14 +1337,60 @@ def main():
         producer_report["mode"] = "groq-rejected"
         producer_report["note"] = ("provider responded but the result was rejected "
                                    "or unusable — static English fallback was built")
+        # Also record explicit fallback selection
+        producer_report["selected"] = "static-fallback"
+        producer_report["groq_candidate_rejected"] = True
+
+    # Enforce static-fallback has no fabricated reviewer approval
+    if generation_mode == "static-fallback":
+        producer_report["reviewer_not_applicable"] = True
+        producer_report["reviewer_not_applicable_reason"] = "validated static fallback — curated deterministic path, no LLM review"
 
     # Final deterministic PRE-RENDER gate on whatever would ship (Revision output,
     # first-pass output, or the Static English Fallback). The fallback is
     # VALIDATED, not trusted: if even it fails the gate, this stage skips before
     # rendering — no script.json is written, so TTS/subtitles/render never see a
     # known-bad script, and no padding is applied to dodge the gate.
+    # For Groq, pass the bound matching Reviewer output directly; for fallback,
+    # reviewer_output is explicitly not applicable.
+    if generation_mode == "groq" and reviewer_report_final is not None:
+        # Verify binding matches selected script; mismatched must never be silently applied
+        if not _is_bound_report_matching(reviewer_report_final, script):
+            print(f"[producer] reviewer binding mismatch for selected groq script — rejecting candidate, falling back to validated static fallback")
+            # Discard mismatched report and fallback to validated static path
+            script = None
+            reviewer_report_final = None
+            generation_mode = "static-fallback"
+            # Re-build fallback if we just invalidated groq
+            if script is None:
+                cal = topic.get("calendar") or {}
+                key = CALENDAR_MAP.get(cal.get("id")) if cal else None
+                if key and key in PLAYBOOKS:
+                    pb = PLAYBOOKS[key]
+                    playbook_key = key
+                elif topic.get("evidence_mode") == "calendar":
+                    playbook_key = next(iter(PLAYBOOKS))
+                    pb = PLAYBOOKS[playbook_key]
+                else:
+                    pb = trend_playbook(topic["title"], topic.get("pillar", "AI_JUDGMENT"))
+                    playbook_key = "trend"
+                script = build_script_from_playbook(topic, pol, pb, playbook_key, variant=a.variant, generation_mode="static-fallback")
+                if "groq_candidate_rejected" not in producer_report:
+                    producer_report["groq_candidate_rejected"] = True
+                    producer_report["groq_rejected_reason"] = "reviewer binding mismatch — stale/mismatched report not applied"
+                producer_report["selected"] = "static-fallback"
+                ending_lines = [l["t"] for ch in script["chunks"] if ch.get("beat") == "ending" for l in ch.get("en", [])]
+                script["meta"]["cta_type"] = choose_cta_type(" ".join(ending_lines), memory, pol)
+                producer_report["reviewer_not_applicable"] = True
+                producer_report["reviewer_not_applicable_reason"] = "validated static fallback — stale groq review not applied"
+            reviewer_output_for_final = None
+        else:
+            reviewer_output_for_final = reviewer_report_final.get("output")
+    else:
+        reviewer_output_for_final = None
+
     gate_final = gate_report(script, pol, f"final ({generation_mode})",
-                             topic=topic, packet=evidence_packet)
+                             topic=topic, packet=evidence_packet, reviewer_output=reviewer_output_for_final)
     # Deterministic PRE-RENDER VISUAL plan + visual-semantic gate (issue #24):
     # the structured scene plan is generated ONLY now — after the script has
     # passed Producer, Reviewer, Revision policy and the deterministic
@@ -1196,18 +1425,45 @@ def main():
               f"→ final Reviewer → validated fallback). No script.json, no padding, no TTS, no render, "
               f"no Buffer.", flush=True)
         common.save_json(os.path.join(a.out, "producer_report.json"), producer_report)
+        # Ensure no stale reviewer_report remains for fallback or failed gate
+        rev_path = os.path.join(a.out, "reviewer_report.json")
+        if os.path.exists(rev_path):
+            try:
+                os.remove(rev_path)
+            except Exception:
+                pass
         raise SystemExit(3)
 
     common.save_json(os.path.join(a.out, "script.json"), script)
     common.save_json(os.path.join(a.out, "visual_plan.json"), plan)
     # Also save producer/reviewer reports for QA and final report
     common.save_json(os.path.join(a.out, "producer_report.json"), producer_report)
-    if reviewer_report:
-        common.save_json(os.path.join(a.out, "reviewer_report.json"), reviewer_report)
+    if reviewer_report_final is not None:
+        # Only Groq candidates have a bound matching review; fallback has none
+        # Validate once more that binding matches before writing
+        if _is_bound_report_matching(reviewer_report_final, script):
+            common.save_json(os.path.join(a.out, "reviewer_report.json"), reviewer_report_final)
+        else:
+            print("[producer] not writing mismatched reviewer report for selected script — stale protection")
+            rev_path = os.path.join(a.out, "reviewer_report.json")
+            if os.path.exists(rev_path):
+                try:
+                    os.remove(rev_path)
+                except Exception:
+                    pass
+    else:
+        # Ensure no stale reviewer_report.json from rejected Groq attempt remains for static fallback
+        rev_path = os.path.join(a.out, "reviewer_report.json")
+        if os.path.exists(rev_path):
+            try:
+                os.remove(rev_path)
+            except Exception:
+                pass
 
     print(f"[producer] script → {a.out}/script.json  playbook={script['meta']['playbook']} "
           f"chunks={len(script['chunks'])} words={gate_final['words']} est={gate_final['estimated_seconds']:.1f}s "
           f"gate=ok mode={generation_mode} lang=en")
 
 if __name__ == "__main__":
+
     main()
