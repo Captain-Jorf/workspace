@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import llm_provider
 import qa_supervisor as qa
+import text_norm
 import visual_plan as vp
 
 HANDLE = "@metacognition.hq"
@@ -755,6 +756,26 @@ def spoken_form(text, overrides):
     s = re.sub(r"https?://\S+", "the link", s)
     return s
 
+
+def _finalize_script_text(script):
+    """Issue #32 §1-2: the SINGLE-SOURCED deterministic text layer.
+
+    Every spoken/display string of the script is normalized (smart
+    punctuation, non-breaking/figure/em dashes, zero-width chars) BEFORE the
+    Reviewer binding, the pre-render gates, TTS, word timing, subtitle
+    wrapping and burned-in rendering, so all of them derive from the SAME
+    normalized representation. After normalization, every visible character
+    must have a glyph in the production font — otherwise the script fails
+    closed here (exit 3 upstream), before any media exists. U+FFFD is never
+    rewritten and is always a blocker.
+    """
+    text_norm.normalize_script(script)
+    issues = text_norm.glyph_gate_issues(script)
+    if issues:
+        raise ValueError("visible script text is not renderable with the "
+                         "production font: " + "; ".join(issues[:4]))
+    return script
+
 def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generation_mode="static-fallback"):
     """Build script.json from a playbook (fallback) — English-only."""
     plan = chunk_plan(pb, variant)
@@ -843,7 +864,7 @@ def build_script_from_playbook(topic, pol, pb, playbook_key, variant=0, generati
         "visual_direction": vp.pillar_visual_direction(pb["pillar"]),
         "visuals": vp.suggest_categories(pb["pillar"], pb.get("technology_angle", "")),
     }
-    return script
+    return _finalize_script_text(script)
 
 def build_script_from_llm(topic, pol, llm_output, variant=0, generation_mode="groq"):
     """Build script.json from LLM producer output — English-only, validates schema."""
@@ -988,7 +1009,7 @@ def build_script_from_llm(topic, pol, llm_output, variant=0, generation_mode="gr
     }
     script["meta"]["visual_direction_request"] = _sanitize_llm_text(
         llm_output.get("visual_direction"), 200)
-    return script
+    return _finalize_script_text(script)
 
 
 def derive_pillar_of_llm(llm_output):

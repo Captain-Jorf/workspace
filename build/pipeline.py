@@ -234,6 +234,10 @@ def produce(a):
             try:
                 run(cmd, "script", env=env, timeout=600)
             except Stage as e:
+                # Issue #32 §1: the producer's normalization/glyph gate raises
+                # before script.json is written (validate-only failure) — it is
+                # RETRYABLE through this exact path: one producer retry, then
+                # the run is skipped before any TTS/render/Buffer stage.
                 if st["retries"]["script"] == 0:
                     print(f"[pipeline] script failed ({e}) → retry variant 1", flush=True)
                     st["retries"]["script"] = 1

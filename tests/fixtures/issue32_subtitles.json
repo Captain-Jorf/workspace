@@ -1,0 +1,100 @@
+{
+  "issue": 32,
+  "run_id": "35488263806",
+  "content_id": "reel-2026-09-24",
+  "date": "2026-09-24",
+  "qa_score": 93,
+  "qa_decision": "approved-dry-run",
+  "human_review": "REJECTED",
+  "pillar": "ATTENTION",
+  "topic": "When did you last notice you stopped listening in a standup?",
+  "sources": [
+    {
+      "tier": "A",
+      "citation": "Clark & Schaefer (1989)"
+    },
+    {
+      "tier": "A",
+      "citation": "Mark et al. (2008)"
+    }
+  ],
+  "defect_lines": [
+    {
+      "line": 2,
+      "char": "U+2011",
+      "note": "non-breaking hyphen in stand-up; font has no glyph (tofu)"
+    },
+    {
+      "line": 4,
+      "char": "U+2011",
+      "note": "non-breaking hyphen in chat-AI"
+    },
+    {
+      "line": 7,
+      "char": "U+2011",
+      "note": "non-breaking hyphen in AI-generated"
+    },
+    {
+      "line": 6,
+      "char": "U+2014",
+      "note": "em dash inside a word run; curly apostrophe in you're"
+    },
+    {
+      "line": 12,
+      "char": "U+2011",
+      "note": "non-breaking hyphens in pause-and-reflect loop"
+    }
+  ],
+  "qa_warnings": [
+    "[english_quality] no contractions — formal  (FALSE: script has You're/brain's/you've with curly apostrophes)",
+    "[video_quality] duration 61.3s outside target 70-105"
+  ],
+  "photo_mix": {
+    "designated": 2,
+    "retrieved": 0,
+    "fallback": 2,
+    "note": "no failure reason was reported anywhere"
+  },
+  "beats": [
+    "hook",
+    "problem",
+    "problem",
+    "explain",
+    "explain",
+    "explain",
+    "example",
+    "example",
+    "technique",
+    "technique",
+    "technique",
+    "technique",
+    "ending"
+  ],
+  "lines": [
+    "Ever catch yourself nodding while your brain’s already elsewhere?",
+    "You’re in a stand‑up, eyes on the screen, but your thoughts wander.",
+    "That drift means you miss key updates and waste the whole team’s time.",
+    "Our minds treat a brief pause as a cue to switch modes, especially with chat‑AI suggestions popping up.",
+    "The brain fills the gap with imagined replies, so you think you’re listening when you’re not.",
+    "Recognizing that gap—realizing you’re drafting a reply instead of hearing—creates a metacognitive checkpoint.",
+    "Imagine you see an AI‑generated agenda suggestion and start typing before the speaker finishes.",
+    "By the time they finish, you’ve already missed the next task assignment.",
+    "When you notice the urge to type, pause the draft and say “hold on”.",
+    "Count silently to three, then refocus on the speaker’s voice.",
+    "After the stand‑up, jot a quick note of what you missed and why.",
+    "Repeat this pause‑and‑reflect loop for each meeting to train your attention muscle.",
+    "Save this reel so you can revisit the tip."
+  ],
+  "expected_normalization": {
+    "stand‑up": "stand-up",
+    "chat‑AI": "chat-AI",
+    "AI‑generated": "AI-generated",
+    "pause‑and‑reflect": "pause-and-reflect",
+    "brain’s": "brain's",
+    "you’re": "you're",
+    "you’ve": "you've",
+    "gap—realizing": "gap-realizing",
+    "hearing—creates": "hearing-creates",
+    "“hold on”": "\"hold on\""
+  }
+}

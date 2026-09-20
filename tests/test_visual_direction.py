@@ -463,12 +463,20 @@ class ProvenanceAndLicense(unittest.TestCase):
         def fake_download(url, cache_path, timeout=25):
             os.makedirs(os.path.dirname(cache_path), exist_ok=True)
             shutil.copy(img if url.endswith("/1.jpg") else img2, cache_path)
-            return cache_path
+            return cache_path, None
 
         def fake_get(url, timeout=25):
             results.append(url)
-            self.assertIn("license_type=cc0%2Cpdm", url,
+            # Issue #32 root cause (verified against the official
+            # https://api.openverse.org/v1/ getimages_search contract):
+            # license CODES (cc0, pdm, ...) belong in `license`; the old code
+            # sent them to `license_type`, which is the USAGE filter
+            # (all/all-cc/commercial/modification) — so Openverse could never
+            # return our result set. The corrected request:
+            self.assertIn("license=cc0%2Cpdm", url,
                           "the API must be asked for the public-domain set only")
+            self.assertNotIn("license_type=cc0", url,
+                             "license_type is the usage filter, not license codes")
             # a CC-BY result listed FIRST: the fetcher must skip it
             payload = {"results": [
                 {"id": 1, "url": "https://cdn.example.org/img/by.jpg",
@@ -487,7 +495,7 @@ class ProvenanceAndLicense(unittest.TestCase):
 
         with mock.patch.object(af, "enabled", lambda: True), \
              mock.patch.object(af, "_get", fake_get), \
-             mock.patch.object(af, "_download_image", fake_download), \
+             mock.patch.object(af, "_download_image_with_reason", fake_download), \
              mock.patch.object(af, "_cache_dir", lambda: cache_root):
             r = af.fetch_image("user interviews")
             r2 = af.fetch_image("user interviews",
@@ -526,7 +534,7 @@ class ProvenanceAndLicense(unittest.TestCase):
         def fake_download(url, cache_path, timeout=25):
             os.makedirs(os.path.dirname(cache_path), exist_ok=True)
             shutil.copy(img, cache_path)
-            return cache_path
+            return cache_path, None
 
         def fake_get_ccby_only(url, timeout=25):
             payload = {"results": [
@@ -538,7 +546,7 @@ class ProvenanceAndLicense(unittest.TestCase):
         # layer 1: the fetcher
         with mock.patch.object(af, "enabled", lambda: True), \
              mock.patch.object(af, "_get", fake_get_ccby_only), \
-             mock.patch.object(af, "_download_image", fake_download), \
+             mock.patch.object(af, "_download_image_with_reason", fake_download), \
              mock.patch.object(af, "_cache_dir", lambda: os.path.join(d, "cache")):
             self.assertIsNone(af.fetch_image("user interviews"),
                               "CC-BY must never be fetchable in production")
@@ -1456,6 +1464,15 @@ class QAWeightInvariance(unittest.TestCase):
     def test_81_stays_81_when_visual_semantics_passes(self):
         ep, script = self._episode_with_plan()
         try:
+            # issue #32: a degraded photo mix is now an INTENTIONAL warning,
+            # so this invariance fixture uses a non-degraded plan (no
+            # photo-designated scenes) to isolate the weight-invariance
+            # property it is named for.
+            plan = common.load_json(os.path.join(ep, "visual_plan.json"))
+            for sc in plan["scenes"]:
+                sc["photo_designated"] = False
+            (plan.get("photo_policy") or {})["degraded"] = False
+            common.save_json(os.path.join(ep, "visual_plan.json"), plan)
             rep = self._report_with_19_points()
             self.assertEqual(rep.deductions["visual_semantics"], 0)
             qa.check_visuals(rep, ep, script, None, POL, no_frames=True)

@@ -103,6 +103,17 @@ def visual_provenance_section(qa):
         ("repository brand assets used only as accents",
          "yes" if prov.get("brand_accents_only") else "NO"),
     ]
+    # Issue #32 §8/§9: WHEN retrieval fails, the report must say WHY. Only
+    # aggregate safe failure categories — never URLs, never remote bodies.
+    outcomes = prov.get("retrieval_outcomes") or {}
+    if outcomes:
+        rows.append(("retrieval outcomes",
+                     ", ".join(f"{k}: {v}" for k, v in sorted(outcomes.items()))))
+    degraded = bool(prov.get("degraded"))
+    if degraded:
+        rows.append(("photo_mix_degraded", "yes — zero retrieved photos on designated "
+                     "slots; the reel is NOT visually complete as photographic variety "
+                     "(human-review warning)"))
     L = ["<details><summary>Visual provenance (photo mix, licenses, brand accents)</summary>", "",
          "| metric | value |", "|---|---|"]
     L += [f"| {k} | {v} |" for k, v in rows]

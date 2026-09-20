@@ -68,6 +68,17 @@ def main():
     rate = os.environ.get("TTS_RATE", pt.get("rate", RATE))
     with open(f"{ep}/script.json", encoding="utf-8") as fh:
         sc = json.load(fh)
+    # Issue #32 §1: TTS input derives from the SAME normalized representation
+    # as timing/subtitles — and U+FFFD / unsupported glyphs are fail-closed
+    # before any audio exists (idempotent re-normalization + glyph gate).
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import text_norm
+    text_norm.normalize_script(sc)
+    for ch in sc.get("chunks", []):
+        txt = ch.get("tts_text") or " ".join(
+            l["t"] if isinstance(l, dict) else str(l) for l in ch.get("en", []))
+        for b in text_norm.has_blockers(txt):
+            raise SystemExit(f"[tts] glyph blocker before TTS: {b} — tts-error")
     for i, ch in enumerate(sc["chunks"], 1):
         txt = ch.get("tts_text") or " ".join(l["t"] for l in ch["en"])
         out = f"{ep}/c{i:02d}.mp3"
