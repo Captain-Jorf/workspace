@@ -219,6 +219,8 @@ class Reel:
         self.plan = None
         self.scene_times = []
         self.code_scenes_rendered = []
+        self.cursor_scenes_rendered = []
+        self.cursor_events = []
         if self.script.get("chunks"):
             self._load_plan()
 
@@ -234,9 +236,20 @@ class Reel:
                                + " · ".join(issues))
         self.plan = plan
         self._build_scene_times()
+        self.cursor_scenes_rendered = []
+        self.cursor_events = []
         for sc in plan["scenes"]:
             if sc.get("code_justified") and vp.C.get(sc.get("visual_category"), {}).get("code"):
                 self.code_scenes_rendered.append(sc["scene_id"])
+            if sc.get("cursor_justified"):
+                self.cursor_scenes_rendered.append(sc["scene_id"])
+                self.cursor_events.append({
+                    "scene_id": sc["scene_id"],
+                    "cursor_drawn": True,
+                    "expected_region": [296, ZONE_Y + 452, 300, ZONE_Y + 486],
+                    "justified": True,
+                    "blink_hz": 2.0,
+                })
 
     def _build_scene_times(self):
         """Map plan scenes onto the REAL word-level timing boundaries."""
@@ -1000,7 +1013,6 @@ class Reel:
         self._legacy_ending(fr, 0, ts, 1)
 
     def _legacy_hook(self, fr, t, ts, sd):
-        d = ImageDraw.Draw(fr)
         g = self._cached("hookglow", lambda: glow_disc(1000, (255, 186, 90, 190), 380, 140))
         pulse = 0.72 + 0.28 * math.sin(ts * 2.2)
         fr.alpha_composite(with_alpha(g, pulse), (540 - 500, 930 - 500))
@@ -1009,17 +1021,31 @@ class Reel:
         if size > 4:
             em = self.emblem.resize((size, size), Image.LANCZOS)
             fr.alpha_composite(em, (540 - size // 2, 930 - size // 2))
+
+        # Partial-alpha decorations: floating particles drawn on transparent overlay
+        p_overlay = Image.new("RGBA", fr.size, (0, 0, 0, 0))
+        d_p = ImageDraw.Draw(p_overlay)
         for i in range(22):
             a = ts * (0.5 + 0.11 * (i % 5)) + i * 2.399
             rx, ry = 360 + 26 * math.sin(i), 330 + 22 * math.cos(i * 2)
             x, y = 540 + math.cos(a) * rx, 930 + math.sin(a) * ry
             dep = 0.55 + 0.45 * math.sin(a)
             r = 2 + 3 * dep
-            d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 214, 130, int(190 * dep)))
+            d_p.ellipse([x - r, y - r, x + r, y + r], fill=(255, 214, 130, int(190 * dep)))
+        fr.alpha_composite(p_overlay)
+
+        # Partial-alpha decorations: expanding gold rings drawn on transparent overlay
+        # and composited source-over onto the destination frame
         for k in range(2):
             pt = (ts * 0.55 + k * 0.5) % 1.0
             rr = 300 + pt * 260
-            d.ellipse([540 - rr, 930 - rr * 0.94, 540 + rr, 930 + rr * 0.94], outline=(233, 180, 74, int(120 * (1 - pt))), width=3)
+            alpha = int(120 * (1 - pt))
+            if alpha > 0:
+                ring_overlay = Image.new("RGBA", fr.size, (0, 0, 0, 0))
+                d_ring = ImageDraw.Draw(ring_overlay)
+                d_ring.ellipse([540 - rr, 930 - rr * 0.94, 540 + rr, 930 + rr * 0.94],
+                               outline=(233, 180, 74, alpha), width=3)
+                fr.alpha_composite(ring_overlay)
 
     def _legacy_problem(self, fr, t, ts, sd):
         d = ImageDraw.Draw(fr)
@@ -1103,12 +1129,18 @@ class Reel:
                 d.line([x - 60, 1215, x - 45, 1230, x - 18, 1200], fill=(255, 228, 158, 230), width=5, joint="curve")
 
     def _legacy_ending(self, fr, t, ts, sd):
-        d = ImageDraw.Draw(fr)
         cx, cy, rx, ry = 540, 1120, 330, 105
+        # Orbit line with partial alpha composited source-over
+        orbit_overlay = Image.new("RGBA", fr.size, (0, 0, 0, 0))
+        d_orbit = ImageDraw.Draw(orbit_overlay)
         for i in range(90):
             a0, a1 = 2 * math.pi * i / 90, 2 * math.pi * (i + 1) / 90
             dep = (math.sin(a0) + math.sin(a1)) / 2
-            d.line([cx + math.cos(a0) * rx, cy + math.sin(a0) * ry, cx + math.cos(a1) * rx, cy + math.sin(a1) * ry], fill=(233, 180, 74, int(70 + 130 * (dep * 0.5 + 0.5))), width=int(4 + 6 * (dep * 0.5 + 0.5)))
+            d_orbit.line([cx + math.cos(a0) * rx, cy + math.sin(a0) * ry, cx + math.cos(a1) * rx, cy + math.sin(a1) * ry],
+                         fill=(233, 180, 74, int(70 + 130 * (dep * 0.5 + 0.5))), width=int(4 + 6 * (dep * 0.5 + 0.5)))
+        fr.alpha_composite(orbit_overlay)
+
+        d = ImageDraw.Draw(fr)
         stations = [("PLAN", -math.pi / 2, 0.0), ("MONITOR", math.pi / 6, 0.8), ("EVALUATE", math.pi * 5 / 6, 1.6)]
         for name, a, t0 in stations:
             lit = ts >= t0
@@ -1120,12 +1152,18 @@ class Reel:
             lab = self._cached(("st", name, lit), lambda name=name, lit=lit: text_img(name, font("en", 800, 30), GOLD_HI if lit else DIM, spacing=3))
             ly = y - 70 if math.sin(a) < 0 else y + 30
             fr.alpha_composite(lab, (int(x - lab.width // 2), int(ly)))
+
+        # Orbiting particles with partial alpha composited source-over
         ang = -math.pi / 2 + ts * 1.05
+        tail_overlay = Image.new("RGBA", fr.size, (0, 0, 0, 0))
+        d_tail = ImageDraw.Draw(tail_overlay)
         for k in range(20):
             aa = ang - k * 0.055
             x, y = cx + math.cos(aa) * rx, cy + math.sin(aa) * ry
             r = 8 * (1 - k / 24)
-            d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 226, 150, int(230 * (1 - k / 20))))
+            d_tail.ellipse([x - r, y - r, x + r, y + r], fill=(255, 226, 150, int(230 * (1 - k / 20))))
+        fr.alpha_composite(tail_overlay)
+
         eye = self._cached("eye_mid", lambda: self.eye.resize((150, 150), Image.LANCZOS))
         fr.alpha_composite(eye, (540 - 75, cy - 75))
 
