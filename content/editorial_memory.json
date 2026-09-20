@@ -338,8 +338,30 @@
    "reason": "",
    "hook_type": "statement",
    "updated_utc": "2026-09-20T05:26:43+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-20",
+   "content_date": "2026-09-20",
+   "topic": null,
+   "normalized_topic": "",
+   "pillar": null,
+   "tags": [],
+   "cta_type": null,
+   "playbook": null,
+   "source_url": null,
+   "script_hash": null,
+   "video_hash": null,
+   "qa_score": null,
+   "buffer_post_id": null,
+   "status": "automation-error",
+   "run_id": null,
+   "technology_angle": null,
+   "metacognition_concept": null,
+   "reason": "",
+   "hook_type": "statement",
+   "updated_utc": "2026-09-20T08:45:03+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-20T05:26:43+00:00"
+ "updated_utc": "2026-09-20T08:45:03+00:00"
 }
