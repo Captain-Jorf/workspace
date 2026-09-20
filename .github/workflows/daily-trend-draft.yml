@@ -61,7 +61,11 @@ jobs:
           persist-credentials: true
       - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
-          python-version: "3.11"
+          # PINNED (issue #34): "3.11" resolves to the NEWEST 3.11.x at run
+          # time (run 35491557513 executed 3.11.16 — an env no full-suite
+          # green run was ever verified on). 3.11.2 is the verified env
+          # (requirements.txt pins the matching dependency set).
+          python-version: "3.11.2"
 
       - name: resolve date + mode
         id: mode
@@ -105,9 +109,18 @@ jobs:
           pip install -q -r requirements.txt
           bash build/fetch_fonts.sh
           python3 build/logo_make.py
+          python3 --version
+          pip freeze
           ffprobe -version | head -1
-          # fail closed: a broken toolchain must never produce a post
-          python3 -m unittest discover -s tests -q 2>&1 | tail -3
+          # fail closed: a broken toolchain must never produce a post.
+          # (issue #34) Run 35491557513 failed ONE self-test, but this step
+          # used to print only the last 3 lines (`| tail -3`), so the failing
+          # test's name/traceback was destroyed and the run was
+          # undiagnosable. The FULL output is now written to
+          # output/selftest.log and uploaded by the QA-artifact step; only
+          # the last 40 lines go to the console. pipefail keeps the step
+          # fail-closed on any test failure.
+          python3 -m unittest discover -s tests -q 2>&1 | tee output/selftest.log | tail -40
 
       - name: produce + supervise (controlled retries inside)
         id: produce
@@ -299,6 +312,7 @@ jobs:
             output/auto-${{ env.TAG }}_qa.md
             output/auto-${{ env.TAG }}_state.json
             output/auto-${{ env.TAG }}_issue.md
+            output/selftest.log
             output/drafts/auto-${{ env.TAG }}/qa_contact_sheet.jpg
             output/drafts/auto-${{ env.TAG }}/qa_frames/
             content/episodes/auto-${{ env.TAG }}/layout.json

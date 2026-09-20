@@ -46,7 +46,7 @@ WEIGHTS = {"content_language": 15, "english_only": 15, "technology_relevance": 1
            "topic_relevance": 5, "source_quality": 8, "script_quality": 10, "english_quality": 8,
            "subtitle_layout": 8, "audio_quality": 5, "video_quality": 5, "caption_quality": 4,
            "duplicate_check": 6, "buffer_readiness": 4, "reviewer_check": 12,
-           "visual_semantics": 10}
+           "visual_semantics": 10, "minimal_contract": 10}
 EXIT_APPROVED, EXIT_REJECTED, EXIT_CANNOT = 0, 20, 21
 
 # --- Reviewer lifecycle fix (issue #30, run 35484782317) ---
@@ -926,6 +926,275 @@ def _frame_pil(arr):
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
 
 
+# ---------------------------------------------------------------------------
+# ISSUE #33 — MINIMAL FORMAT CONTRACT (hard blockers, veto regardless of
+# score). Applies ONLY when the rendered format is minimal (the plan's own
+# style marker, or the explicit PIPELINE_STYLE handoff).
+#
+# Declared boxes are the renderer's measured textbbox output (layout.json →
+# "minimal"); decoded H.264 frames are the pixel proof. Metadata alone is
+# never enough — both must agree.
+# ---------------------------------------------------------------------------
+
+MN_DEFAULT_SAFE = (220, 1700, 50)   # top, bottom, side at 1080x1920
+MN_DEFAULT_FLOOR_MAIN = 44          # px, readable floor for kinetic text
+MN_DEFAULT_FLOOR_LABEL = 30         # px, readable floor for scene labels
+MN_SCENE_ZONE = (470, 1320)         # body motif zone (clear of subtitle band)
+
+
+def _mn_ink_fraction(arr, box):
+    """Fraction of a box's pixels that are TEXT-bright (luminance > 100).
+
+    The warm marble background peaks at ~67 luminance, H.264 noise on the
+    dark field stays far below 100, while ivory (~230) and gold (~200)
+    glyphs sit far above — so this is a clean text-present/absent probe on
+    the DECODED frame, not a metadata claim.
+    """
+    import numpy as np
+    x0, y0, x1, y1 = (int(v) for v in box)
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(arr.shape[1], x1), min(arr.shape[0], y1)
+    if x1 <= x0 or y1 <= y0:
+        return 0.0
+    box_arr = arr[y0:y1, x0:x1]
+    lum = 0.2126 * box_arr[..., 0] + 0.7152 * box_arr[..., 1] + 0.0722 * box_arr[..., 2]
+    return float((lum > 100).mean())
+
+
+def _mn_undecclared_bright(arr, scene_items, zone, margin=12):
+    """Fraction of the scene zone that is text-bright OUTSIDE every declared
+    item box of the scene (cards, dial, labels, emblem, glow, connectors).
+
+    The minimal format allows at most ONE dominant visual + <= 3 labels, so
+    bright content outside the declared boxes is clutter / a second
+    dominant visual / undrawn text — a hard blocker.
+    """
+    import numpy as np
+    zy0, zy1 = zone
+    zone_arr = arr[zy0:zy1, :, :]
+    lum = 0.2126 * zone_arr[..., 0] + 0.7152 * zone_arr[..., 1] + 0.0722 * zone_arr[..., 2]
+    bright = lum > 100
+    for it in scene_items:
+        x0, y0, x1, y1 = (int(v) for v in it.get("bbox", (0, 0, 0, 0)))
+        rx0 = max(0, x0 - margin - 0)
+        rx1 = min(zone_arr.shape[1], x1 + margin)
+        ry0 = max(0, min(y0, zy1) - margin - zy0)
+        ry1 = min(zone_arr.shape[0], max(y1, zy0) + margin - zy0)
+        if ry1 > ry0 and rx1 > rx0:
+            bright[ry0:ry1, rx0:rx1] = False
+    return float(bright.mean())
+
+
+def check_minimal_contract(rep, ep, script, video, pol, no_frames):
+    """issue #33 §12-13: minimal-format hard blockers + decoded-frame proof."""
+    plan = common.load_json(os.path.join(ep, "visual_plan.json"))
+    style = (plan or {}).get("style") or os.environ.get("PIPELINE_STYLE")
+    if style != "minimal":
+        rep.details["minimal_contract"] = {"applied": False}
+        return
+    rep.details["minimal_contract"] = {"applied": True}
+    if not plan or not plan.get("scenes"):
+        rep.block("minimal_contract",
+                  "minimal render without a gated minimal plan — fail closed")
+        return
+    # 1. the SAME deterministic gate the renderer ran, re-run on the record
+    for issue in visual_plan.visual_semantic_issues(plan, script, pol):
+        rep.block("minimal_contract", issue)
+    scenes = plan["scenes"]
+
+    # 2. zero Openverse / zero photos / zero code / zero cursor (issue §11)
+    for sc in scenes:
+        sid = sc.get("scene_id") or "?"
+        if (sc.get("asset") or {}).get("kind") not in ("repo", "procedural"):
+            rep.block("minimal_contract",
+                      f"{sid}: external asset in minimal — Openverse/external "
+                      f"images are forbidden in the default format")
+        if sc.get("photo_designated"):
+            rep.block("minimal_contract", f"{sid}: photo slot in minimal")
+        if sc.get("code_justified") or sc.get("cursor_justified") or sc.get("code_lines"):
+            rep.block("minimal_contract",
+                      f"{sid}: code/terminal/cursor in minimal (explicit "
+                      f"experimental mode required)")
+    pp = plan.get("photo_policy") or {}
+    if pp.get("photos_retrieved") or pp.get("designated"):
+        rep.block("minimal_contract",
+                  f"minimal plan records photo activity "
+                  f"(retrieved={pp.get('photos_retrieved')}, designated={pp.get('designated')}) — must be zero")
+
+    # 3. banner + CTA content contract (issue §4, §10)
+    handle = (script.get("meta") or {}).get("handle") or "@metacognition.hq"
+    banner, cta = scenes[0], scenes[-1]
+    bb = banner.get("banner") or {}
+    cc = cta.get("cta") or {}
+    if not bb.get("brand_line"):
+        rep.block("minimal_contract", "opening banner: brand line missing")
+    if not (bb.get("hook_text") or "").strip():
+        rep.block("minimal_contract", "opening banner: hook text missing")
+    if bb.get("handle") != handle:
+        rep.block("minimal_contract",
+                  f"opening banner handle {bb.get('handle')!r} != page handle {handle!r}")
+    if not bb.get("gold_keyword"):
+        rep.block("minimal_contract", "opening banner: no single gold-highlighted keyword")
+    if "follow" not in cc.get("follow_line", "").lower():
+        rep.block("minimal_contract", "final CTA: no explicit follow ask")
+    if handle not in cc.get("follow_line", ""):
+        rep.block("minimal_contract", "final CTA must include @metacognition.hq")
+    if cc.get("handle") != handle:
+        rep.block("minimal_contract", f"final CTA handle {cc.get('handle')!r} != {handle!r}")
+    # duration targets: hard window = blocker, soft target = warning
+    b_c = plan.get("banner_contract", {}) or {}
+    c_c = plan.get("cta_contract", {}) or {}
+    lo, hi = b_c.get("duration_hard_s", (1.5, 5.8))
+    tlo, thi = b_c.get("duration_target_s", (2.5, 4.0))
+    bd = banner.get("expected_duration") or 0
+    if not (lo <= bd <= hi):
+        rep.block("minimal_contract", f"banner duration {bd:.1f}s outside hard window")
+    elif not (tlo <= bd <= thi):
+        rep.warn("minimal_contract", f"banner duration {bd:.1f}s outside target {tlo}-{thi}s", 1)
+    lo, hi = c_c.get("duration_hard_s", (2.2, 6.0))
+    tlo, thi = c_c.get("duration_target_s", (3.0, 5.0))
+    cd = cta.get("expected_duration") or 0
+    if not (lo <= cd <= hi):
+        rep.block("minimal_contract", f"final CTA duration {cd:.1f}s outside hard window")
+    elif not (tlo <= cd <= thi):
+        rep.warn("minimal_contract", f"final CTA duration {cd:.1f}s outside target {tlo}-{thi}s", 1)
+
+    # 4. declared-text geometry (measured textbbox boxes from layout.json)
+    layout = common.load_json(os.path.join(ep, "layout.json"), {}) or {}
+    items = layout.get("minimal") or []
+    mp = pol.get("minimal") or {}
+    safe_cfg = mp.get("safe") or {}
+    top, bottom, side = (int(safe_cfg.get("top", MN_DEFAULT_SAFE[0])),
+                         int(safe_cfg.get("bottom", MN_DEFAULT_SAFE[1])),
+                         int(safe_cfg.get("side", MN_DEFAULT_SAFE[2])))
+    floor_main = int(mp.get("floor_main", MN_DEFAULT_FLOOR_MAIN))
+    floor_label = int(mp.get("floor_label", MN_DEFAULT_FLOOR_LABEL))
+    floor_brand = int(mp.get("floor_brand", 28))
+    Wf, Hf = 1080, 1920
+    text_items = [it for it in items
+                  if it.get("kind") in ("hook", "cta", "brand", "handle", "label")]
+    for it in text_items:
+        x0, y0, x1, y1 = it.get("bbox", (0, 0, 0, 0))
+        if x0 < side or y0 < top or x1 > Wf - side or y1 > bottom:
+            rep.block("minimal_contract",
+                      f"{it.get('scene')}: text {it.get('text', '')[:24]!r} outside the safe "
+                      f"bounds ({side},{top})-({Wf - side},{bottom})")
+        fnt = it.get("font") or 0
+        kind = it.get("kind")
+        # documented floors: kinetic text (hook/cta) floor_main, scene
+        # labels floor_label, the fixed brand lockup (brand line + handle)
+        # floor_brand
+        floor = (floor_label if kind == "label"
+                 else floor_brand if kind in ("brand", "handle")
+                 else floor_main)
+        if fnt and fnt < floor:
+            rep.block("minimal_contract",
+                      f"{it.get('scene')}: text {it.get('text', '')[:24]!r} at {fnt}px is "
+                      f"below the {floor}px readable floor")
+    from collections import defaultdict
+    blocks = defaultdict(list)
+    for it in text_items:
+        if it.get("kind") in ("hook", "cta"):
+            blocks[(it["scene"], it["kind"])].append(it)
+    for (sid, kind), lines in blocks.items():
+        if len(lines) > 3:
+            rep.block("minimal_contract",
+                      f"{sid}: {kind} block has {len(lines)} lines (max 3 — split into "
+                      f"another cue/scene, never shrink below the floor)")
+    # overlapping semantic text (pairwise, same scene, 6px tolerance)
+    for i in range(len(text_items)):
+        for j in range(i + 1, len(text_items)):
+            a, b = text_items[i], text_items[j]
+            if a.get("scene") != b.get("scene"):
+                continue
+            ax0, ay0, ax1, ay1 = a["bbox"]
+            bx0, by0, bx1, by1 = b["bbox"]
+            ox = min(ax1, bx1) - max(ax0, bx0)
+            oy = min(ay1, by1) - max(ay0, by0)
+            if ox > 6 and oy > 6:
+                rep.block("minimal_contract",
+                          f"{a.get('scene')}: overlapping semantic text "
+                          f"{a.get('text', '')[:16]!r} / {b.get('text', '')[:16]!r}")
+    # glow must stay inside the frame (it is generated inside the measured
+    # text bounds + blur margin; this is the frame-level proof)
+    for it in [x for x in items if x.get("kind") == "glow"]:
+        x0, y0, x1, y1 = it.get("bbox", (0, 0, 0, 0))
+        if x0 < 0 or y0 < 0 or x1 > Wf or y1 > Hf:
+            rep.block("minimal_contract",
+                      f"{it.get('scene')}: glow outside measured bounds/frame")
+    rep.details["minimal_contract"]["declared_text_items"] = len(text_items)
+
+    # 5. HUMAN-STYLE DECODED-FRAME VALIDATION (issue §13): sample the REAL
+    #    rendered H.264 frames at the opening banner (FIRST frame), each
+    #    body scene and the final CTA; verify declared text is actually
+    #    visible, centered content is in-frame, and nothing bright is
+    #    hiding outside the declared composition.
+    if not (video and os.path.exists(video)) or no_frames:
+        rep.details["minimal_contract"]["frames"] = "skipped (no_frames or no video)"
+        return
+    import shutil
+    import tempfile
+    timing = common.load_json(os.path.join(ep, "timing.json"), {}) or {}
+    total = float(timing.get("total", 0) or 0)
+    windows, _ = scene_windows(layout, timing, scenes, total)
+    win_by_scene = {w[0]: (w[2], w[3]) for w in windows}
+    tmp = tempfile.mkdtemp(prefix="qa_minimal_")
+    checked = 0
+    try:
+        # (a) the FIRST rendered frame: hook + brand + handle must be visible
+        arr = _decode_frame(video, 0.08, tmp)
+        if arr is None:
+            rep.block("minimal_contract",
+                      "could not decode the first rendered frame (unreadable)")
+        else:
+            checked += 1
+            b_items = [it for it in items
+                       if it.get("scene") == banner.get("scene_id")
+                       and it.get("kind") in ("hook", "brand", "handle")]
+            for it in b_items:
+                ink = _mn_ink_fraction(arr, [v - 6 for v in it["bbox"][:2]] +
+                                       [v + 6 for v in it["bbox"][2:]])
+                if ink < 0.05:
+                    what = "hook" if it["kind"] == "hook" else f"{it['kind']} text"
+                    rep.block("minimal_contract",
+                              f"first frame: {what} {it.get('text', '')[:20]!r} not visible "
+                              f"at its declared position (ink {ink:.2f}) — the hook must "
+                              f"appear in the FIRST frame")
+        # (b) each body scene + the CTA at its window midpoint
+        for sc in scenes[1:]:
+            sid = sc.get("scene_id")
+            if sid not in win_by_scene:
+                rep.block("minimal_contract",
+                          f"scene {sid}: no rendered window in layout/timing — cannot "
+                          f"validate its decoded frames")
+                continue
+            a, b = win_by_scene[sid]
+            t_mid = (a + b) / 2
+            arr = _decode_frame(video, t_mid, tmp)
+            if arr is None:
+                rep.block("minimal_contract",
+                          f"could not decode a rendered frame for scene {sid} (unreadable)")
+                continue
+            checked += 1
+            scene_items = [it for it in items if it.get("scene") == sid]
+            for it in [x for x in scene_items
+                       if x.get("kind") in ("hook", "cta", "brand", "handle", "label")]:
+                ink = _mn_ink_fraction(arr, [v - 6 for v in it["bbox"][:2]] +
+                                       [v + 6 for v in it["bbox"][2:]])
+                if ink < 0.04:
+                    rep.block("minimal_contract",
+                              f"scene {sid}: declared text {it.get('text', '')[:20]!r} not "
+                              f"visible in the decoded frame (clipped/missing, ink {ink:.2f})")
+            bright = _mn_undecclared_bright(arr, scene_items, MN_SCENE_ZONE)
+            if bright > 0.004:
+                rep.block("minimal_contract",
+                          f"scene {sid}: {bright:.2%} undecclared bright content in the "
+                          f"scene zone — clutter / a second dominant visual")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    rep.details["minimal_contract"]["frames"] = checked
+
+
 def _estimate_scene_windows(timing, scenes):
     """LEGACY FALLBACK ONLY — reconstruct scene windows from word-level timing.
 
@@ -1392,6 +1661,9 @@ def evaluate(a, pol):
     if not a.no_frames:
         check_frames(rep, ep, layout, pol)
     check_visuals(rep, ep, script, a.video, pol, a.no_frames)
+    # issue #33: the minimal-format contract (hard blockers + decoded-frame
+    # proof) — a no-op for non-minimal formats
+    check_minimal_contract(rep, ep, script, a.video, pol, a.no_frames)
     check_caption(rep, a.caption, script, pol)
     check_posters(rep, a.poster, a.poster45, pol)
     check_duplicates(rep, script, topic, memory, pol)

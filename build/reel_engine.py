@@ -161,11 +161,16 @@ def with_alpha(im, a):
 
 
 class Reel:
-    def __init__(self, epdir, pol, safe=False):
+    def __init__(self, epdir, pol, safe=False, style=None):
         self.ep = os.path.abspath(epdir)
         self.pol = pol
         self.L = pol["layout"]
         self.safe = safe
+        # issue #33: the production format. An explicit style (the pipeline
+        # passes the resolved style) wins; otherwise the plan's own marker;
+        # otherwise the explicit PIPELINE_STYLE handoff; otherwise legacy
+        # rich. LLM text is never consulted for the style.
+        self.style = style or None
         self.script = json.load(open(f"{self.ep}/script.json", encoding="utf-8"))
         self.tl = json.load(open(f"{self.ep}/timing.json", encoding="utf-8"))
         self.audio_full = f"{self.ep}/full.wav"
@@ -210,13 +215,25 @@ class Reel:
         self.handle_img = text_img(self.script["meta"].get("handle", "@metacognition.hq"), font("en", 600, 28), GOLD, spacing=3)
         self.flash = glow_disc(1600, (255, 200, 110, 255), 620, 260).resize((W, H))
         self.layout = {"en": [], "fa": [], "policy": self.L, "font_fallbacks": 0}
-        self._build_lattice()
-        self._build_web()
+        # issue #33: the minimal format draws NO background lattice (dense
+        # word grid) and NO node web (labelled network) — both are the
+        # "dense graphics / background words" the minimal contract forbids.
+        # The decorative layers are simply not built (callers that touch
+        # self.lat/self.nodes for legacy paths keep working: they stay empty).
+        if style == "minimal":
+            self.lat = []
+            self.nodes = []
+            self.web_edges = []
+            self.web_center = (540, 790)
+        else:
+            self._build_lattice()
+            self._build_web()
         self._build_captions()
         self._build_tags()
         self._widget_cache = {}
         self._photo_cache = {}
         self._last_frame = None
+        self._last_frame_t = None
         # Declared layout items per scene (issue #32 §5): the renderer records
         # every rendered item's bounding box + z-layer; the layout gate runs on
         # them BEFORE frame 0, and final QA re-checks them from layout.json.
@@ -229,6 +246,17 @@ class Reel:
         self.cursor_events = []
         if self.script.get("chunks"):
             self._load_plan()
+        # style resolution (issue #33): explicit arg > plan marker >
+        # explicit PIPELINE_STYLE env handoff > legacy rich (None).
+        if self.style is None:
+            self.style = (self.plan or {}).get("style") \
+                or os.environ.get("PIPELINE_STYLE") or None
+        # the rendered format is declared in layout.json so the independent
+        # QA supervisor can run the format's own contract checks
+        self.layout["style"] = self.style
+        self.minimal_items = []
+        if self.style == "minimal" and self.plan is not None:
+            self._build_minimal_layers()
         self._assert_visible_text_renderable()
 
     def _assert_visible_text_renderable(self):
@@ -275,7 +303,12 @@ class Reel:
         plan_path = os.path.join(self.ep, "visual_plan.json")
         plan = common.load_json(plan_path)
         if not plan or not plan.get("scenes"):
-            plan = vp.build_visual_plan(self.script, self.pol, allow_external=False)
+            # a missing plan file is rebuilt in the SAME format the render
+            # was started in (explicit style / PIPELINE_STYLE handoff) —
+            # never silently falls back to the other format
+            rebuild_style = self.style or os.environ.get("PIPELINE_STYLE") or None
+            plan = vp.build_visual_plan(self.script, self.pol, allow_external=False,
+                                        style=rebuild_style)
         issues = vp.visual_semantic_issues(plan, self.script, self.pol)
         if issues:
             raise RuntimeError("visual plan blocked before render (pre-render "
@@ -774,6 +807,16 @@ class Reel:
                 d.rectangle([296, ZONE_Y + 452, 300, ZONE_Y + 486], fill=GOLD_HI)
 
     def _render_scene(self, fr, scene, ts, sd):
+        # issue #33: minimal compositions (one dominant visual per beat)
+        if self.style == "minimal":
+            cat = scene["visual_category"]
+            if cat == "mn-banner":
+                self._mn_banner(fr, scene, ts, sd)
+            elif cat == "mn-cta":
+                self._mn_cta(fr, scene, ts, sd)
+            else:
+                self._mn_body(fr, scene, ts, sd)
+            return
         if scene["visual_category"] == "brand-mark":
             self.w_hook(fr, ts)
             return
@@ -1480,6 +1523,595 @@ class Reel:
             yy += ti.height - 6
         return im
 
+    # ==================================================================
+    # MINIMAL STYLE RENDERER (issue #33) — the default production format.
+    #
+    #   * six stable scenes, one per beat, one dominant visual each;
+    #   * centered safe text: every block is wrapped with REAL font
+    #     metrics (textbbox/getlength on the production font, normalized
+    #     strings, measured line spacing, stroke/shadow extent) — never
+    #     estimated by character count; blocks stay inside the explicit
+    #     safe bounds at 1080x1920 (top/bottom/side margins), <= 3 lines,
+    #     and never below the documented readable floor (if it does not
+    #     fit, the text is split into another cue/scene, not shrunk);
+    #   * gold is restrained: one gold-highlighted phrase/keyword with a
+    #     thin underline reveal, one progress hairline, one soft glow
+    #     BEHIND text inside the measured bounds (no cursor-like vertical
+    #     artifact); no blue/navy/cyan/purple anywhere;
+    #   * motion: fade, gentle vertical rise, dial progress fill,
+    #     underline reveal, restrained glow pulse — transform/alpha only,
+    #     no particles, no typing cursors, no terminal animation, no
+    #     rapid transitions;
+    #   * ZERO lattice (background words), ZERO node web, ZERO photos,
+    #     ZERO code — the kinetic text is the karaoke subtitle line
+    #     (one text layer, never two competing).
+    # ==================================================================
+
+    # explicit safe production bounds at 1080x1920 (Instagram UI + crop)
+    MN_SAFE_TOP = 220
+    MN_SAFE_BOTTOM = 1700
+    MN_SIDE = 50
+    MN_MAX_TEXT_W = W - 2 * MN_SIDE          # 980 px
+    # documented readable floors (px at 1080 width) — below is a QA blocker
+    MN_FLOOR_MAIN = 44                        # kinetic/banner/CTA text
+    MN_FLOOR_LABEL = 30                       # scene labels
+    MN_DEFAULTS = {
+        "hook_font_start": 64,
+        "cta_font_start": 56,
+        "line_spacing": 1.28,
+        "glow_alpha": 30,
+        "glow_blur": 10,
+        "underline_w": 3,
+        "fade_in": 0.30,
+        "rise_px": 18,
+    }
+
+    def _mn_params(self):
+        m = (self.pol or {}).get("minimal") or {}
+        p = dict(self.MN_DEFAULTS)
+        for k in p:
+            if k in m:
+                p[k] = m[k]
+        # documented contract values (policy is the single source of truth)
+        p["max_lines"] = int(m.get("max_lines_per_block", 3))
+        p["floor_main"] = int(m.get("floor_main", self.MN_FLOOR_MAIN))
+        p["floor_label"] = int(m.get("floor_label", self.MN_FLOOR_LABEL))
+        return p
+
+    def _mn_floor(self, key="floor_main"):
+        return self._mn_params().get(
+            key, self.MN_FLOOR_MAIN if key == "floor_main" else self.MN_FLOOR_LABEL)
+
+    def _mn_safe(self):
+        m = (self.pol or {}).get("minimal") or {}
+        safe = m.get("safe") or {}
+        return (int(safe.get("top", self.MN_SAFE_TOP)),
+                int(safe.get("bottom", self.MN_SAFE_BOTTOM)),
+                int(safe.get("side", self.MN_SIDE)))
+
+    # ------------------------------------------------------------------
+    # deterministic safe text (REAL font measurement)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def mn_safe_wrap(text, weight, start_size, floor_size, max_w, max_lines):
+        """Deterministic wrap of `text` using REAL font metrics.
+
+        Tries the largest size >= floor at which the normalized text fits
+        in <= max_lines of <= max_w pixels (measured with the production
+        font's getlength on the normalized string). Returns (lines, size)
+        or None when even the floor cannot hold it — the caller must split
+        the text into another cue/scene, NEVER shrink below the floor.
+        """
+        text = text_norm.normalize_text(text or "")
+        words = text.split()
+        if not words:
+            return [], start_size
+        size = start_size
+        while size >= floor_size:
+            f = font("en", weight, size)
+            lines, cur, overflow = [], "", False
+            for w in words:
+                trial = (cur + " " + w).strip()
+                if f.getlength(trial) <= max_w:
+                    cur = trial
+                    continue
+                if cur:
+                    lines.append(cur)
+                    cur = ""
+                if f.getlength(w) > max_w:
+                    overflow = True
+                    break
+                cur = w
+            if cur:
+                lines.append(cur)
+            if not overflow and lines and len(lines) <= max_lines:
+                return lines, size
+            size -= 2
+        return None
+
+    def _mn_wrap_or_split(self, text, weight, start_size, floor_size, max_w, max_lines):
+        """mn_safe_wrap + ONE safe hyphen split for a pathological compound
+        word (fixture B): the widest hyphenated word is split at its last
+        hyphen (a safe, dictionary-visible break) and the wrap retried.
+        Still failing → RuntimeError (fail closed, never below the floor).
+        """
+        res = self.mn_safe_wrap(text, weight, start_size, floor_size, max_w, max_lines)
+        if res is not None:
+            return res
+        f_floor = font("en", weight, floor_size)
+        wide = [w for w in text.split() if f_floor.getlength(w) > max_w and "-" in w]
+        if wide:
+            w = max(wide, key=lambda x: (f_floor.getlength(x), x.lower()))
+            i = w.rfind("-")
+            text2 = text_norm.normalize_text(text.replace(w, w[:i] + " " + w[i + 1:], 1))
+            res = self.mn_safe_wrap(text2, weight, start_size, floor_size, max_w, max_lines)
+            if res is not None:
+                return res
+        raise RuntimeError(
+            f"minimal safe-text: block does not fit the safe bounds at the "
+            f"readable floor {floor_size}px (max {max_lines} lines x {max_w}px) — "
+            f"split it into another cue/scene, never shrink below the floor: {text[:60]!r}")
+
+    def _mn_line_canvas(self, text, size, gold_phrase=""):
+        """Render ONE line with REAL metrics. Returns (image, gold_bbox).
+
+        The gold phrase (one word/token) is drawn in gold; its measured
+        bbox is returned so the thin underline reveal can be drawn at
+        composite time (the underline is NOT baked into the text image).
+        """
+        f = font("en", 800, size)
+        probe = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), text, font=f)
+        h = probe[3] - probe[1] + 14
+        w = int(f.getlength(text)) + 24
+        im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(im)
+        x = 12 - probe[0]
+        gold_box = None
+        g = (gold_phrase or "").lower().strip()
+        for wd in text.split(" "):
+            bb = d.textbbox((x, 7 - probe[1]), wd, font=f)
+            if g and wd.lower().strip(".,;:!?()\"'") == g:
+                d.text((x, 7 - probe[1]), wd, font=f, fill=GOLD)
+                if gold_box is None:
+                    gold_box = [bb[0], bb[1], bb[2], bb[3]]
+                else:
+                    gold_box[0] = min(gold_box[0], bb[0])
+                    gold_box[2] = max(gold_box[2], bb[2])
+            else:
+                d.text((x, 7 - probe[1]), wd, font=f, fill=WARM)
+            x += f.getlength(wd + " ")
+        return im, gold_box
+
+    @staticmethod
+    def mn_glow(text_im, blur, alpha):
+        """Soft GOLD glow behind a rendered text image (issue #33 §6).
+
+        The glow is a blurred copy of the text's own alpha silhouette in
+        gold, composited BEHIND the text — so it can never produce a
+        cursor-like vertical artifact and can never read as a separate
+        text layer. It is clipped to the measured text bounds expanded by
+        the blur radius (3*sigma): returns (glow_image, pad) where pad is
+        the expansion on each side, so the caller declares the glow's
+        bbox exactly.
+        """
+        pad = int(blur * 3)
+        gold_im = Image.merge(
+            "RGBA", (Image.new("L", text_im.size, 233),
+                     Image.new("L", text_im.size, 180),
+                     Image.new("L", text_im.size, 74),
+                     text_im.getchannel("A")))
+        canvas = Image.new("RGBA", (text_im.width + 2 * pad, text_im.height + 2 * pad),
+                           (0, 0, 0, 0))
+        canvas.alpha_composite(gold_im, (pad, pad))
+        blurred = canvas.filter(ImageFilter.GaussianBlur(blur))
+        arr = np.array(blurred, np.uint8)
+        arr[..., 3] = (arr[..., 3].astype(np.float32) * (alpha / 255.0)).astype(np.uint8)
+        return Image.fromarray(arr, "RGBA"), pad
+
+    # ------------------------------------------------------------------
+    # scene static layers (cached per scene)
+    # ------------------------------------------------------------------
+
+    def _mn_block(self, text, weight, start_size, floor_size, gold_phrase=""):
+        """Centered safe block: lines + glow + per-line gold boxes.
+
+        The wrap width RESERVES the glow margin (3*sigma each side), so the
+        soft glow — clipped to the measured text bounds + blur radius — can
+        never leave the safe production bounds. Returns (block_image, info)
+        where info carries line count/size, per-line gold boxes and glow pad.
+        """
+        p = self._mn_params()
+        glow_pad = int(p["glow_blur"] * 3)
+        lines, size = self._mn_wrap_or_split(
+            text, weight, start_size, floor_size,
+            self.MN_MAX_TEXT_W - 2 * glow_pad, p.get("max_lines", 3))
+        line_imgs, gold_boxes = [], []
+        lh = int(size * p["line_spacing"])
+        y = 0
+        for ln in lines:
+            im, gb = self._mn_line_canvas(ln, size, gold_phrase)
+            line_imgs.append(im)
+            if gb:
+                gold_boxes.append((y, gb))   # (line y offset, box in line-local coords)
+            y += lh
+        width = max(im.width for im in line_imgs)
+        height = lh * len(line_imgs)
+        block = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        for i, im in enumerate(line_imgs):
+            block.alpha_composite(im, ((width - im.width) // 2, i * lh))
+        # glow BEHIND the text, inside the measured bounds (+blur margin)
+        glow, pad = self.mn_glow(block, p["glow_blur"], p["glow_alpha"])
+        out = Image.new("RGBA", (width + 2 * pad, height + 2 * pad), (0, 0, 0, 0))
+        out.alpha_composite(glow, (pad, pad))
+        out.alpha_composite(block, (pad, pad))
+        return out, {"lines": lines, "size": size, "lh": lh,
+                     "gold_boxes": gold_boxes,
+                     "glow_pad": pad, "block_w": width, "block_h": height}
+
+    def _mn_declare(self, scene_id, text, kind, bbox, size, gold=False):
+        it = {"scene": scene_id, "text": text, "kind": kind, "font": size,
+              "bbox": [int(round(v)) for v in bbox], "gold": bool(gold)}
+        self.minimal_items.append(it)
+        return it
+
+    def _mn_banner_static(self, scene):
+        bb = scene["banner"]
+        p = self._mn_params()
+        sid = scene["scene_id"]
+        cx = W // 2
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        geo = {}
+        # subtle eye/emblem accent with a soft glow (the ONLY gold accent
+        # besides the keyword underline + progress hairline)
+        eye = self.eye.resize((190, 190), Image.LANCZOS)
+        glow = glow_disc(300, (255, 190, 90, 130), 90, 44)
+        eye_y = 560
+        canvas.alpha_composite(glow, (cx - 150, eye_y - 150))
+        canvas.alpha_composite(eye, (cx - 95, eye_y - 95))
+        geo["eye"] = (cx - 95, eye_y - 95, 190, 190)
+        self._mn_declare(sid, "", "emblem", (cx - 95, eye_y - 95, cx + 95, eye_y + 95), 0)
+        # brand line (gold, letter-spaced)
+        brand = text_img(bb["brand_line"], font("en", 700, 30), GOLD, spacing=6)
+        brand_y = 790
+        canvas.alpha_composite(brand, (cx - brand.width // 2, brand_y))
+        geo["brand"] = (cx - brand.width // 2, brand_y, brand.width, brand.height)
+        self._mn_declare(sid, bb["brand_line"], "brand",
+                         (cx - brand.width // 2, brand_y,
+                          cx + brand.width // 2, brand_y + brand.height), 30, gold=True)
+        # the hook — visible in the FIRST frame (no entrance animation),
+        # <= 3 centered lines, never below the readable floor
+        hook_block, info = self._mn_block(bb["hook_text"], 800,
+                                          p["hook_font_start"], p["floor_main"],
+                                          gold_phrase=bb.get("gold_keyword", ""))
+        hook_y = 900
+        canvas.alpha_composite(hook_block, (cx - hook_block.width // 2, hook_y))
+        geo["hook"] = (cx - hook_block.width // 2, hook_y, hook_block.width, hook_block.height)
+        # the glow's exact extent (measured text bounds + blur margin) —
+        # QA verifies it stays inside the frame / safe zone
+        gx0, gy0, gw, gh = geo["hook"]
+        self._mn_declare(sid, "", "glow", (gx0, gy0, gx0 + gw, gy0 + gh), 0)
+        # declare every hook line with its measured bbox; translate the
+        # block-local gold boxes into frame space
+        oy = hook_y + info["glow_pad"]
+        ox = cx - hook_block.width // 2 + info["glow_pad"]
+        for i, ln in enumerate(info["lines"]):
+            li, _ = self._mn_line_canvas(ln, info["size"], "")
+            lx = ox + (info["block_w"] - li.width) // 2
+            ly = oy + i * info["lh"]
+            self._mn_declare(sid, ln, "hook",
+                             (lx, ly, lx + li.width, ly + li.height), info["size"])
+        # gold underline data (frame-local boxes around the gold phrase)
+        geo["gold_boxes"] = []
+        for line_y, gb in info["gold_boxes"]:
+            line_idx = int(round(line_y / info["lh"]))
+            li, _ = self._mn_line_canvas(info["lines"][line_idx], info["size"], "")
+            lx = ox + (info["block_w"] - li.width) // 2
+            geo["gold_boxes"].append((lx + gb[0], oy + line_y + gb[1],
+                                      lx + gb[2], oy + line_y + gb[3]))
+        # handle
+        handle = text_img(bb["handle"], font("en", 600, 34), GOLD, spacing=3)
+        handle_y = hook_y + hook_block.height + 46
+        canvas.alpha_composite(handle, (cx - handle.width // 2, handle_y))
+        geo["handle"] = (cx - handle.width // 2, handle_y, handle.width, handle.height)
+        self._mn_declare(sid, bb["handle"], "handle",
+                         (cx - handle.width // 2, handle_y,
+                          cx + handle.width // 2, handle_y + handle.height), 34, gold=True)
+        # safe-bounds check (fail closed at render time, mirrored by QA)
+        top, bottom, side = self._mn_safe()
+        boxes = [geo["brand"], geo["hook"], geo["handle"]]
+        for (x, y, w, h) in boxes:
+            if x < side or y < top or x + w > W - side or y + h > bottom:
+                raise RuntimeError(
+                    f"minimal banner text leaves the safe bounds: ({x},{y},{w},{h})")
+        return canvas, geo
+
+    def _mn_cta_static(self, scene):
+        cc = scene["cta"]
+        p = self._mn_params()
+        sid = scene["scene_id"]
+        cx = W // 2
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        geo = {}
+        eye = self.eye.resize((150, 150), Image.LANCZOS)
+        glow = glow_disc(260, (255, 190, 90, 120), 80, 40)
+        eye_y = 640
+        canvas.alpha_composite(glow, (cx - 130, eye_y - 130))
+        canvas.alpha_composite(eye, (cx - 75, eye_y - 75))
+        geo["eye"] = (cx - 75, eye_y - 75, 150, 150)
+        self._mn_declare(sid, "", "emblem", (cx - 75, eye_y - 75, cx + 75, eye_y + 75), 0)
+        # the explicit follow line — the SPOKEN line (one text layer)
+        cta_block, info = self._mn_block(cc["follow_line"], 800,
+                                         p["cta_font_start"], p["floor_main"],
+                                         gold_phrase=cc.get("gold_phrase", ""))
+        cta_y = 840
+        canvas.alpha_composite(cta_block, (cx - cta_block.width // 2, cta_y))
+        geo["cta"] = (cx - cta_block.width // 2, cta_y, cta_block.width, cta_block.height)
+        gx0, gy0, gw, gh = geo["cta"]
+        self._mn_declare(sid, "", "glow", (gx0, gy0, gx0 + gw, gy0 + gh), 0)
+        oy = cta_y + info["glow_pad"]
+        ox = cx - cta_block.width // 2 + info["glow_pad"]
+        for i, ln in enumerate(info["lines"]):
+            li, _ = self._mn_line_canvas(ln, info["size"], "")
+            lx = ox + (info["block_w"] - li.width) // 2
+            ly = oy + i * info["lh"]
+            self._mn_declare(sid, ln, "cta",
+                             (lx, ly, lx + li.width, ly + li.height), info["size"])
+        # gold underline data (frame-local box around the gold handle phrase)
+        geo["gold_boxes"] = []
+        for line_y, gb in info["gold_boxes"]:
+            line_idx = int(round(line_y / info["lh"]))
+            li, _ = self._mn_line_canvas(info["lines"][line_idx], info["size"], "")
+            lx = ox + (info["block_w"] - li.width) // 2
+            geo["gold_boxes"].append((lx + gb[0], oy + line_y + gb[1],
+                                      lx + gb[2], oy + line_y + gb[3]))
+        top, bottom, side = self._mn_safe()
+        (x, y, w, h) = geo["cta"]
+        if x < side or y < top or x + w > W - side or y + h > bottom:
+            raise RuntimeError("minimal CTA text leaves the safe bounds")
+        return canvas, geo
+
+    def _mn_two_state(self, scene, canvas):
+        sid = scene["scene_id"]
+        labels = (scene.get("labels") or ["STATE A", "STATE B"])
+        cx, cy = W // 2, 880
+        cw, ch, gap = 380, 130, 90
+        x1, x2 = cx - gap // 2 - cw, cx + gap // 2
+        y = cy - ch // 2
+        # chip 1: the ONE gold treatment (thin outline)
+        c1 = rounded_card(cw, ch, 24, (26, 20, 13, 235), (233, 180, 74, 220), 3)
+        c2 = rounded_card(cw, ch, 24, (26, 20, 13, 235), (246, 234, 210, 120), 2)
+        canvas.alpha_composite(c1, (x1, y))
+        canvas.alpha_composite(c2, (x2, y))
+        self._mn_declare(sid, "", "card", (x1, y, x1 + cw, y + ch), 0)
+        self._mn_declare(sid, "", "card", (x2, y, x2 + cw, y + ch), 0)
+        f = font("en", 800, self.MN_FLOOR_LABEL + 4)
+        for (x0, lab) in ((x1, labels[0]), (x2, labels[1] if len(labels) > 1 else "")):
+            if not lab:
+                continue
+            im = text_img(lab, f, WARM)
+            if im.width > cw - 40:  # measured overflow → deterministic shrink
+                f = font("en", 800, self.MN_FLOOR_LABEL)
+                im = text_img(lab, f, WARM)
+            canvas.alpha_composite(im, (x0 + (cw - im.width) // 2, y + (ch - im.height) // 2))
+            self._mn_declare(sid, lab, "label",
+                             (x0 + (cw - im.width) // 2, y + (ch - im.height) // 2,
+                              x0 + (cw + im.width) // 2, y + (ch + im.height) // 2),
+                             f.size)
+        # drawn arrow between the states (geometry, not a glyph)
+        d = ImageDraw.Draw(canvas)
+        ay = cy
+        d.line([x1 + cw + 12, ay, x2 - 20, ay], fill=(233, 180, 74, 190), width=4)
+        d.polygon([(x2 - 12, ay), (x2 - 34, ay - 12), (x2 - 34, ay + 12)], fill=(233, 180, 74, 220))
+        self._mn_declare(sid, "", "arrow", (x1 + cw, ay - 14, x2, ay + 14), 0)
+        return {"dial": None}
+
+    def _mn_dial(self, scene, canvas):
+        sid = scene["scene_id"]
+        labels = (scene.get("labels") or ["DIAL"])
+        cx, cy = W // 2, 850
+        r = 160
+        d = ImageDraw.Draw(canvas)
+        # track (charcoal) + one gold dot start marker
+        d.arc([cx - r, cy - r, cx + r, cy + r], 135, 405, fill=(74, 62, 48), width=16)
+        start_a = math.radians(135)
+        d.ellipse([cx + math.cos(start_a) * r - 9, cy + math.sin(start_a) * r - 9,
+                   cx + math.cos(start_a) * r + 9, cy + math.sin(start_a) * r + 9],
+                  fill=(233, 180, 74))
+        # declared dial extent covers track + fill arc + end dot (radius + dot)
+        self._mn_declare(sid, "", "dial", (cx - r - 14, cy - r - 14, cx + r + 14, cy + r + 14), 0)
+        lab = labels[0]
+        f = font("en", 800, self.MN_FLOOR_LABEL + 4)
+        im = text_img(lab, f, WARM)
+        ly = cy + r + 56
+        canvas.alpha_composite(im, (cx - im.width // 2, ly))
+        self._mn_declare(sid, lab, "label",
+                         (cx - im.width // 2, ly, cx + im.width // 2, ly + im.height), f.size)
+        return {"dial": (cx, cy, r)}
+
+    def _mn_card(self, scene, canvas):
+        sid = scene["scene_id"]
+        labels = (scene.get("labels") or ["EXAMPLE"])
+        cx = W // 2
+        cw, ch = 640, 280
+        x, y = cx - cw // 2, 740
+        card = rounded_card(cw, ch, 26, (26, 20, 13, 240), (233, 180, 74, 150), 2)
+        canvas.alpha_composite(card, (x, y))
+        self._mn_declare(sid, "", "card", (x, y, x + cw, y + ch), 0)
+        d = ImageDraw.Draw(card)
+        # small icon accent (one geometric gold dot, no microtext)
+        d.ellipse([x + 34, y + 34, x + 62, y + 62], outline=(233, 180, 74, 230), width=4)
+        f = font("en", 800, 40)
+        lab = labels[0]
+        im = text_img(lab, f, WARM)
+        if im.width > cw - 80:
+            f = font("en", 800, self.MN_FLOOR_LABEL)
+            im = text_img(lab, f, WARM)
+        canvas.alpha_composite(im, (cx - im.width // 2, y + ch // 2 - im.height // 2))
+        self._mn_declare(sid, lab, "label",
+                         (cx - im.width // 2, y + ch // 2 - im.height // 2,
+                          cx + im.width // 2, y + ch // 2 + im.height // 2), f.size)
+        d2 = ImageDraw.Draw(canvas)
+        d2.line([x + 80, y + ch - 60, x + cw - 80, y + ch - 60],
+                fill=(233, 180, 74, 90), width=2)
+        return {}
+
+    def _mn_three_step(self, scene, canvas):
+        sid = scene["scene_id"]
+        labels = (scene.get("labels") or ["STEP 1", "STEP 2", "STEP 3"])
+        cx, cy = W // 2, 850
+        cw, ch, gap = 270, 110, 50
+        total = 3 * cw + 2 * gap
+        x0 = cx - total // 2
+        d = ImageDraw.Draw(canvas)
+        # connectors FIRST (behind chips), in the gaps only — never through text
+        for i in range(2):
+            xa = x0 + i * (cw + gap) + cw
+            xb = x0 + (i + 1) * (cw + gap)
+            d.line([xa + 6, cy, xb - 18, cy], fill=(233, 180, 74, 150), width=3)
+            self._mn_declare(sid, "", "connector", (xa, cy - 6, xb, cy + 6), 0)
+        for i in range(3):
+            x = x0 + i * (cw + gap)
+            gold_outline = (i == 0)  # ONE gold treatment: the first step
+            chip = rounded_card(cw, ch, 20, (26, 20, 13, 235),
+                                (233, 180, 74, 220) if gold_outline else (246, 234, 210, 90),
+                                3 if gold_outline else 2)
+            canvas.alpha_composite(chip, (x, cy - ch // 2))
+            self._mn_declare(sid, "", "card", (x, cy - ch // 2, x + cw, cy + ch // 2), 0)
+            num = text_img(str(i + 1), font("en", 800, 40), GOLD_HI if gold_outline else DIM)
+            canvas.alpha_composite(num, (x + 22, cy - ch // 2 + 22))
+            lab = labels[i] if i < len(labels) else ""
+            if lab:
+                f = font("en", 800, self.MN_FLOOR_LABEL)
+                im = text_img(lab, f, WARM)
+                if im.width > cw - 24:
+                    im = text_img(lab[:10], f, WARM)
+                ly = cy + ch // 2 + 26
+                canvas.alpha_composite(im, (x + (cw - im.width) // 2, ly))
+                self._mn_declare(sid, lab, "label",
+                                 (x + (cw - im.width) // 2, ly,
+                                  x + (cw + im.width) // 2, ly + im.height), f.size)
+        return {}
+
+    _MN_COMPS = {"mn-two-state": "_mn_two_state", "mn-dial": "_mn_dial",
+                 "mn-card": "_mn_card", "mn-three-step": "_mn_three_step"}
+
+    def _mn_body_static(self, scene):
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        fn = getattr(self, self._MN_COMPS[scene["visual_category"]])
+        dyn = fn(scene, canvas)
+        top, bottom, side = self._mn_safe()
+        for it in self.minimal_items:
+            x0, y0, x1, y1 = it["bbox"]
+            if it["kind"] in ("label", "cta", "hook", "brand", "handle") and \
+                    (x0 < side or y0 < top or x1 > W - side or y1 > bottom):
+                raise RuntimeError(
+                    f"minimal scene {it['scene']}: text {it['text']!r} leaves the safe bounds")
+        return canvas, dyn
+
+    def _build_minimal_layers(self):
+        """Pre-render + validate every minimal scene's static layer.
+
+        Runs in __init__ so a scene that violates the safe-text contract
+        fails BEFORE any frame is encoded (fail closed), and the declared
+        item boxes land in layout.json for the independent QA.
+        """
+        self._mn_cache = {}
+        for scene in self.plan["scenes"]:
+            cat = scene["visual_category"]
+            if cat == "mn-banner":
+                canvas, geo = self._mn_banner_static(scene)
+            elif cat == "mn-cta":
+                canvas, geo = self._mn_cta_static(scene)
+            else:
+                canvas, dyn = self._mn_body_static(scene)
+                geo = {"dyn": dyn}
+            self._mn_cache[scene["scene_id"]] = (canvas, geo)
+        self.layout["minimal"] = list(self.minimal_items)
+
+    # ------------------------------------------------------------------
+    # per-frame composites
+    # ------------------------------------------------------------------
+
+    def _draw_minimal_accent(self, fr, t):
+        """Faint geometric brand arcs (issue #33): low opacity, outside
+        every text zone, no words, no nodes — a restrained accent, not a
+        dense motif."""
+        ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(ov)
+        d.arc([540 - 620, -430 - 620, 540 + 620, -430 + 620], 30, 150,
+              fill=(233, 180, 74, 22), width=2)
+        d.arc([540 - 700, 2350 - 700, 540 + 700, 2350 + 700], 210, 330,
+              fill=(233, 180, 74, 18), width=2)
+        fr.alpha_composite(ov)
+
+    def _mn_underline(self, fr, box, progress, w_):
+        x0, y0, x1, y1 = box
+        width = int((x1 - x0 + 8) * progress)
+        if width > 1:
+            ImageDraw.Draw(fr).rectangle(
+                [int(x0 - 4), int(y1 + 7), int(x0 - 4) + width, int(y1 + 7 + w_)],
+                fill=(233, 180, 74, 230))
+
+    def _mn_banner(self, fr, scene, ts, sd):
+        canvas, geo = self._mn_cache[scene["scene_id"]]
+        p = self._mn_params()
+        # hook/brand/handle: VISIBLE IN THE FIRST FRAME — no entrance
+        fr.alpha_composite(canvas)
+        # thin gold underline reveal under the gold keyword (~0.6s)
+        prog = ease(clamp(ts / 0.6))
+        for box in geo.get("gold_boxes", ()):
+            self._mn_underline(fr, box, prog, p["underline_w"])
+        # restrained pulse: the eye glow breathes (alpha only, no flash)
+        ex, ey, ew, eh = geo["eye"]
+        pulse = 0.75 + 0.25 * (0.5 + 0.5 * math.sin(ts * 1.6))
+        glow = self._cached("mn_banner_pulse", lambda: glow_disc(300, (255, 190, 90, 150), 90, 44))
+        fr.alpha_composite(with_alpha(glow, pulse * 0.35), (ex - 55, ey - 55))
+
+    def _mn_cta(self, fr, scene, ts, sd):
+        canvas, geo = self._mn_cache[scene["scene_id"]]
+        p = self._mn_params()
+        a = ease(clamp(ts / max(0.15, p["fade_in"] * 0.5)))
+        fr.alpha_composite(with_alpha(canvas, a))
+        prog = ease(clamp((ts - 0.15) / 0.6))
+        for box in geo.get("gold_boxes", ()):
+            self._mn_underline(fr, box, prog, p["underline_w"])
+        ex, ey, ew, eh = geo["eye"]
+        pulse = 0.75 + 0.25 * (0.5 + 0.5 * math.sin(ts * 1.6))
+        glow = self._cached("mn_cta_pulse", lambda: glow_disc(260, (255, 190, 90, 140), 80, 40))
+        fr.alpha_composite(with_alpha(glow, pulse * 0.30), (ex - 47, ey - 47))
+
+    def _mn_body(self, fr, scene, ts, sd):
+        canvas, geo = self._mn_cache[scene["scene_id"]]
+        p = self._mn_params()
+        a = ease(clamp(ts / p["fade_in"]))
+        dy = int((1 - a) * p["rise_px"])
+        fr.alpha_composite(with_alpha(canvas, a), (0, dy))
+        dyn = geo.get("dyn") or {}
+        if dyn.get("dial"):
+            cx, cy, r = dyn["dial"]
+            prog = 0.18 + 0.72 * ease(clamp(ts / max(sd * 0.9, 1.0)))
+            end = 135 + 270 * prog
+            d = ImageDraw.Draw(fr)
+            d.arc([cx - r, cy - r + dy, cx + r, cy + r + dy], 135, end,
+                  fill=(233, 180, 74, int(230 * a)), width=16)
+            ea = math.radians(end)
+            dx = cx + math.cos(ea) * r
+            eyp = cy + dy + math.sin(ea) * r
+            d.ellipse([dx - 11, eyp - 11, dx + 11, eyp + 11],
+                      fill=(255, 228, 158, int(255 * a)))
+
+    def _draw_chrome_minimal(self, fr, t):
+        """Minimal chrome: ONLY the restrained gold progress hairline.
+
+        No corner watermark, no bottom handle, no beat tag — the handle is
+        shown exactly where the contract places it (banner + CTA), and the
+        body labels are the scenes' only other text.
+        """
+        d = ImageDraw.Draw(fr)
+        p = clamp(t / self.total)
+        d.rectangle([0, 0, int(W * p), 4], fill=(233, 180, 74, 210))
+
     def beat_at(self, t):
         i = bisect.bisect_right(self.cut_t, t) - 1
         return max(0, i)
@@ -1489,8 +2121,10 @@ class Reel:
         beat, t0 = self.cuts[si][1], self.cut_t[si]
         sd = (self.cut_t[si + 1] if si + 1 < len(self.cut_t) else self.total) - t0
         ts = t - t0
+        is_min = self.style == "minimal"
         punch = flash = 0.0
-        if not self.safe:
+        # minimal motion budget: no cut flashes, no punch zooms
+        if not self.safe and not is_min:
             for ct in self.cut_t[1:]:
                 dt = abs(t - ct)
                 if dt < 0.30:
@@ -1503,7 +2137,11 @@ class Reel:
             is_photo = scene["asset"].get("kind") in ("repo", "external") \
                 and self._photo_for(scene) is not None
         if not is_photo:
-            if self.plan is None:
+            if is_min:
+                # issue #33: restrained geometric accent only — no lattice
+                # (background words), no node web, no photos
+                self._draw_minimal_accent(fr, t)
+            elif self.plan is None:
                 # pre-plan test fixtures keep the legacy background treatment
                 self.draw_lattice(fr, t, 0.35 if beat == "hook" else 1.0)
                 if beat != "hook":
@@ -1515,19 +2153,36 @@ class Reel:
                 self.draw_brand_accent(fr, t)
         if scene is not None:
             self._render_scene(fr, scene, sts, s_d)
-            # short crossfade from the previous frame at scene starts
-            if self._last_frame is not None and sts < 0.4 and not self.safe:
+            # short crossfade from the previous frame at scene starts.
+            # Only from a frame rendered EARLIER in time: stills()/QA
+            # pre-render out of order, and a stale "last frame" (e.g. the
+            # reel's ENDING frame) must never crossfade INTO the opening
+            # banner — the hook must be clean in the FIRST encoded frame.
+            if (self._last_frame is not None
+                    and self._last_frame_t is not None
+                    and self._last_frame_t <= t
+                    and sts < 0.4 and not self.safe):
                 fr = Image.blend(self._last_frame.convert("RGBA"), fr, ease(sts / 0.4))
         else:
             self.widget(fr, t, beat, ts, sd)
         if is_photo and self.plan is None:
             self.draw_lattice(fr, t, 0.3)
-        self.draw_captions(fr, t)
-        self.draw_chrome(fr, t, beat, t0)
+        # issue #33 §9: ONE kinetic text layer per frame. In the banner and
+        # CTA scenes the scene block IS the spoken line (the hook / the
+        # follow line), so the karaoke band is suppressed there — the same
+        # sentence in two positions would be two competing layers. Body
+        # scenes keep the karaoke band as their kinetic text.
+        if not (is_min and beat in ("hook", "ending")):
+            self.draw_captions(fr, t)
+        if is_min:
+            self._draw_chrome_minimal(fr, t)
+        else:
+            self.draw_chrome(fr, t, beat, t0)
         if flash > 0:
             fr.alpha_composite(with_alpha(self.flash, 0.3 * flash))
         out = fr.convert("RGB")
         self._last_frame = out
+        self._last_frame_t = t
         return out
 
     def background_only(self, t):
@@ -1540,7 +2195,9 @@ class Reel:
                 and self._photo_for(scene) is not None:
             self._render_photo(fr, scene, self._photo_for(scene), max(sts, 0.5), max(s_d, 1.0))
         else:
-            if self.plan is None:
+            if self.style == "minimal":
+                self._draw_minimal_accent(fr, t)
+            elif self.plan is None:
                 self.draw_lattice(fr, t)
                 if beat != "hook":
                     self.draw_web(fr, t, beat)

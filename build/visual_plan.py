@@ -43,6 +43,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402
 import palette_qa  # noqa: E402  (single source of the cold-color family)
+import text_norm  # noqa: E402  (single source of normalized visible text)
 
 # ---------------------------------------------------------------------------
 # Brand palette — matte black / charcoal / warm metallic gold / amber / bronze /
@@ -148,6 +149,58 @@ _cat("brand-close", "brand_close", ["your turn", "ending"],
      "brand close — the orbit and eye send the viewer to the question",
      [["YOUR TURN"]], animation="pulse", content_top=470, content_bottom=1500,
      beats=("ending",))
+
+# --- MINIMAL STYLE (issue #33) — the default production format -------------
+# Six stable scenes, one per beat, one dominant visual each:
+#   s1 mn-banner (opening banner)   s4 mn-card (technology example)
+#   s2 mn-two-state (the problem)   s5 mn-three-step (Try This)
+#   s3 mn-dial (what your mind is doing)  s6 mn-cta (final follow CTA)
+# Zero photo slots, zero code, zero dense graphics. The renderer draws these
+# with the minimal composition system (centered safe text measured with
+# textbbox, one restrained gold treatment, transform-only motion). The
+# kinetic text of every scene IS the spoken line (karaoke subtitles), so the
+# on-screen text volume follows the narration, not a separate label layer.
+_cat("mn-banner", "mn_banner", ["brand", "hook", "open"],
+     "opening banner — brand line, the hook in the first frame, handle and one gold underline",
+     [["METACOGNITION", "FOR THE AI AGE"]],
+     content_top=470, content_bottom=1500, animation="fade", beats=("hook",))
+_cat("mn-two-state", "mn_two_state", ["contrast", "gap", "before", "after"],
+     "one simple two-state comparison — the problem understandable in three seconds",
+     [["STATE A"], ["STATE B"]],
+     animation="fade", beats=("problem",))
+_cat("mn-dial", "mn_dial", ["mind", "drift", "bias", "gauge"],
+     "one progress dial — what the mind is doing, at a glance",
+     [["DIAL"]],
+     animation="fill", beats=("explain",))
+_cat("mn-card", "mn_card", ["example", "case", "think"],
+     "one clean card — the technology example as a single idea",
+     [["EXAMPLE"]],
+     animation="fade", beats=("example",))
+_cat("mn-three-step", "mn_three_step", ["try", "step", "practice", "pause"],
+     "one three-step flow — the single actionable technique",
+     [["STEP 1"], ["STEP 2"], ["STEP 3"]],
+     animation="steps", beats=("technique",))
+_cat("mn-cta", "mn_cta", ["follow", "ending", "your turn"],
+     "final CTA — the explicit follow ask with the handle, centered and readable",
+     [["FOLLOW"]],
+     content_top=470, content_bottom=1500, animation="fade", beats=("ending",))
+
+# minimal categories are brand moments (profile assets used as accents) and
+# style-level compositions allowed for EVERY pillar
+MINIMAL_CATEGORIES = ("mn-banner", "mn-two-state", "mn-dial", "mn-card",
+                      "mn-three-step", "mn-cta")
+MINIMAL_BRAND_CATEGORIES = ("mn-banner", "mn-cta")
+MINIMAL_BODY_CATEGORIES = ("mn-two-state", "mn-dial", "mn-card", "mn-three-step")
+# the stable six-scene structure: one scene per beat, in this order
+MINIMAL_BEAT_ORDER = ("hook", "problem", "explain", "example", "technique", "ending")
+MINIMAL_BEAT_CATEGORIES = {
+    "hook": "mn-banner", "problem": "mn-two-state", "explain": "mn-dial",
+    "example": "mn-card", "technique": "mn-three-step", "ending": "mn-cta",
+}
+# per-scene meaningful-label budget (labels are derived from the narration;
+# the spoken line itself is the kinetic text and is not counted here)
+MINIMAL_LABEL_BUDGET = {"mn-banner": 0, "mn-two-state": 2, "mn-dial": 1,
+                        "mn-card": 1, "mn-three-step": 3, "mn-cta": 0}
 
 # --- PRODUCT / STARTUP -------------------------------------------------------
 _cat("said-vs-did", "dual", ["said", "did", "interview", "behavior", "politeness",
@@ -360,7 +413,7 @@ PILLAR_CATEGORIES = {
                  "concept-web"],
 }
 
-BRAND_CATEGORIES = ("brand-mark", "brand-close")
+BRAND_CATEGORIES = ("brand-mark", "brand-close") + MINIMAL_BRAND_CATEGORIES
 PILLAR_KEYWORDS = {
     "AI_JUDGMENT": ["ai", "judge", "confidence", "calibration", "trust", "verify"],
     "CODING": ["code", "coding", "debug", "test", "trace", "function"],
@@ -373,7 +426,10 @@ PILLAR_KEYWORDS = {
 
 
 def allowed_categories(pillar):
-    return list(PILLAR_CATEGORIES.get(pillar, PILLAR_CATEGORIES["AI_JUDGMENT"])) + list(BRAND_CATEGORIES)
+    # style-level minimal compositions are allowed for every pillar — they are
+    # the default production format, not a topic-dependent decoration
+    return (list(PILLAR_CATEGORIES.get(pillar, PILLAR_CATEGORIES["AI_JUDGMENT"]))
+            + list(BRAND_CATEGORIES) + list(MINIMAL_BODY_CATEGORIES))
 
 
 def derive_pillar(meta, pol=None):
@@ -779,7 +835,217 @@ def _designate_photo_slots(skeleton, cats, pillar, used_cat):
     return slots
 
 
-def build_visual_plan(script, pol=None, allow_external=None):
+# ---------------------------------------------------------------------------
+# MINIMAL STYLE PLAN (issue #33) — the default scheduled production format.
+#
+# Six stable scenes, one per beat (the six-scene contract):
+#   1 opening banner/hook · 2 the problem · 3 what your mind is doing
+#   4 technology example  · 5 Try This (one actionable technique)
+#   6 final follow CTA.
+#
+# Hard properties (enforced here and re-checked by the visual gate + QA):
+#   * ZERO photo slots, ZERO external assets, ZERO Openverse calls —
+#     `allow_external` is IGNORED in minimal style;
+#   * ZERO code/terminal/cursor (code_justified/cursor_justified always False);
+#   * at most MINIMAL_LABEL_BUDGET[cat] derived labels per scene (<= 3),
+#     each a short word taken FROM the narration (meaningful, not decorative);
+#   * the kinetic text is the spoken line itself (karaoke subtitles), so no
+#     second competing text layer is ever drawn;
+#   * banner carries brand line + hook + handle; CTA carries the explicit
+#     follow ask + handle; both are deterministic, never LLM-chosen.
+# ---------------------------------------------------------------------------
+
+MINIMAL_BRAND_LINE = "METACOGNITION FOR THE AI AGE"
+MINIMAL_HANDLE_DEFAULT = "@metacognition.hq"
+# The canonical spoken + displayed CTA line: an explicit follow ask, the
+# handle, and the page-value connection — conversational, no bait, and
+# deliberately short (~4 s at the policy narration rate) so the CTA scene
+# stays in its 3-5 s duration contract.
+MINIMAL_CTA_LINE = ("Follow @metacognition.hq for practical ways to think "
+                    "better with technology.")
+# one beat = one scene (no split) in minimal. 25s is a SANITY bound: every
+# static playbook beat is <= 21.7s (at the 150wpm+5% rate), and the kinetic
+# text is the streaming karaoke line, so long body scenes are fine — but a
+# 30s+ single scene is a broken script and must block.
+MINIMAL_MAX_SCENE_SECONDS = 25.0
+# soft targets (QA warning level, issue #33 §4): the banner sits ~2.5-4s,
+# the CTA ~3-5s. The hard windows below are SANITY blockers only (too short
+# to read / pathologically long) — they admit any policy-conformant hook
+# (hook_policy max 15 words ~= 5.7s at the 150wpm+5% narration rate).
+MINIMAL_BANNER_SECONDS = (2.5, 4.0)
+MINIMAL_BANNER_HARD_SECONDS = (1.5, 5.8)
+MINIMAL_CTA_SECONDS = (3.0, 5.0)
+MINIMAL_CTA_HARD_SECONDS = (2.2, 6.0)
+
+
+def _content_words(text):
+    """Deterministic content words of a narration line (longest first)."""
+    words = re.findall(r"[A-Za-z][A-Za-z'\-]{2,}", text or "")
+    return [w for w in words if w.lower() not in STOP]
+
+
+def _minimal_labels(narration, budget):
+    """Up to `budget` meaningful labels for a minimal scene.
+
+    Derived FROM the scene narration only (never LLM text, never decorative
+    vocabulary): the most specific content words (longest first, first
+    occurrence wins ties), uppercased, each capped at 12 characters so a
+    compound word can never become microtext or overflow its container.
+    """
+    if budget <= 0:
+        return []
+    seen, out = set(), []
+    ranked = sorted(_content_words(narration), key=lambda w: (-len(w), w.lower()))
+    for w in ranked:
+        key = w.lower()
+        if key in seen:
+            continue
+        # never truncate a word mid-word — a word longer than the label
+        # limit is skipped for the next candidate (deterministic)
+        if len(w) > 12:
+            continue
+        seen.add(key)
+        out.append(w.upper())
+        if len(out) >= budget:
+            break
+    return out
+
+
+def _minimal_gold_keyword(hook_line):
+    """The ONE gold-highlighted keyword of the opening banner.
+
+    Deterministic: the most specific content word (longest, len>=4, first
+    occurrence wins ties) of the FIRST hook line — never a random choice,
+    never LLM-chosen. Falls back to the first content word.
+    """
+    words = _content_words(hook_line)
+    specific = [w for w in words if len(w) >= 4]
+    pool = specific or words
+    if not pool:
+        return ""
+    return sorted(pool, key=lambda w: (-len(w), w.lower()))[0]
+
+
+def _build_minimal_plan(script, pol):
+    """The deterministic minimal scene plan (six stable scenes, one per beat).
+
+    Raises ValueError when the script does not carry all six beats — minimal
+    is a strict contract and fails closed instead of degrading.
+    """
+    pol = pol or common.policy()
+    meta = (script or {}).get("meta", {}) or {}
+    pillar = derive_pillar(meta, pol)
+    tkw = topic_keywords(script)
+    wps = _wps(pol)
+    band = subtitle_band(pol)
+
+    beats = _beat_lines(script)
+    by_beat = {}
+    for beat, lines in beats:
+        if beat in MINIMAL_BEAT_ORDER:
+            by_beat.setdefault(beat, []).extend(lines)
+    missing = [b for b in MINIMAL_BEAT_ORDER if b not in by_beat]
+    if missing:
+        raise ValueError(
+            f"minimal style requires all six beats (one scene each); "
+            f"missing: {', '.join(missing)}")
+
+    handle = meta.get("handle") or MINIMAL_HANDLE_DEFAULT
+    scenes = []
+    for i, beat in enumerate(MINIMAL_BEAT_ORDER):
+        lines = by_beat[beat]
+        narration = " ".join(t for t, _ in lines)
+        words = sum(w for _, w in lines)
+        dur = round(words / wps, 2)
+        cat = MINIMAL_BEAT_CATEGORIES[beat]
+        spec = C[cat]
+        if beat == "hook":
+            asset = _asset_repo("emblem", REPO_ASSETS["emblem"])
+        elif beat == "ending":
+            asset = _asset_repo("eye", REPO_ASSETS["eye"])
+        else:
+            asset = _asset_proc(cat, spec["comp"], i)
+        scene = {
+            "scene_id": f"s{i + 1}",
+            "beat": beat,
+            "beat_split": 0,
+            "narration": narration,
+            "topic_keywords": tkw,
+            "pillar": pillar,
+            "visual_category": cat,
+            "visual_purpose": spec["purpose"],
+            "asset": asset,
+            "asset_query": None,
+            "asset_query_sent": None,
+            "asset_query_planned": None,
+            "asset_retrieval": "brand" if beat in ("hook", "ending") else "procedural",
+            "animation": spec["animation"],
+            "content_top": spec["content_top"],
+            "content_bottom": spec["content_bottom"],
+            "source": {"origin": asset.get("origin", ""), "license": asset.get("license", ""),
+                       "path": asset.get("path") or asset.get("template", "")},
+            "expected_duration": dur,
+            "code_justified": False,
+            "cursor_justified": False,
+            "photo_designated": False,
+            "retrieval_reason": "brand" if beat in ("hook", "ending") else "procedural",
+            "labels": _minimal_labels(narration, MINIMAL_LABEL_BUDGET[cat]),
+            "style": "minimal",
+        }
+        if beat == "hook":
+            first_line = text_norm.normalize_text(lines[0][0])
+            scene["banner"] = {
+                "brand_line": MINIMAL_BRAND_LINE,
+                "hook_text": first_line,
+                "handle": handle,
+                "gold_keyword": _minimal_gold_keyword(first_line),
+            }
+        elif beat == "ending":
+            scene["cta"] = {
+                "follow_line": MINIMAL_CTA_LINE,
+                "handle": handle,
+                "gold_phrase": handle,
+            }
+        scenes.append(scene)
+
+    plan = {
+        "version": 1,
+        "style": "minimal",
+        "pillar": pillar,
+        "topic_keywords": tkw,
+        "palette": {k: list(v) for k, v in BRAND_PALETTE.items()},
+        "forbidden_hues": list(COLD_COLOR_NAMES),
+        "subtitle_band": list(band),
+        "scenes": scenes,
+        "photo_policy": {
+            "target": 0, "minimum": 0, "designated": [],
+            "source": "none — minimal style performs ZERO external asset calls",
+            "fallback": "n/a",
+            "repo_hero_as_background": False,
+            "retrieval_outcomes": {},
+            "photos_retrieved": 0,
+            "degraded": False,
+        },
+        "banner_contract": {
+            "brand_line": MINIMAL_BRAND_LINE,
+            "handle": handle,
+            "duration_target_s": list(MINIMAL_BANNER_SECONDS),
+            "duration_hard_s": list(MINIMAL_BANNER_HARD_SECONDS),
+            "actual_s": scenes[0]["expected_duration"],
+        },
+        "cta_contract": {
+            "follow_line": MINIMAL_CTA_LINE,
+            "handle": handle,
+            "duration_target_s": list(MINIMAL_CTA_SECONDS),
+            "duration_hard_s": list(MINIMAL_CTA_HARD_SECONDS),
+            "actual_s": scenes[-1]["expected_duration"],
+        },
+        "generation": "deterministic-minimal-plan v1 (no LLM, zero external assets)",
+    }
+    return plan
+
+
+def build_visual_plan(script, pol=None, allow_external=None, style=None):
     """Deterministic topic/pillar-aware scene plan for an approved script.
 
     Generated ONLY from the approved script + editorial policy (the caller
@@ -788,7 +1054,17 @@ def build_visual_plan(script, pol=None, allow_external=None):
     designated photo slots (fail-soft: any problem falls back to a distinct
     deterministic procedural visual — the reel never fails on network, and
     never reuses a repository hero image to compensate).
+
+    `style` selects the production format: None keeps the legacy rich plan
+    (back-compat for existing callers/tests); "minimal" builds the six-scene
+    minimal plan (zero external assets — `allow_external` is ignored);
+    "experimental-rich" is the legacy path under its explicit name.
     """
+    if style is not None:
+        import style_config
+        style_config.normalize_style(style, allow_rich=True)
+    if style == "minimal":
+        return _build_minimal_plan(script, pol)
     pol = pol or common.policy()
     meta = (script or {}).get("meta", {}) or {}
     if allow_external is None:
@@ -1027,6 +1303,91 @@ def _scene_text_words(scene):
     return sum(len(w.split()) for ls in sets for w in ls)
 
 
+def _minimal_plan_issues(plan, script):
+    """Minimal-style contract blockers (issue #33 §3-6, 11).
+
+    Runs AFTER the generic gate checks (palette, metadata, provenance,
+    asset safety all apply identically). These are the minimal-specific
+    hard contracts:
+      * exactly six scenes, one per beat, in the stable order
+        hook → problem → explain → example → technique → ending;
+      * the right minimal composition per beat (banner/two-state/dial/
+        card/three-step/cta);
+      * ZERO photo slots / ZERO external assets / ZERO code / ZERO cursor;
+      * at most MINIMAL_LABEL_BUDGET derived labels per scene (<= 3);
+      * opening banner: brand line + hook text + handle + one gold keyword;
+      * final CTA: explicit follow ask + handle;
+      * banner duration inside the hard window (2.5-4s target), CTA inside
+        its hard window (3-5s target) — outside the hard window is a
+        blocker; inside the hard but outside the target is a warning-level
+        note recorded in details by final QA (not a gate blocker).
+    """
+    issues = []
+    B = lambda msg: issues.append(f"[visual_semantics] {msg}")  # noqa: E731
+    scenes = (plan or {}).get("scenes") or []
+
+    if len(scenes) != 6:
+        B(f"minimal style requires exactly six stable scenes, got {len(scenes)}")
+        return issues
+    for i, sc in enumerate(scenes):
+        beat = MINIMAL_BEAT_ORDER[i]
+        want_cat = MINIMAL_BEAT_CATEGORIES[beat]
+        if sc.get("beat") != beat:
+            B(f"scene {i + 1} must be the {beat!r} beat (stable six-scene "
+              f"contract), got {sc.get('beat')!r}")
+        if sc.get("visual_category") != want_cat:
+            B(f"scene {i + 1} ({beat}) must use composition {want_cat!r}, "
+              f"got {sc.get('visual_category')!r}")
+    for sc in scenes:
+        sid = sc.get("scene_id") or "?"
+        if sc.get("photo_designated"):
+            B(f"{sid}: minimal style has ZERO photo slots")
+        if (sc.get("asset") or {}).get("kind") == "external":
+            B(f"{sid}: minimal style has ZERO external assets")
+        if sc.get("code_justified") or sc.get("code_lines"):
+            B(f"{sid}: minimal style has ZERO code/terminal visuals")
+        if sc.get("cursor_justified"):
+            B(f"{sid}: minimal style has ZERO cursors")
+        labels = sc.get("labels") or []
+        budget = MINIMAL_LABEL_BUDGET.get(sc.get("visual_category"), 3)
+        if len(labels) > budget:
+            B(f"{sid}: {len(labels)} labels exceed the minimal budget of {budget}")
+        for lab in labels:
+            if not (isinstance(lab, str) and 1 <= len(lab) <= 12):
+                B(f"{sid}: label {lab!r} is not a short readable word (<=12 chars)")
+    banner = scenes[0]
+    bb = banner.get("banner") or {}
+    if not bb.get("brand_line"):
+        B("opening banner is missing the brand line")
+    if not (bb.get("hook_text") or "").strip():
+        B("opening banner is missing the hook text (must be visible in the FIRST frame)")
+    if not (bb.get("handle") or "").startswith("@"):
+        B("opening banner is missing the @handle")
+    if not bb.get("gold_keyword"):
+        B("opening banner has no single gold-highlighted keyword")
+    cta = scenes[-1]
+    cc = cta.get("cta") or {}
+    if not (cc.get("follow_line") or "").strip():
+        B("final CTA is missing the explicit follow line")
+    if not (cc.get("handle") or "").startswith("@"):
+        B("final CTA is missing the @handle")
+    if "follow" not in cc.get("follow_line", "").lower():
+        B("final CTA does not explicitly ask to follow")
+    # durations: hard windows are blockers (the soft 2.5-4s / 3-5s targets
+    # are verified with warnings by final QA on the rendered frames)
+    bd = banner.get("expected_duration") or 0
+    lo, hi = MINIMAL_BANNER_HARD_SECONDS
+    if not (lo <= bd <= hi):
+        B(f"opening banner duration {bd:.1f}s outside the hard window "
+          f"{lo}-{hi}s (target {MINIMAL_BANNER_SECONDS[0]}-{MINIMAL_BANNER_SECONDS[1]}s)")
+    cd = cta.get("expected_duration") or 0
+    lo, hi = MINIMAL_CTA_HARD_SECONDS
+    if not (lo <= cd <= hi):
+        B(f"final CTA duration {cd:.1f}s outside the hard window "
+          f"{lo}-{hi}s (target {MINIMAL_CTA_SECONDS[0]}-{MINIMAL_CTA_SECONDS[1]}s)")
+    return issues
+
+
 def visual_semantic_issues(plan, script, pol=None):
     """Deterministic pre-render visual-semantic gate. Returns blocker strings
     ('[visual_semantics] ...'); an empty list means the plan is renderable.
@@ -1039,6 +1400,7 @@ def visual_semantic_issues(plan, script, pol=None):
     pol = pol or common.policy()
     issues = []
     B = lambda msg: issues.append(f"[visual_semantics] {msg}")  # noqa: E731
+    is_minimal = (plan or {}).get("style") == "minimal"
 
     scenes = (plan or {}).get("scenes") or []
     has_chunks = bool(((script or {}).get("chunks") or []))
@@ -1046,6 +1408,8 @@ def visual_semantic_issues(plan, script, pol=None):
         if has_chunks:
             B("visual plan has no scenes — a reel cannot render without a gated scene plan")
         return issues
+    if is_minimal:
+        issues.extend(_minimal_plan_issues(plan, script))
 
     meta = (script or {}).get("meta", {}) or {}
     pillar = derive_pillar(meta, pol)
@@ -1104,8 +1468,13 @@ def visual_semantic_issues(plan, script, pol=None):
         if not isinstance(sc.get("cursor_justified"), bool):
             B(f"{sid}: cursor_justified must be a boolean")
         total_dur += float(dur or 0)
-        if dur and dur > MAX_SCENE_SECONDS:
-            B(f"{sid}: scene {dur:.1f}s — cut cadence must stay ~3-6s between visual changes")
+        # minimal: one stable scene per beat (the six-scene contract) — long
+        # beats stay one scene; the kinetic text is the spoken line, so the
+        # rich cut-cadence rule does not apply
+        max_scene = MINIMAL_MAX_SCENE_SECONDS if is_minimal else MAX_SCENE_SECONDS
+        if dur and dur > max_scene:
+            B(f"{sid}: scene {dur:.1f}s exceeds the "
+              f"{'minimal one-beat' if is_minimal else 'rich ~3-6s'} scene bound {max_scene:.0f}s")
         # --- pillar rule
         if cat not in allowed_categories(pillar):
             B(f"{sid}: category {cat!r} is not allowed for pillar {pillar} "

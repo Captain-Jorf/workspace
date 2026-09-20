@@ -1,10 +1,17 @@
 # Core dependencies for @metacognition.hq reel factory — English-only production
 # Used by GitHub Actions and local fresh env
 # No translation/RTL deps (arabic_reshaper, python-bidi, deep-translator removed — not executed in EN-only path)
-pillow
-numpy
-fonttools
-brotli
-imageio-ffmpeg
-edge-tts
-pyyaml
+#
+# PINNED (issue #34): the 2026-09-25 run (actions 35491557513) executed on an
+# UNPINNED env (python-version "3.11" resolved to 3.11.16 at run time, latest
+# wheels for every dep) and a single self-test failed while the same tree
+# passes 5+ consecutive full-suite runs on the verified env below. Every
+# dependency is therefore pinned to the exact version the full suite is
+# verified green on (Python 3.11.2). Unpin only with a full-suite green run.
+pillow==12.3.0
+numpy==2.4.6
+fonttools==4.65.0
+brotli==1.2.0
+imageio-ffmpeg==0.6.0
+edge-tts==7.2.8
+pyyaml==6.0.3
