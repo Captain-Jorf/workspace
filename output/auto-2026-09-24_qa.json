@@ -1,0 +1,186 @@
+{
+ "approved": true,
+ "score": 93,
+ "min_score": 85,
+ "checks": {
+  "content_language": "pass",
+  "english_only": "pass",
+  "technology_relevance": "warn",
+  "metacognition_relevance": "pass",
+  "topic_relevance": "pass",
+  "source_quality": "pass",
+  "script_quality": "pass",
+  "english_quality": "warn",
+  "subtitle_layout": "pass",
+  "audio_quality": "pass",
+  "video_quality": "warn",
+  "caption_quality": "pass",
+  "duplicate_check": "pass",
+  "buffer_readiness": "warn",
+  "reviewer_check": "pass",
+  "visual_semantics": "pass"
+ },
+ "warnings": [
+  "[technology_relevance] technology relevance moderate (hits=2)",
+  "[english_quality] no contractions — formal",
+  "[video_quality] duration 61.3s outside target 70-105",
+  "[buffer_readiness] public URL not provided (pre-push)"
+ ],
+ "blocking_errors": [],
+ "details": {
+  "content_language": {
+   "policy": "en",
+   "meta": "en",
+   "env": "en"
+  },
+  "english_only": {
+   "fa_lines": 0,
+   "persian_ratio": 0.0,
+   "engine": ""
+  },
+  "technology": {
+   "technology_angle": "attention drift while using ai‑powered meeting tools",
+   "hits": 2,
+   "concept": "mindful attention monitoring"
+  },
+  "metacognition": {
+   "concept": "mindful attention monitoring",
+   "hits": 4
+  },
+  "topic": {
+   "field_terms": 10
+  },
+  "sources": {
+   "evidence": 2,
+   "best_tier": "A",
+   "claim_words": [],
+   "numbers": []
+  },
+  "script": {
+   "words": 165,
+   "hook_words": 9,
+   "beats": [
+    "hook",
+    "problem",
+    "explain",
+    "example",
+    "technique",
+    "ending"
+   ]
+  },
+  "english": {
+   "informality": 0,
+   "avg": 12.7
+  },
+  "layout": {
+   "en_lines": 17,
+   "fa_lines": 0,
+   "en_bottom_max": 434
+  },
+  "video": {
+   "w": 1080,
+   "h": 1920,
+   "duration": 61.3,
+   "fps": 30.0,
+   "size_mb": 18.23,
+   "codec": "h264"
+  },
+  "audio": {
+   "mean_db": -19.6,
+   "peak_db": -1.5,
+   "wps": 2.85
+  },
+  "frames": {
+   "sampled": 18,
+   "min_contrast": 15.5
+  },
+  "visuals": {
+   "present": true,
+   "scenes": 9,
+   "distinct_assets": 9,
+   "categories": [
+    "attention-residue",
+    "brand-close",
+    "brand-mark",
+    "context-timeline",
+    "notification-cascade",
+    "task-queue"
+   ],
+   "external": 0,
+   "photo_designated": 2,
+   "procedural": 7,
+   "brand": 2,
+   "code_scenes": [],
+   "pillar": "ATTENTION",
+   "photo_provenance": {
+    "scenes": 9,
+    "photo_designated": 2,
+    "photos_retrieved": 0,
+    "photo_fallbacks": 2,
+    "procedural_scenes": 7,
+    "brand_scenes": 2,
+    "brand_repo_assets": 2,
+    "brand_accents_only": true,
+    "distinct_assets": 9,
+    "licenses": {},
+    "licenses_ok": true
+   },
+   "scene_timing_source": "layout",
+   "palette_qa": {
+    "frames_sampled": 27,
+    "scenes_checked": 9,
+    "method": "palette_qa/v1",
+    "blocked": false,
+    "persistent_cold_regions": 0,
+    "noise_only_px": 2789,
+    "raw_cold_px": 22517,
+    "max_meaningful_area_fraction": 0.000144,
+    "max_meaningful_core_px": 0,
+    "scene_timing_source": "layout",
+    "cold_family_px": {
+     "blue": 2704,
+     "cyan": 82,
+     "purple": 3
+    },
+    "policy_notes": []
+   },
+   "rendered_frames_checked": true,
+   "rendered_frames": 9,
+   "distinct_rendered": 7
+  },
+  "caption": {
+   "chars": 474,
+   "hashtags": 6
+  },
+  "duplicates": {
+   "compared": 9,
+   "script_hash": "0c8fd9da72a8"
+  },
+  "buffer": {
+   "public_url": null
+  },
+  "reviewer_words": {
+   "spoken_words": 165,
+   "policy_range": [
+    150,
+    260
+   ]
+  },
+  "reviewer": {
+   "present": true,
+   "approved": true,
+   "score": 95,
+   "tech": true,
+   "metacog": true,
+   "blocking": []
+  }
+ },
+ "content_id": "reel-2026-09-24",
+ "content_date": "2026-09-24",
+ "topic": "When did you last notice you stopped listening in a standup? Attention",
+ "script_hash": "0c8fd9da72a86f8cbbbc34192244dfad7e659f82d90aa542d02acfbf31a05840",
+ "video_hash": "c2fffdacec1ef717e79bbce2d1af1ae4a79ee13751aa5042d2af285e6f076ac8",
+ "evaluated_utc": "2026-09-20T04:12:08+00:00",
+ "supervisor_version": "2.0-english-only",
+ "language": "en"
+}

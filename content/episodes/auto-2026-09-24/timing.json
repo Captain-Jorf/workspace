@@ -1,0 +1,1016 @@
+{
+ "total": 61.31,
+ "lead": 0.55,
+ "tail": 1.2,
+ "gap": 0.34,
+ "chunks": [
+  {
+   "id": "c1",
+   "beat": "hook",
+   "start": 0.55,
+   "dur": 3.09,
+   "lines": [
+    {
+     "text": "Ever catch yourself nodding while your brain’s already elsewhere?",
+     "scene": "hook",
+     "beat": "hook",
+     "start": 0.55,
+     "end": 3.64,
+     "words": [
+      {
+       "w": "Ever",
+       "start": 0.63,
+       "end": 0.903
+      },
+      {
+       "w": "catch",
+       "start": 0.915,
+       "end": 1.177
+      },
+      {
+       "w": "yourself",
+       "start": 1.189,
+       "end": 1.606
+      },
+      {
+       "w": "nodding",
+       "start": 1.618,
+       "end": 1.999
+      },
+      {
+       "w": "while",
+       "start": 2.011,
+       "end": 2.13
+      },
+      {
+       "w": "your",
+       "start": 2.142,
+       "end": 2.261
+      },
+      {
+       "w": "brain’s",
+       "start": 2.272,
+       "end": 2.653
+      },
+      {
+       "w": "already",
+       "start": 2.665,
+       "end": 3.022
+      },
+      {
+       "w": "elsewhere?",
+       "start": 3.034,
+       "end": 3.582
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "beat": "problem",
+   "start": 3.98,
+   "dur": 8.04,
+   "lines": [
+    {
+     "text": "You’re in a stand‑up, eyes on the screen, but your thoughts wander.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 3.98,
+     "end": 8.426,
+     "words": [
+      {
+       "w": "You’re",
+       "start": 4.06,
+       "end": 4.31
+      },
+      {
+       "w": "in",
+       "start": 4.322,
+       "end": 4.417
+      },
+      {
+       "w": "a",
+       "start": 4.429,
+       "end": 4.488
+      },
+      {
+       "w": "stand‑up,",
+       "start": 4.5,
+       "end": 5.071
+      },
+      {
+       "w": "eyes",
+       "start": 5.286,
+       "end": 5.548
+      },
+      {
+       "w": "on",
+       "start": 5.56,
+       "end": 5.643
+      },
+      {
+       "w": "the",
+       "start": 5.655,
+       "end": 5.726
+      },
+      {
+       "w": "screen,",
+       "start": 5.738,
+       "end": 6.167
+      },
+      {
+       "w": "but",
+       "start": 6.441,
+       "end": 6.583
+      },
+      {
+       "w": "your",
+       "start": 6.595,
+       "end": 6.738
+      },
+      {
+       "w": "thoughts",
+       "start": 6.75,
+       "end": 7.095
+      },
+      {
+       "w": "wander.",
+       "start": 7.107,
+       "end": 7.607
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "That drift means you miss key updates and waste the whole team’s time.",
+     "scene": "problem",
+     "beat": "problem",
+     "start": 8.426,
+     "end": 12.02,
+     "words": [
+      {
+       "w": "That",
+       "start": 8.426,
+       "end": 8.688
+      },
+      {
+       "w": "drift",
+       "start": 8.7,
+       "end": 9.033
+      },
+      {
+       "w": "means",
+       "start": 9.045,
+       "end": 9.307
+      },
+      {
+       "w": "you",
+       "start": 9.319,
+       "end": 9.402
+      },
+      {
+       "w": "miss",
+       "start": 9.414,
+       "end": 9.641
+      },
+      {
+       "w": "key",
+       "start": 9.652,
+       "end": 9.891
+      },
+      {
+       "w": "updates",
+       "start": 9.902,
+       "end": 10.391
+      },
+      {
+       "w": "and",
+       "start": 10.402,
+       "end": 10.533
+      },
+      {
+       "w": "waste",
+       "start": 10.545,
+       "end": 10.843
+      },
+      {
+       "w": "the",
+       "start": 10.855,
+       "end": 10.938
+      },
+      {
+       "w": "whole",
+       "start": 10.95,
+       "end": 11.2
+      },
+      {
+       "w": "team’s",
+       "start": 11.212,
+       "end": 11.522
+      },
+      {
+       "w": "time.",
+       "start": 11.533,
+       "end": 11.962
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "beat": "explain",
+   "start": 12.36,
+   "dur": 17.83,
+   "lines": [
+    {
+     "text": "Our minds treat a brief pause as a cue to switch modes, especially with chat‑AI suggestions popping up.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 12.36,
+     "end": 19.056,
+     "words": [
+      {
+       "w": "Our",
+       "start": 12.44,
+       "end": 12.63
+      },
+      {
+       "w": "minds",
+       "start": 12.642,
+       "end": 12.975
+      },
+      {
+       "w": "treat",
+       "start": 12.987,
+       "end": 13.213
+      },
+      {
+       "w": "a",
+       "start": 13.225,
+       "end": 13.285
+      },
+      {
+       "w": "brief",
+       "start": 13.297,
+       "end": 13.618
+      },
+      {
+       "w": "pause",
+       "start": 13.63,
+       "end": 14.047
+      },
+      {
+       "w": "as",
+       "start": 14.059,
+       "end": 14.166
+      },
+      {
+       "w": "a",
+       "start": 14.178,
+       "end": 14.249
+      },
+      {
+       "w": "cue",
+       "start": 14.261,
+       "end": 14.571
+      },
+      {
+       "w": "to",
+       "start": 14.582,
+       "end": 14.678
+      },
+      {
+       "w": "switch",
+       "start": 14.69,
+       "end": 15.023
+      },
+      {
+       "w": "modes,",
+       "start": 15.035,
+       "end": 15.428
+      },
+      {
+       "w": "especially",
+       "start": 15.666,
+       "end": 16.166
+      },
+      {
+       "w": "with",
+       "start": 16.178,
+       "end": 16.356
+      },
+      {
+       "w": "chat‑AI",
+       "start": 16.368,
+       "end": 16.94
+      },
+      {
+       "w": "suggestions",
+       "start": 16.952,
+       "end": 17.606
+      },
+      {
+       "w": "popping",
+       "start": 17.618,
+       "end": 17.987
+      },
+      {
+       "w": "up.",
+       "start": 17.999,
+       "end": 18.237
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "The brain fills the gap with imagined replies, so you think you’re listening when you’re not.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 19.056,
+     "end": 24.068,
+     "words": [
+      {
+       "w": "The",
+       "start": 19.056,
+       "end": 19.199
+      },
+      {
+       "w": "brain",
+       "start": 19.211,
+       "end": 19.544
+      },
+      {
+       "w": "fills",
+       "start": 19.556,
+       "end": 19.842
+      },
+      {
+       "w": "the",
+       "start": 19.854,
+       "end": 19.949
+      },
+      {
+       "w": "gap",
+       "start": 19.961,
+       "end": 20.235
+      },
+      {
+       "w": "with",
+       "start": 20.247,
+       "end": 20.354
+      },
+      {
+       "w": "imagined",
+       "start": 20.366,
+       "end": 20.806
+      },
+      {
+       "w": "replies,",
+       "start": 20.818,
+       "end": 21.354
+      },
+      {
+       "w": "so",
+       "start": 21.592,
+       "end": 21.699
+      },
+      {
+       "w": "you",
+       "start": 21.711,
+       "end": 21.854
+      },
+      {
+       "w": "think",
+       "start": 21.866,
+       "end": 22.08
+      },
+      {
+       "w": "you’re",
+       "start": 22.092,
+       "end": 22.199
+      },
+      {
+       "w": "listening",
+       "start": 22.211,
+       "end": 22.628
+      },
+      {
+       "w": "when",
+       "start": 22.64,
+       "end": 22.735
+      },
+      {
+       "w": "you’re",
+       "start": 22.747,
+       "end": 22.842
+      },
+      {
+       "w": "not.",
+       "start": 22.854,
+       "end": 23.247
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Recognizing that gap—realizing you’re drafting a reply instead of hearing—creates a metacognitive checkpoint.",
+     "scene": "explain",
+     "beat": "explain",
+     "start": 24.068,
+     "end": 30.19,
+     "words": [
+      {
+       "w": "Recognizing",
+       "start": 24.068,
+       "end": 24.771
+      },
+      {
+       "w": "that",
+       "start": 24.782,
+       "end": 24.949
+      },
+      {
+       "w": "gap—realizing",
+       "start": 24.961,
+       "end": 26.056
+      },
+      {
+       "w": "you’re",
+       "start": 26.068,
+       "end": 26.187
+      },
+      {
+       "w": "drafting",
+       "start": 26.199,
+       "end": 26.651
+      },
+      {
+       "w": "a",
+       "start": 26.663,
+       "end": 26.713
+      },
+      {
+       "w": "reply",
+       "start": 26.723,
+       "end": 27.187
+      },
+      {
+       "w": "instead",
+       "start": 27.199,
+       "end": 27.544
+      },
+      {
+       "w": "of",
+       "start": 27.556,
+       "end": 27.64
+      },
+      {
+       "w": "hearing—creates",
+       "start": 27.652,
+       "end": 28.675
+      },
+      {
+       "w": "a",
+       "start": 28.687,
+       "end": 28.737
+      },
+      {
+       "w": "metacognitive",
+       "start": 28.747,
+       "end": 29.449
+      },
+      {
+       "w": "checkpoint.",
+       "start": 29.461,
+       "end": 30.104
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "beat": "example",
+   "start": 30.53,
+   "dur": 9.66,
+   "lines": [
+    {
+     "text": "Imagine you see an AI‑generated agenda suggestion and start typing before the speaker finishes.",
+     "scene": "example",
+     "beat": "example",
+     "start": 30.53,
+     "end": 36.631,
+     "words": [
+      {
+       "w": "Imagine",
+       "start": 30.61,
+       "end": 31.122
+      },
+      {
+       "w": "you",
+       "start": 31.133,
+       "end": 31.229
+      },
+      {
+       "w": "see",
+       "start": 31.241,
+       "end": 31.479
+      },
+      {
+       "w": "an",
+       "start": 31.491,
+       "end": 31.633
+      },
+      {
+       "w": "AI‑generated",
+       "start": 31.645,
+       "end": 32.491
+      },
+      {
+       "w": "agenda",
+       "start": 32.502,
+       "end": 32.895
+      },
+      {
+       "w": "suggestion",
+       "start": 32.907,
+       "end": 33.562
+      },
+      {
+       "w": "and",
+       "start": 33.574,
+       "end": 33.681
+      },
+      {
+       "w": "start",
+       "start": 33.693,
+       "end": 33.979
+      },
+      {
+       "w": "typing",
+       "start": 33.991,
+       "end": 34.36
+      },
+      {
+       "w": "before",
+       "start": 34.372,
+       "end": 34.669
+      },
+      {
+       "w": "the",
+       "start": 34.681,
+       "end": 34.764
+      },
+      {
+       "w": "speaker",
+       "start": 34.776,
+       "end": 35.157
+      },
+      {
+       "w": "finishes.",
+       "start": 35.169,
+       "end": 35.812
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "By the time they finish, you’ve already missed the next task assignment.",
+     "scene": "example",
+     "beat": "example",
+     "start": 36.631,
+     "end": 40.19,
+     "words": [
+      {
+       "w": "By",
+       "start": 36.631,
+       "end": 36.798
+      },
+      {
+       "w": "the",
+       "start": 36.81,
+       "end": 36.917
+      },
+      {
+       "w": "time",
+       "start": 36.929,
+       "end": 37.238
+      },
+      {
+       "w": "they",
+       "start": 37.25,
+       "end": 37.369
+      },
+      {
+       "w": "finish,",
+       "start": 37.381,
+       "end": 37.833
+      },
+      {
+       "w": "you’ve",
+       "start": 38.036,
+       "end": 38.202
+      },
+      {
+       "w": "already",
+       "start": 38.214,
+       "end": 38.548
+      },
+      {
+       "w": "missed",
+       "start": 38.56,
+       "end": 38.857
+      },
+      {
+       "w": "the",
+       "start": 38.869,
+       "end": 38.929
+      },
+      {
+       "w": "next",
+       "start": 38.941,
+       "end": 39.191
+      },
+      {
+       "w": "task",
+       "start": 39.202,
+       "end": 39.488
+      },
+      {
+       "w": "assignment.",
+       "start": 39.5,
+       "end": 40.119
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "beat": "technique",
+   "start": 40.53,
+   "dur": 16.95,
+   "lines": [
+    {
+     "text": "When you notice the urge to type, pause the draft and say “hold on”.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 40.53,
+     "end": 45.131,
+     "words": [
+      {
+       "w": "When",
+       "start": 40.61,
+       "end": 40.764
+      },
+      {
+       "w": "you",
+       "start": 40.776,
+       "end": 40.872
+      },
+      {
+       "w": "notice",
+       "start": 40.883,
+       "end": 41.229
+      },
+      {
+       "w": "the",
+       "start": 41.241,
+       "end": 41.348
+      },
+      {
+       "w": "urge",
+       "start": 41.36,
+       "end": 41.669
+      },
+      {
+       "w": "to",
+       "start": 41.681,
+       "end": 41.764
+      },
+      {
+       "w": "type,",
+       "start": 41.776,
+       "end": 42.157
+      },
+      {
+       "w": "pause",
+       "start": 42.264,
+       "end": 42.55
+      },
+      {
+       "w": "the",
+       "start": 42.562,
+       "end": 42.657
+      },
+      {
+       "w": "draft",
+       "start": 42.669,
+       "end": 43.074
+      },
+      {
+       "w": "and",
+       "start": 43.086,
+       "end": 43.181
+      },
+      {
+       "w": "say",
+       "start": 43.193,
+       "end": 43.55
+      },
+      {
+       "w": "“hold",
+       "start": 43.741,
+       "end": 43.979
+      },
+      {
+       "w": "on”.",
+       "start": 43.991,
+       "end": 44.312
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Count silently to three, then refocus on the speaker’s voice.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 45.131,
+     "end": 49.464,
+     "words": [
+      {
+       "w": "Count",
+       "start": 45.131,
+       "end": 45.393
+      },
+      {
+       "w": "silently",
+       "start": 45.405,
+       "end": 45.905
+      },
+      {
+       "w": "to",
+       "start": 45.917,
+       "end": 46.012
+      },
+      {
+       "w": "three,",
+       "start": 46.024,
+       "end": 46.429
+      },
+      {
+       "w": "then",
+       "start": 46.679,
+       "end": 46.869
+      },
+      {
+       "w": "refocus",
+       "start": 46.881,
+       "end": 47.429
+      },
+      {
+       "w": "on",
+       "start": 47.441,
+       "end": 47.536
+      },
+      {
+       "w": "the",
+       "start": 47.548,
+       "end": 47.619
+      },
+      {
+       "w": "speaker’s",
+       "start": 47.631,
+       "end": 48.095
+      },
+      {
+       "w": "voice.",
+       "start": 48.107,
+       "end": 48.643
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "After the stand‑up, jot a quick note of what you missed and why.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 49.464,
+     "end": 53.548,
+     "words": [
+      {
+       "w": "After",
+       "start": 49.464,
+       "end": 49.786
+      },
+      {
+       "w": "the",
+       "start": 49.798,
+       "end": 49.881
+      },
+      {
+       "w": "stand‑up,",
+       "start": 49.893,
+       "end": 50.441
+      },
+      {
+       "w": "jot",
+       "start": 50.679,
+       "end": 50.905
+      },
+      {
+       "w": "a",
+       "start": 50.917,
+       "end": 50.967
+      },
+      {
+       "w": "quick",
+       "start": 50.976,
+       "end": 51.262
+      },
+      {
+       "w": "note",
+       "start": 51.274,
+       "end": 51.512
+      },
+      {
+       "w": "of",
+       "start": 51.524,
+       "end": 51.607
+      },
+      {
+       "w": "what",
+       "start": 51.619,
+       "end": 51.762
+      },
+      {
+       "w": "you",
+       "start": 51.774,
+       "end": 51.869
+      },
+      {
+       "w": "missed",
+       "start": 51.881,
+       "end": 52.214
+      },
+      {
+       "w": "and",
+       "start": 52.226,
+       "end": 52.322
+      },
+      {
+       "w": "why.",
+       "start": 52.333,
+       "end": 52.714
+      }
+     ],
+     "timing": "measured"
+    },
+    {
+     "text": "Repeat this pause‑and‑reflect loop for each meeting to train your attention muscle.",
+     "scene": "technique",
+     "beat": "technique",
+     "start": 53.548,
+     "end": 57.48,
+     "words": [
+      {
+       "w": "Repeat",
+       "start": 53.548,
+       "end": 53.952
+      },
+      {
+       "w": "this",
+       "start": 53.964,
+       "end": 54.143
+      },
+      {
+       "w": "pause‑and‑reflect",
+       "start": 54.155,
+       "end": 55.048
+      },
+      {
+       "w": "loop",
+       "start": 55.06,
+       "end": 55.298
+      },
+      {
+       "w": "for",
+       "start": 55.31,
+       "end": 55.453
+      },
+      {
+       "w": "each",
+       "start": 55.464,
+       "end": 55.679
+      },
+      {
+       "w": "meeting",
+       "start": 55.691,
+       "end": 55.988
+      },
+      {
+       "w": "to",
+       "start": 56.0,
+       "end": 56.083
+      },
+      {
+       "w": "train",
+       "start": 56.095,
+       "end": 56.429
+      },
+      {
+       "w": "your",
+       "start": 56.441,
+       "end": 56.583
+      },
+      {
+       "w": "attention",
+       "start": 56.595,
+       "end": 56.988
+      },
+      {
+       "w": "muscle.",
+       "start": 57.0,
+       "end": 57.441
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  },
+  {
+   "id": "c6",
+   "beat": "ending",
+   "start": 57.82,
+   "dur": 2.29,
+   "lines": [
+    {
+     "text": "Save this reel so you can revisit the tip.",
+     "scene": "ending",
+     "beat": "ending",
+     "start": 57.82,
+     "end": 60.11,
+     "words": [
+      {
+       "w": "Save",
+       "start": 57.899,
+       "end": 58.289
+      },
+      {
+       "w": "this",
+       "start": 58.301,
+       "end": 58.49
+      },
+      {
+       "w": "reel",
+       "start": 58.502,
+       "end": 58.797
+      },
+      {
+       "w": "so",
+       "start": 58.809,
+       "end": 58.927
+      },
+      {
+       "w": "you",
+       "start": 58.939,
+       "end": 59.081
+      },
+      {
+       "w": "can",
+       "start": 59.093,
+       "end": 59.235
+      },
+      {
+       "w": "revisit",
+       "start": 59.247,
+       "end": 59.648
+      },
+      {
+       "w": "the",
+       "start": 59.66,
+       "end": 59.744
+      },
+      {
+       "w": "tip.",
+       "start": 59.755,
+       "end": 60.11
+      }
+     ],
+     "timing": "measured"
+    }
+   ]
+  }
+ ],
+ "language": "en",
+ "word_timing": {
+  "measured_lines": 13,
+  "lines": 13
+ }
+}

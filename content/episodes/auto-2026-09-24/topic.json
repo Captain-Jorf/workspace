@@ -1,0 +1,60 @@
+{
+ "content_date": "2026-09-24",
+ "content_id": "reel-2026-09-24",
+ "title": "When did you last notice you stopped listening in a standup? Attention",
+ "normalized_topic": "last notice stopped listening standup attention",
+ "pillar": "ATTENTION",
+ "technology_angle": "ATTENTION — tech",
+ "discovery_source": {
+  "name": "content-calendar",
+  "url": "",
+  "tier": "cal"
+ },
+ "evidence_source": {
+  "label": "Clark & Schaefer (1989)",
+  "tier": "B"
+ },
+ "evidence_mode": "calendar",
+ "score": 8,
+ "max_similarity_recent": 0.0,
+ "fallback_reason": "calendar-only mode",
+ "calendar": {
+  "id": 23,
+  "pillar": "ATTENTION",
+  "technology_angle": "attention and digital behavior in engineering teams",
+  "title": "When did you last notice you stopped listening in a standup? Attention",
+  "hook": "When did you last notice you had stopped listening?",
+  "beats": [
+   "nodding while drafting reply",
+   "attention drift is normal",
+   "fast return",
+   "one check-in"
+  ],
+  "sources": [
+   "Clark & Schaefer (1989)",
+   "Mark et al. (2008)"
+  ],
+  "cta": "Try one check-in today."
+ },
+ "ranked_trends": [],
+ "rejected": [],
+ "recent_pillars": [
+  "CODING",
+  "PRODUCT",
+  "AI_JUDGMENT"
+ ],
+ "generated_utc": "2026-09-20T04:09:11+00:00",
+ "content_language": "en",
+ "language": "en",
+ "trend_policy": {
+  "allowed_domains": [
+   "AI",
+   "software",
+   "coding",
+   "product",
+   "digital behavior",
+   "future of work"
+  ],
+  "discovery_is_not_evidence": true
+ }
+}

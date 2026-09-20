@@ -1,0 +1,569 @@
+{
+ "en": [
+  {
+   "text": "Ever catch yourself nodding while your brain’s already elsewhere?",
+   "start": 0.63,
+   "end": 3.582,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    106,
+    200,
+    974,
+    434
+   ]
+  },
+  {
+   "text": "You’re in a stand‑up, eyes on the screen, but your thoughts wander.",
+   "start": 4.06,
+   "end": 7.607,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    65,
+    200,
+    1015,
+    434
+   ]
+  },
+  {
+   "text": "That drift means you miss key updates and waste the whole team’s time.",
+   "start": 8.426,
+   "end": 11.962,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    60,
+    200,
+    1019,
+    434
+   ]
+  },
+  {
+   "text": "Our minds treat a brief pause as a cue to switch modes,",
+   "start": 12.44,
+   "end": 15.428,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    67,
+    200,
+    1013,
+    356
+   ]
+  },
+  {
+   "text": "especially with chat‑AI suggestions popping up.",
+   "start": 15.666,
+   "end": 18.237,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    158,
+    200,
+    922,
+    356
+   ]
+  },
+  {
+   "text": "The brain fills the gap with imagined replies,",
+   "start": 19.056,
+   "end": 21.354,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    105,
+    200,
+    975,
+    356
+   ]
+  },
+  {
+   "text": "so you think you’re listening when you’re not.",
+   "start": 21.592,
+   "end": 23.247,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    92,
+    200,
+    987,
+    356
+   ]
+  },
+  {
+   "text": "Recognizing that gap—realizing you’re drafting a reply",
+   "start": 24.068,
+   "end": 27.187,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    65,
+    200,
+    1014,
+    356
+   ]
+  },
+  {
+   "text": "instead of hearing—creates a metacognitive checkpoint.",
+   "start": 27.199,
+   "end": 30.104,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    91,
+    200,
+    988,
+    356
+   ]
+  },
+  {
+   "text": "Imagine you see an AI‑generated agenda suggestion and",
+   "start": 30.61,
+   "end": 33.681,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    210,
+    200,
+    870,
+    434
+   ]
+  },
+  {
+   "text": "start typing before the speaker finishes.",
+   "start": 33.693,
+   "end": 35.812,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    180,
+    200,
+    900,
+    356
+   ]
+  },
+  {
+   "text": "By the time they finish, you’ve already missed the next task assignment.",
+   "start": 36.631,
+   "end": 40.119,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    59,
+    200,
+    1021,
+    434
+   ]
+  },
+  {
+   "text": "When you notice the urge to type, pause the draft and say “hold on”.",
+   "start": 40.61,
+   "end": 44.312,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    73,
+    200,
+    1006,
+    434
+   ]
+  },
+  {
+   "text": "Count silently to three, then refocus on the speaker’s voice.",
+   "start": 45.131,
+   "end": 48.643,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    94,
+    200,
+    986,
+    434
+   ]
+  },
+  {
+   "text": "After the stand‑up, jot a quick note of what you missed and why.",
+   "start": 49.464,
+   "end": 52.714,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    139,
+    200,
+    941,
+    434
+   ]
+  },
+  {
+   "text": "Repeat this pause‑and‑reflect loop for each meeting to train your attention muscle.",
+   "start": 53.548,
+   "end": 57.441,
+   "rows": 3,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    56,
+    200,
+    1023,
+    434
+   ]
+  },
+  {
+   "text": "Save this reel so you can revisit the tip.",
+   "start": 57.899,
+   "end": 60.11,
+   "rows": 2,
+   "font": 54,
+   "direction": "ltr",
+   "bbox": [
+    133,
+    200,
+    947,
+    356
+   ]
+  }
+ ],
+ "fa": [],
+ "policy": {
+  "width": 1080,
+  "height": 1920,
+  "safe_top": 200,
+  "safe_bottom": 1450,
+  "right_button_column_x": 960,
+  "right_button_column_y": [
+   1100,
+   1700
+  ],
+  "en_top": 200,
+  "en_row_height": 78,
+  "en_max_rows": 3,
+  "en_max_width": 980,
+  "en_font_size": 54,
+  "scene_zone": [
+   500,
+   1300
+  ],
+  "min_contrast_ratio": 4.5,
+  "note": "FA layer removed, space used for bigger diagram, code visual, evidence card, confidence meter, decision tree, prediction graph, human-AI network"
+ },
+ "font_fallbacks": 0,
+ "total": 61.31,
+ "fps": 30,
+ "width": 1080,
+ "height": 1920,
+ "safe_mode": false,
+ "beats": [
+  {
+   "beat": "hook",
+   "start": 0.0
+  },
+  {
+   "beat": "problem",
+   "start": 3.98
+  },
+  {
+   "beat": "explain",
+   "start": 12.36
+  },
+  {
+   "beat": "example",
+   "start": 30.53
+  },
+  {
+   "beat": "technique",
+   "start": 40.53
+  },
+  {
+   "beat": "ending",
+   "start": 57.82
+  }
+ ],
+ "qa_frames": [
+  {
+   "beat": "hook",
+   "pos": "s",
+   "t": 0.6
+  },
+  {
+   "beat": "hook",
+   "pos": "m",
+   "t": 1.99
+  },
+  {
+   "beat": "hook",
+   "pos": "e",
+   "t": 3.48
+  },
+  {
+   "beat": "problem",
+   "pos": "s",
+   "t": 4.58
+  },
+  {
+   "beat": "problem",
+   "pos": "m",
+   "t": 8.17
+  },
+  {
+   "beat": "problem",
+   "pos": "e",
+   "t": 11.86
+  },
+  {
+   "beat": "explain",
+   "pos": "s",
+   "t": 12.959999999999999
+  },
+  {
+   "beat": "explain",
+   "pos": "m",
+   "t": 21.445
+  },
+  {
+   "beat": "explain",
+   "pos": "e",
+   "t": 30.03
+  },
+  {
+   "beat": "example",
+   "pos": "s",
+   "t": 31.130000000000003
+  },
+  {
+   "beat": "example",
+   "pos": "m",
+   "t": 35.53
+  },
+  {
+   "beat": "example",
+   "pos": "e",
+   "t": 40.03
+  },
+  {
+   "beat": "technique",
+   "pos": "s",
+   "t": 41.13
+  },
+  {
+   "beat": "technique",
+   "pos": "m",
+   "t": 49.175
+  },
+  {
+   "beat": "technique",
+   "pos": "e",
+   "t": 57.32
+  },
+  {
+   "beat": "ending",
+   "pos": "s",
+   "t": 58.42
+  },
+  {
+   "beat": "ending",
+   "pos": "m",
+   "t": 59.565
+  },
+  {
+   "beat": "ending",
+   "pos": "e",
+   "t": 60.81
+  }
+ ],
+ "previews": [
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-24/preview_start.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-24/preview_middle.jpg",
+  "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-24/preview_end.jpg"
+ ],
+ "contact_sheet": "/home/runner/work/workspace/workspace/output/drafts/auto-2026-09-24/qa_contact_sheet.jpg",
+ "scene_windows": [
+  {
+   "scene_id": "s1",
+   "beat": "hook",
+   "start": 0.0,
+   "end": 3.98
+  },
+  {
+   "scene_id": "s2",
+   "beat": "problem",
+   "start": 3.98,
+   "end": 12.36
+  },
+  {
+   "scene_id": "s3",
+   "beat": "explain",
+   "start": 12.36,
+   "end": 20.3
+  },
+  {
+   "scene_id": "s4",
+   "beat": "explain",
+   "start": 20.3,
+   "end": 30.53
+  },
+  {
+   "scene_id": "s5",
+   "beat": "example",
+   "start": 30.53,
+   "end": 34.966
+  },
+  {
+   "scene_id": "s6",
+   "beat": "example",
+   "start": 34.966,
+   "end": 40.53
+  },
+  {
+   "scene_id": "s7",
+   "beat": "technique",
+   "start": 40.53,
+   "end": 48.375
+  },
+  {
+   "scene_id": "s8",
+   "beat": "technique",
+   "start": 48.375,
+   "end": 57.82
+  },
+  {
+   "scene_id": "s9",
+   "beat": "ending",
+   "start": 57.82,
+   "end": 61.31
+  }
+ ],
+ "visual_plan": {
+  "pillar": "ATTENTION",
+  "photo_policy": {
+   "target": 3,
+   "minimum": 2,
+   "designated": [
+    "s4",
+    "s7"
+   ],
+   "source": "openverse-api (CC0/PDM only; CC-BY disabled until public attribution exists), $0, keyless",
+   "fallback": "distinct topic-specific procedural visual per scene",
+   "repo_hero_as_background": false
+  },
+  "scenes": [
+   {
+    "scene_id": "s1",
+    "beat": "hook",
+    "visual_category": "brand-mark",
+    "visual_purpose": "brand open — the emblem reveal over the dark gold field",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "repo",
+    "asset_id": "repo:assets/img/logo_emblem.png"
+   },
+   {
+    "scene_id": "s2",
+    "beat": "problem",
+    "visual_category": "notification-cascade",
+    "visual_purpose": "show the notifications cascading into focus loss",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-notification-cascade-1"
+   },
+   {
+    "scene_id": "s3",
+    "beat": "explain",
+    "visual_category": "task-queue",
+    "visual_purpose": "show the tasks waiting while attention switches",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-task-queue-2"
+   },
+   {
+    "scene_id": "s4",
+    "beat": "explain",
+    "visual_category": "context-timeline",
+    "visual_purpose": "lay the context switches along the day",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": true,
+    "asset_kind": "procedural",
+    "asset_id": "proc-context-timeline-3"
+   },
+   {
+    "scene_id": "s5",
+    "beat": "example",
+    "visual_category": "notification-cascade",
+    "visual_purpose": "show the notifications cascading into focus loss",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-notification-cascade-4"
+   },
+   {
+    "scene_id": "s6",
+    "beat": "example",
+    "visual_category": "task-queue",
+    "visual_purpose": "show the tasks waiting while attention switches",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-task-queue-5"
+   },
+   {
+    "scene_id": "s7",
+    "beat": "technique",
+    "visual_category": "context-timeline",
+    "visual_purpose": "lay the context switches along the day",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": true,
+    "asset_kind": "procedural",
+    "asset_id": "proc-context-timeline-6"
+   },
+   {
+    "scene_id": "s8",
+    "beat": "technique",
+    "visual_category": "attention-residue",
+    "visual_purpose": "show the attention left behind after each switch",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "procedural",
+    "asset_id": "proc-attention-residue-7"
+   },
+   {
+    "scene_id": "s9",
+    "beat": "ending",
+    "visual_category": "brand-close",
+    "visual_purpose": "brand close — the orbit and eye send the viewer to the question",
+    "code_justified": false,
+    "cursor_justified": false,
+    "photo_designated": false,
+    "asset_kind": "repo",
+    "asset_id": "repo:assets/img/logo_eye.png"
+   }
+  ],
+  "code_scenes": [],
+  "cursor_scenes": [],
+  "cursor_events": []
+ }
+}
