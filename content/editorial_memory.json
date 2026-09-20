@@ -241,8 +241,33 @@
    "reason": "[visual_semantics] rendered frame of scene s4 is 0.23% cold (blue/navy/cyan/purple) — profile palette is matte black/gold/amber/ivory",
    "hook_type": "question",
    "updated_utc": "2026-09-16T08:00:11+00:00"
+  },
+  {
+   "content_id": "reel-2026-09-22",
+   "content_date": "2026-09-22",
+   "topic": "You know this architecture is wrong. So why keep it? Sunk cost",
+   "normalized_topic": "know architecture wrong keep sunk cost",
+   "pillar": "PRODUCT",
+   "tags": [
+    "sunk-cost",
+    "architecture"
+   ],
+   "cta_type": "question",
+   "playbook": "sunk-cost-architecture",
+   "source_url": null,
+   "script_hash": "717c931bc12fbce21ebd8ca6ac64c9d77f3676881ca4d96b26e5643303ab2a68",
+   "video_hash": "76282d78ef6041d4f70377a5172a0a830c1189f4a57755977a34c927b7e68a2b",
+   "qa_score": 89,
+   "buffer_post_id": null,
+   "status": "qa-failed",
+   "run_id": "35480123463",
+   "technology_angle": "sunk cost in software architecture decisions",
+   "metacognition_concept": "sunk cost fallacy",
+   "reason": "[visual_semantics] rendered frame of scene s1 contains an unjustified typing cursor",
+   "hook_type": "question",
+   "updated_utc": "2026-09-20T01:04:50+00:00"
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-19T08:11:11+00:00"
+ "updated_utc": "2026-09-20T01:04:50+00:00"
 }

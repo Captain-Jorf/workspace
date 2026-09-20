@@ -1,0 +1,45 @@
+{
+ "content_id": "reel-2026-09-22",
+ "content_date": "2026-09-22",
+ "topic": "You know this architecture is wrong. So why keep it? Sunk cost",
+ "normalized_topic": "know architecture wrong keep sunk cost",
+ "pillar": "PRODUCT",
+ "technology_angle": "sunk cost in software architecture decisions",
+ "metacognition_concept": "sunk cost fallacy",
+ "tags": [
+  "sunk-cost",
+  "architecture"
+ ],
+ "cta_type": "question",
+ "playbook": "sunk-cost-architecture",
+ "source_url": null,
+ "sources": [
+  {
+   "label": "Arkes & Blumer (1985), Psychology of sunk cost",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  },
+  {
+   "label": "Kahneman (2011)",
+   "url": "",
+   "tier": "A",
+   "role": "evidence"
+  }
+ ],
+ "script_hash": "717c931bc12fbce21ebd8ca6ac64c9d77f3676881ca4d96b26e5643303ab2a68",
+ "video_hash": "76282d78ef6041d4f70377a5172a0a830c1189f4a57755977a34c927b7e68a2b",
+ "qa_score": 89,
+ "qa_approved": false,
+ "buffer_post_id": null,
+ "buffer_due_at": null,
+ "status": "qa-failed",
+ "public_url": null,
+ "branch": "drafts/2026-09-22",
+ "run_id": "35480123463",
+ "error": "[visual_semantics] rendered frame of scene s1 contains an unjustified typing cursor",
+ "timestamp_utc": "2026-09-20T01:04:50+00:00",
+ "language": "en",
+ "content_language": "en",
+ "generation_mode": "static-fallback"
+}
