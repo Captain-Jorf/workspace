@@ -220,13 +220,9 @@
    "content_id": "reel-2026-09-21",
    "content_date": "2026-09-21",
    "topic": "Being 90% sure and right 60% of the time. What does that cost you? Calibration",
-   "normalized_topic": "being sure right time cost calibration",
+   "normalized_topic": "",
    "pillar": "AI_JUDGMENT",
-   "tags": [
-    "hallucination",
-    "confidence",
-    "calibration"
-   ],
+   "tags": [],
    "cta_type": "question",
    "playbook": "hallucination-confidence",
    "source_url": null,
@@ -234,13 +230,13 @@
    "video_hash": "77b525f19fcc269563701e6f56ae76fe3c57d0077b8dc71dd12c5803eb8a3bb9",
    "qa_score": 90,
    "buffer_post_id": null,
-   "status": "qa-failed",
+   "status": "automation-error",
    "run_id": "35071043285",
    "technology_angle": "hallucination and confidence calibration in LLMs",
    "metacognition_concept": "confidence calibration",
-   "reason": "[visual_semantics] rendered frame of scene s4 is 0.23% cold (blue/navy/cyan/purple) — profile palette is matte black/gold/amber/ivory",
-   "hook_type": "question",
-   "updated_utc": "2026-09-16T08:00:11+00:00"
+   "reason": "",
+   "hook_type": "statement",
+   "updated_utc": "2026-09-21T09:09:47+00:00"
   },
   {
    "content_id": "reel-2026-09-22",
@@ -363,5 +359,5 @@
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-20T08:45:03+00:00"
+ "updated_utc": "2026-09-21T09:09:47+00:00"
 }

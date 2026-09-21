@@ -1,46 +1,29 @@
 {
  "content_id": "reel-2026-09-21",
  "content_date": "2026-09-21",
- "topic": "Being 90% sure and right 60% of the time. What does that cost you? Calibration",
- "normalized_topic": "being sure right time cost calibration",
- "pillar": "AI_JUDGMENT",
- "technology_angle": "hallucination and confidence calibration in LLMs",
- "metacognition_concept": "confidence calibration",
- "tags": [
-  "hallucination",
-  "confidence",
-  "calibration"
- ],
- "cta_type": "question",
- "playbook": "hallucination-confidence",
+ "topic": null,
+ "normalized_topic": "",
+ "pillar": null,
+ "technology_angle": null,
+ "metacognition_concept": null,
+ "tags": [],
+ "cta_type": null,
+ "playbook": null,
  "source_url": null,
- "sources": [
-  {
-   "label": "Lichtenstein et al. (1982), Calibration of probabilities",
-   "url": "",
-   "tier": "A",
-   "role": "evidence"
-  },
-  {
-   "label": "Tetlock (2005)",
-   "url": "",
-   "tier": "A",
-   "role": "evidence"
-  }
- ],
- "script_hash": "5bba2ee830130097dde7b2ebd5b333b95825629471cbd358a84caf8d931c2e29",
- "video_hash": "77b525f19fcc269563701e6f56ae76fe3c57d0077b8dc71dd12c5803eb8a3bb9",
- "qa_score": 90,
- "qa_approved": false,
+ "sources": [],
+ "script_hash": null,
+ "video_hash": null,
+ "qa_score": null,
+ "qa_approved": null,
  "buffer_post_id": null,
  "buffer_due_at": null,
- "status": "qa-failed",
+ "status": "automation-error",
  "public_url": null,
- "branch": "drafts/2026-09-21",
- "run_id": "35071043285",
- "error": "[visual_semantics] rendered frame of scene s4 is 0.23% cold (blue/navy/cyan/purple) — profile palette is matte black/gold/amber/ivory",
- "timestamp_utc": "2026-09-16T08:00:11+00:00",
+ "branch": null,
+ "run_id": null,
+ "error": null,
+ "timestamp_utc": "2026-09-21T09:09:47+00:00",
  "language": "en",
  "content_language": "en",
- "generation_mode": "static-fallback"
+ "generation_mode": null
 }
