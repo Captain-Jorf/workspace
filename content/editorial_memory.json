@@ -324,7 +324,7 @@
    "metacognition_concept": null,
    "reason": "",
    "hook_type": "statement",
-   "updated_utc": "2026-09-20T05:26:43+00:00"
+   "updated_utc": "2026-09-25T08:59:50+00:00"
   },
   {
    "content_id": "reel-2026-09-20",
@@ -350,5 +350,5 @@
   }
  ],
  "_comment": "Editorial memory of @metacognition.hq. No secrets, no personal data. Statuses: published-manual (posted by the owner by hand), legacy-not-published (old workflow drafts, never to be republished automatically), approved-dry-run, queued-in-buffer, sent, qa-failed, <stage>-error, duplicate-prevented, queue-full.",
- "updated_utc": "2026-09-24T08:37:40+00:00"
+ "updated_utc": "2026-09-25T08:59:50+00:00"
 }
