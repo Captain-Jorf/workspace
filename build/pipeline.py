@@ -28,6 +28,7 @@ import traceback
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common
 import qa_supervisor
+import style_config
 import visual_plan as vp
 
 PY = sys.executable
@@ -49,6 +50,55 @@ def assert_no_mock_in_ci():
     """
     if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("MOCK_GROQ") == "1":
         raise Stage("script", "MOCK_GROQ=1 is forbidden in CI/production — refusing mock content")
+
+def minimal_prepare_cta(script, pol=None):
+    """Minimal style §10: normalize the final scene to the dedicated Follow CTA.
+
+    Deterministic, no LLM: in minimal style a reel must END with a dedicated
+    follow CTA scene of ~3-5s that explicitly asks to follow and includes
+    @metacognition.hq. Playbook/LLM endings are a recap + question (~10s,
+    no explicit follow ask), so in minimal style the ending beat is
+    replaced by the canonical CTA line BEFORE TTS/plan — the spoken line
+    and the displayed kinetic text are then the SAME line (one text layer,
+    never two competing).
+
+    Idempotent: if the ending already IS the canonical line, nothing
+    changes. Raises Stage when the ending beat is missing (fail closed).
+
+    Returns (script, changed).
+    """
+    import text_norm
+    line = text_norm.normalize_text(vp.MINIMAL_CTA_LINE)
+    chunks = script.get("chunks") or []
+    endings = [c for c in chunks if c.get("beat") == "ending"]
+    if not endings:
+        raise Stage("script", "minimal style requires an ending beat for the follow CTA")
+    first = endings[0]
+    first_lines = [l.get("t", "") if isinstance(l, dict) else str(l)
+                   for l in first.get("en", [])]
+    # idempotent: the ending beat must be EXACTLY the canonical line
+    if len(endings) == 1 and first_lines and \
+            " ".join(first_lines).strip() == line:
+        return script, False
+    new_chunks = []
+    changed = False
+    seen_first = False
+    for c in chunks:
+        if c.get("beat") == "ending" and c is not first and seen_first:
+            # extra ending chunks (a recap/question after the CTA) are
+            # dropped: the reel must END on the follow CTA, ~3-5s
+            changed = True
+            continue
+        if c is first:
+            c = dict(c)
+            c["en"] = [{"t": line}]
+            seen_first = True
+            changed = True
+        new_chunks.append(c)
+    new_script = dict(script)
+    new_script["chunks"] = new_chunks
+    return new_script, changed
+
 
 def state_path(tag):
     return os.path.join(common.ROOT, "output", f"auto-{tag}_state.json")
@@ -91,8 +141,14 @@ def qa_cmd(tag, ep, paths, topic_path, public_url="", skip_network=False, no_fra
         cmd += ["--no-frames"]
     return cmd
 
-def run_qa(cmd, stage="qa"):
-    r = subprocess.run(cmd, cwd=common.ROOT, text=True, capture_output=True)
+def run_qa(cmd, stage="qa", env_style=None):
+    env = dict(os.environ)
+    if env_style:
+        # explicit handoff of the resolved format to the supervisor (it also
+        # re-derives it from the plan's own style marker; the env is the
+        # belt-and-braces for a missing/malformed plan file)
+        env["PIPELINE_STYLE"] = env_style
+    r = subprocess.run(cmd, cwd=common.ROOT, text=True, capture_output=True, env=env)
     print((r.stdout[-4000:] + r.stderr[-1500:]).strip(), flush=True)
     if r.returncode not in (0, 20):
         raise Stage("qa", f"supervisor could not evaluate (exit {r.returncode}) — failing closed")
@@ -171,6 +227,21 @@ def produce(a):
           "retries": {"script": 0, "render": 0}, "branch": f"drafts/{tag}",
           "run_id": os.environ.get("GITHUB_RUN_ID", "local"), "dry_run": a.dry_run,
           "content_language": "en", "generation_mode": "unknown"}
+    # issue #33: the render style is resolved ONCE here from the explicit
+    # flags only (never LLM text). schedule -> minimal unconditionally;
+    # rich needs BOTH REEL_STYLE=experimental-rich AND ALLOW_EXPERIMENTAL_STYLE=1.
+    # An invalid/ungated request fails closed before any stage runs.
+    try:
+        STYLE, STYLE_SOURCE = style_config.style_for_pipeline()
+    except ValueError as e_style:
+        raise Stage("style", f"invalid reel style request — {e_style}")
+    st["render_style"] = STYLE
+    st["render_style_source"] = STYLE_SOURCE
+    print(f"[pipeline] render style: {STYLE} ({STYLE_SOURCE})", flush=True)
+    if STYLE == style_config.MINIMAL:
+        # zero external asset calls in minimal: the fetch env is forced off
+        # for every child process of this run, whatever the workflow sets
+        os.environ["ASSET_FETCH"] = "0"
     save_state(tag, st)
     topic_path = os.path.join(ep, "topic.json")
     lock_path = os.path.join(os.path.dirname(paths["mp4"]), f"auto-{tag}.render.lock")
@@ -378,6 +449,20 @@ def produce(a):
                           "text_blocking": [], "text_warnings": len(text_gate["warnings"])}
             save_state(tag, st)
 
+            # 2c2. MINIMAL CTA normalization (issue #33 §10): in minimal
+            # style the reel must END with the dedicated ~3-5s follow CTA.
+            # The canonical follow line replaces the ending beat BEFORE
+            # TTS/plan so spoken audio and displayed kinetic text are the
+            # same line. Deterministic, no LLM, idempotent.
+            if STYLE == style_config.MINIMAL:
+                script, cta_changed = minimal_prepare_cta(script)
+                if cta_changed:
+                    common.save_json(os.path.join(ep, "script.json"), script)
+                    st["script"]["hash"] = common.script_hash(script)
+                    st["cta_normalized"] = True
+                    print("[pipeline] minimal style: ending beat normalized to the canonical follow CTA "
+                          "(spoken + displayed = one line)", flush=True)
+
             # 2d. PRE-RENDER VISUAL plan + visual-semantic gate (issue #24,
             # run 35058904480 / reel-2026-09-19): the deterministic scene plan
             # is built ONLY now — after the script passed Producer, Reviewer,
@@ -397,10 +482,21 @@ def produce(a):
             plan_path = os.path.join(ep, "visual_plan.json")
             shash = common.script_hash(script)
             plan = common.load_json(plan_path)
-            if plan and plan.get("scenes") and st.get("plan_script_hash") == shash:
-                pass  # plan already built + validated for THIS script
+            # the plan must match BOTH this exact script and the effective
+            # style — a plan of the other format is never reused:
+            #   minimal      requires a plan marked style=="minimal"
+            #   experimental-rich accepts legacy plans (no style key) or an
+            #   explicit "experimental-rich" marker, never a minimal plan
+            if STYLE == style_config.MINIMAL:
+                plan_style_ok = bool(plan) and plan.get("style") == "minimal"
             else:
-                plan = vp.build_visual_plan(script, pol)
+                plan_style_ok = bool(plan) and plan.get("style") in (None, "experimental-rich")
+            if plan and plan.get("scenes") and st.get("plan_script_hash") == shash and plan_style_ok:
+                pass  # plan already built + validated for THIS script + style
+            else:
+                # minimal: allow_external is forced off inside the builder —
+                # zero Openverse calls, zero photo slots, zero downloads
+                plan = vp.build_visual_plan(script, pol, style=STYLE)
                 common.save_json(plan_path, plan)
                 st["plan_script_hash"] = shash
             vis_issues = vp.visual_semantic_issues(plan, script, pol)
@@ -443,8 +539,10 @@ def produce(a):
                 else:
                     render_out = tmp_retry_path
                     cmd = [PY, os.path.join(B, "render_auto.py"), "--ep", ep, "--out", render_out, "--safe"]
+                # the renderer renders the RESOLVED format (never infers it
+                # from LLM text); PIPELINE_STYLE is the explicit handoff
                 try:
-                    run(cmd, "render", timeout=2400)
+                    run(cmd, "render", env={"PIPELINE_STYLE": STYLE}, timeout=2400)
                 except Stage as e_render:
                     if safe:
                         # Clean temp, keep original
@@ -487,9 +585,11 @@ def produce(a):
                             pass
 
                 st["stage"] = "poster"
-                run([PY, os.path.join(B, "poster_auto.py"), "--ep", ep, "--out-dir", os.path.dirname(paths["mp4"])], "poster")
+                run([PY, os.path.join(B, "poster_auto.py"), "--ep", ep, "--out-dir", os.path.dirname(paths["mp4"])],
+                    "poster", env={"PIPELINE_STYLE": STYLE})
                 st["stage"] = "qa"
-                approved = run_qa(qa_cmd(tag, ep, paths, topic_path, skip_network=a.skip_network))
+                approved = run_qa(qa_cmd(tag, ep, paths, topic_path, skip_network=a.skip_network),
+                                  stage="qa", env_style=STYLE)
                 qa = common.load_json(paths["qa_json"], {})
                 # Test hook: force render reject for integration test of safe retry path
                 if os.environ.get("FORCE_RENDER_REJECT") == "1" and not safe and st["retries"]["render"] == 0:
@@ -644,6 +744,7 @@ def record(a):
         "language": "en",
         "content_language": "en",
         "generation_mode": st.get("generation_mode") or (sc.get("meta") or {}).get("generation_mode"),
+        "render_style": st.get("render_style"),
     }
     common.save_json(paths["manifest"], manifest)
     mem = common.load_memory()

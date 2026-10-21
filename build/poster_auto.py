@@ -32,6 +32,32 @@ def build(reel, out_dir, tag):
     if issues:
         raise RuntimeError("poster glyph gate blocked before draw: "
                            + " · ".join(issues[:6]))
+
+    # issue #33: the minimal poster IS the opening banner — brand line,
+    # hook, handle and eye accent, centered in the safe zone so it stays
+    # readable in both the 9:16 Reel cover and the 4:5 grid crop. No
+    # lattice, no web, no photo, no competing second text layer.
+    if reel.style == "minimal" and reel.plan is not None:
+        fr = reel.bg_crop("base", 0, 0, 1).convert("RGBA")
+        reel._draw_minimal_accent(fr, 0)
+        banner = next((sc for sc in reel.plan["scenes"]
+                       if sc["visual_category"] == "mn-banner"), None)
+        if banner is None:
+            raise RuntimeError("minimal poster: plan has no opening banner scene")
+        canvas, geo = reel._mn_cache[banner["scene_id"]]
+        fr.alpha_composite(canvas)
+        for box in geo.get("gold_boxes", ()):
+            reel._mn_underline(fr, box, 1.0, 3)
+        out = fr.convert("RGB")
+        p1 = os.path.join(out_dir, f"auto-{tag}_poster.jpg")
+        p2 = os.path.join(out_dir, f"auto-{tag}_poster_4x5.jpg")
+        out.save(p1, quality=88)
+        # 4:5 grid crop: the banner block is centered, so the square-ish
+        # crop keeps brand line + hook + handle fully inside
+        out.crop((0, 262, 1080, 1612)).save(p2, quality=88)
+        print(f"[poster:minimal] {p1}\n[poster:minimal] {p2}")
+        return p1, p2
+
     fr = reel.bg_crop("base", 0, 0, 1).convert("RGBA")
     reel.draw_lattice(fr, 3.0, 0.8)
     d = ImageDraw.Draw(fr)
